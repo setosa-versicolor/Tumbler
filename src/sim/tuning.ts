@@ -22,6 +22,8 @@ export interface Tuning {
   jumpSpeed: number;
   /** Released objects get their velocity multiplied by this. 1 = pure physics. */
   throwAssist: number;
+  /** How likely a fast-running foot is to catch on things. 0 = never trips. */
+  trippiness: number;
   /** Torso tilt (radians) past which Stanley falls over. */
   fallTilt: number;
   /** Sudden chest velocity change (m/s in one step) that knocks Stanley down. */
@@ -43,6 +45,7 @@ export const DEFAULT_TUNING: Tuning = {
   moveSpeed: 3.4,
   jumpSpeed: 5.2,
   throwAssist: 1.2,
+  trippiness: 1,
   fallTilt: 1.05,
   knockdown: 4.5,
   gravity: 9.81,
@@ -68,6 +71,7 @@ export const TUNING_RANGES: TuningRange[] = [
   { key: "moveSpeed", label: "Run speed", min: 0.5, max: 8, step: 0.1 },
   { key: "jumpSpeed", label: "Jump", min: 0, max: 10, step: 0.1 },
   { key: "throwAssist", label: "Throw assist", min: 1, max: 2, step: 0.05 },
+  { key: "trippiness", label: "Trippiness", min: 0, max: 2, step: 0.05 },
   { key: "fallTilt", label: "Fall-over tilt", min: 0.4, max: 1.6, step: 0.05 },
   { key: "knockdown", label: "Knockdown hit", min: 1, max: 15, step: 0.25 },
   { key: "gravity", label: "Gravity", min: 1, max: 25, step: 0.1 },

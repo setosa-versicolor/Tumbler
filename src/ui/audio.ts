@@ -77,6 +77,11 @@ export const sfx = {
     tone(300, 70, 0.35, "sawtooth", 0.06);
   },
   hup: () => tone(240, 420, 0.12, "triangle", 0.1),
+  /** Foot catches: a scuff and a rising yelp. */
+  trip: () => {
+    burst(0.1, 900, 0.3, 400, 0.8);
+    tone(330, 660, 0.15, "triangle", 0.09, 0.03);
+  },
   /** Something fragile meets its end: a crunch and a few tinkles. */
   crash: () => {
     burst(0.3, 2400, 0.5, 900, 0.6);

@@ -39,7 +39,7 @@ npm run dev      # then open the printed URL
 | Job board | Esc | ☰ |
 | Tuning panel | T or ⚙ | ⚙ |
 
-Reach low to bend over and pick things up. Big overhand swings throw much harder than short flicks.
+Reach low to bend over and pick things up. Big overhand swings throw much harder than short flicks. Sprinting is risky: if a foot catches on something (a box, a sock, a step up) at speed, Stanley can trip and face-plant. Walking (a half-push on the stick) is safe.
 
 ## How the body works
 

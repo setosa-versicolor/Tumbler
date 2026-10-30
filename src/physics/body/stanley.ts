@@ -6,6 +6,8 @@ import { Gait } from "./gait";
 import { Grip } from "./grip";
 import { driveAngle } from "./motor";
 import { clamp, type Vec } from "../../sim/math";
+import { G_FLOOR } from "../groups";
+import { DT } from "../world";
 import type { Tuning } from "../../sim/tuning";
 
 /** What the player wants this step. The body figures out how. */
@@ -28,6 +30,8 @@ const I_THIGH = 1.0;
 const I_SHIN = 0.25;
 
 const SIDES: Side[] = ["L", "R"];
+/** Below this speed (m/s) feet never trip. */
+const TRIP_SAFE_SPEED = 2.0;
 
 export class Stanley {
   readonly rig: Rig;
@@ -39,10 +43,54 @@ export class Stanley {
   lookAt: Vec | null = null;
   /** How far bent over at the waist, 0..1. */
   private bend = 0;
+  private footContacts = new Set<number>();
+  private tripCooldown = 0;
 
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);
     this.grips = { L: new Grip(this.rig.arms.L.hand), R: new Grip(this.rig.arms.R.hand) };
+  }
+
+  /**
+   * Running fast is risky: when a foot newly catches the side of something
+   * that isn't floor (a box, a sock, a step), Stanley may trip and go
+   * face-first. Stepping onto things is fine; it's walking into them that
+   * gets you. The odds climb with speed; walking is safe. Call after the
+   * world steps.
+   */
+  checkTrip(t: Tuning, rand: () => number): boolean {
+    const touching = new Set<number>();
+    const groundY = this.rig.pelvis.translation().y - this.balance.groundDist;
+    for (const leg of Object.values(this.rig.legs)) {
+      const shin = leg.shin.collider(0);
+      this.world.contactPairsWith(shin, (other) => {
+        if ((other.collisionGroups() >>> 16) & G_FLOOR) return;
+        if (this.rig.colliders.has(other.handle)) return;
+        // Fixed geometry only trips you if it's a real step up, not a seam.
+        const he = !other.parent()?.isDynamic() ? other.halfExtents() : null;
+        if (he && other.translation().y + he.y - groundY < 0.12) return;
+        this.world.contactPair(shin, other, (m) => {
+          if (m.numContacts() > 0 && Math.abs(m.normal().x) > 0.55) touching.add(other.handle);
+        });
+      });
+    }
+    const fresh = [...touching].some((h) => !this.footContacts.has(h));
+    this.footContacts = touching;
+    this.tripCooldown = Math.max(0, this.tripCooldown - DT);
+    if (!fresh || this.balance.posture !== "up" || this.tripCooldown > 0 || !this.balance.grounded) return false;
+
+    const speed = Math.abs(this.rig.pelvis.linvel().x);
+    const risk = clamp((speed - TRIP_SAFE_SPEED) / (t.moveSpeed - TRIP_SAFE_SPEED), 0, 1);
+    this.tripCooldown = 0.4;
+    if (rand() >= risk * 0.75 * t.trippiness) return false;
+
+    // Face-plant: feet stop, top half keeps going.
+    const f = Math.sign(this.rig.pelvis.linvel().x) || this.facing;
+    this.balance.knockDown(0.7);
+    this.rig.chest.applyImpulse({ x: f * this.rig.chest.mass() * 2.2, y: this.rig.chest.mass() * 0.6 }, true);
+    this.rig.head.applyImpulse({ x: f * this.rig.head.mass() * 2.5, y: 0 }, true);
+    for (const leg of Object.values(this.rig.legs)) leg.shin.applyImpulse({ x: -f * leg.shin.mass() * 2.5, y: leg.shin.mass() * 1.5 }, true);
+    return true;
   }
 
   /** Drop whatever we're holding of `body` (e.g. it just broke). */

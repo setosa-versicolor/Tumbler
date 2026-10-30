@@ -10,6 +10,7 @@ export type GameEvent =
   | { type: "press" }
   | { type: "score"; text: string; pos: Vec }
   | { type: "fall"; pos: Vec }
+  | { type: "trip"; pos: Vec }
   | { type: "impact"; pos: Vec; strength: number }
   | { type: "throw"; speed: number }
   | { type: "break"; pos: Vec; kind: string }
@@ -90,6 +91,7 @@ export class Game {
     this.stanley.step(intent, this.tuning, DT);
     this.world.step();
     this.time += DT;
+    if (this.stanley.checkTrip(this.tuning, this.rand)) events.push({ type: "trip", pos: this.stanley.rig.head.translation() });
 
     for (const b of this.buttons) if (b.update(DT)) events.push({ type: "press" });
 

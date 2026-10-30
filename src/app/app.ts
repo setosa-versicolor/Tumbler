@@ -14,6 +14,7 @@ import { boardCard, chapterCard, introCard, resultsCard } from "../ui/screens";
 import { sfx } from "../ui/audio";
 
 const MAX_STEPS_PER_FRAME = 8;
+const TRIP_WORDS = ["Whoa!", "Wha—", "Oof!", "Hup—no!", "Yikes!"];
 const BREAK_WORDS = ["CRASH!", "Oops.", "Whoops!", "…Sorry.", "SMASH!", "Uh-oh."];
 const BREAK_BILLS = [
   "Billed to your mother.",
@@ -395,6 +396,10 @@ export class App {
           break;
         case "throw":
           sfx.whoosh(ev.speed);
+          break;
+        case "trip":
+          sfx.trip();
+          r.popup(TRIP_WORDS[Math.floor(Math.random() * TRIP_WORDS.length)], { x: ev.pos.x, y: ev.pos.y + 0.5 }, "#f08a3c");
           break;
         case "break":
           sfx.crash();

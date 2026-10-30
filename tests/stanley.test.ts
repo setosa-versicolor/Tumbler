@@ -19,9 +19,10 @@ const run = (game: Game, seconds: number, intent: Partial<Intent> | ((t: number)
 const pelvis = (g: Game) => g.stanley.rig.pelvis.translation();
 const tilt = (g: Game) => Math.abs(wrapAngle(g.stanley.rig.chest.rotation()));
 
+// These test the controller itself, so tripping is switched off.
 describe("Stanley's body", () => {
   it("stands upright on its own", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 4);
     expect(tilt(g)).toBeLessThan(0.25);
     expect(pelvis(g).y).toBeGreaterThan(0.75);
@@ -30,7 +31,7 @@ describe("Stanley's body", () => {
   });
 
   it("runs right and left", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 1);
     const x0 = pelvis(g).x;
     run(g, 1.5, { move: 1 });
@@ -43,7 +44,7 @@ describe("Stanley's body", () => {
   });
 
   it("jumps", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 1);
     const y0 = pelvis(g).y;
     g.step({ ...IDLE_INTENT, jump: true });
@@ -58,7 +59,7 @@ describe("Stanley's body", () => {
   });
 
   it("reaches toward a target with the hands", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 1);
     const s = g.stanley.shoulder;
     const target = { x: s.x + 0.5, y: s.y + 0.3 };
@@ -68,7 +69,7 @@ describe("Stanley's body", () => {
   });
 
   it("grabs, lifts and throws a box", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 1);
     // First box in the pile is at x≈4.2. Walk up to it, reach down and grab.
     run(g, 2, (t) => ({ move: pelvis(g).x < 3.5 && t < 1.5 ? 1 : 0 }));
@@ -83,7 +84,7 @@ describe("Stanley's body", () => {
   });
 
   it("gets back up after being knocked down", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 1);
     for (const b of g.stanley.rig.bodies) b.applyImpulse({ x: b.mass() * 7, y: 0 }, true);
     run(g, 0.3);
@@ -94,7 +95,7 @@ describe("Stanley's body", () => {
   });
 
   it("never explodes under random mashing", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     let seed = 7;
     const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     let intent: Intent = IDLE_INTENT;
@@ -118,7 +119,7 @@ describe("Stanley's body", () => {
     expect(p.x > 0 && p.x < 16 && p.y > 0 && p.y < 8).toBe(true);
   });
   it("can climb onto the ledge", () => {
-    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     // Stand just left of the ledge.
     for (const body of g.stanley.rig.bodies) {
       const p = body.translation();

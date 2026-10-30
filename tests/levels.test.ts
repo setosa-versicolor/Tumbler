@@ -114,9 +114,16 @@ describe("Stack It", () => {
 });
 
 describe("Pizza Up", () => {
-  it("Stanley can run up the stairs", () => {
+  it("Stanley can walk up the stairs without tripping", () => {
     const g = play(pizzaUp);
-    run(g, 4, { move: 1 });
+    // Hop the table, then a careful pace (below tripping speed) up the stairs.
+    let hopped = false;
+    run(g, 7, () => {
+      const x = g.stanley.rig.pelvis.translation().x;
+      const jump = !hopped && x > 2.05;
+      if (jump) hopped = true;
+      return { move: 0.55, jump };
+    });
     const p = g.stanley.rig.pelvis.translation();
     expect(p.x).toBeGreaterThan(9);
     expect(p.y).toBeGreaterThan(2.7);
@@ -215,5 +222,27 @@ describe("Breakables", () => {
     expect(g.breaks).toBe(1);
     expect(g.stanley.grips.L.held).toBeNull();
     expect(g.stanley.grips.R.held).toBeNull();
+  });
+});
+
+describe("Tripping", () => {
+  const sprintThroughSocks = (move: number, seed: number, trippiness = 1) => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness }, laundryDay, seed);
+    let trips = 0;
+    for (let i = 0; i < 120 * 2.6; i++) for (const e of g.step({ ...IDLE_INTENT, move })) if (e.type === "trip") trips++;
+    return { trips, falls: g.falls };
+  };
+
+  it("sprinting over socks trips Stanley up", () => {
+    const total = [1, 2, 3, 4].reduce((n, seed) => n + sprintThroughSocks(1, seed).trips, 0);
+    expect(total).toBeGreaterThanOrEqual(2);
+  });
+
+  it("walking over the same socks is safe", () => {
+    for (const seed of [1, 2, 3, 4]) expect(sprintThroughSocks(0.55, seed)).toEqual({ trips: 0, falls: 0 });
+  });
+
+  it("trippiness 0 turns it off", () => {
+    for (const seed of [1, 2, 3, 4]) expect(sprintThroughSocks(1, seed, 0).trips).toBe(0);
   });
 });

@@ -1,6 +1,6 @@
 import type { Collider, PrismaticImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../physics/world";
-import { FLOOR_GROUPS, G_BODY, G_PROP, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
+import { FLOOR_GROUPS, G_BODY, G_FLOOR, G_PROP, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
 import { rng, type Vec } from "../sim/math";
 
 // Building blocks for levels: static solids, loose props and buttons.
@@ -144,7 +144,7 @@ export class Button {
 }
 
 /** Collides with Stanley only; props pass through (used for walkable stair ramps). */
-const BODY_ONLY_GROUPS = groups(0x0001, G_BODY);
+const BODY_ONLY_GROUPS = groups(G_FLOOR, G_BODY);
 /** Collides with props only (the visible stair steps, which Stanley glides over). */
 const PROP_ONLY_GROUPS = groups(0x0001, G_PROP);
 

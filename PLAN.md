@@ -1,244 +1,248 @@
-# TUMBLER — Concept & Plan
+# TUMBLER: Concept & Plan
 
-> Fling a ragdoll stunt dummy through a gauntlet of physics junk. One thumb, a 15-second run, instant retry. Easy to pick up, and the more you play the more control you find.
+> You're a wobbly temp worker with noodle arms. Grab, carry, throw, stack and press your way through bite-sized odd jobs, in about 30 seconds each. The challenge isn't figuring out what the job is. It's getting your body to do it.
 
 ---
 
 ## 1. The pitch
 
-You're **Dummy**, a crash-test stunt performer. Each run is **one launch**. Drag back to aim, let go, and Dummy goes flying through a course full of trampolines, fans, seesaws, wrecking balls, glass panes, bowling pins and conveyor belts. You can't steer. You only control **Dummy's body**:
+**Tumbler** works for *Odd Jobs Ltd.*, a temp agency that sends them on short, simple gigs: *deliver this pizza, ring that doorbell, stack these boxes, throw the newspaper onto the porch, hang this painting.* A toddler could do any of them. Tumbler can't, because Tumbler is an **active ragdoll**: their legs run on their own, their arms flail toward wherever you point them, and their hands grab whatever they touch.
 
-- **Hold** → **TUCK.** Dummy pulls into a tight ball. Spins faster, rolls, bounces harder, punches through breakables.
-- **Release** → **SPRAWL.** Dummy throws out arms and legs like a starfish. More air drag, slower spin, glides a little, and the hands **grab** ledges, poles and ropes.
+Every job is obvious. Doing it is a fight with physics, and that's the joke and the game:
 
-That's the whole control scheme: **aim once, then hold or release.** Because the body is a real ragdoll driven by joint motors (not canned animations), the in-between states (half-tucked, tucking as you hit a ramp, sprawling at the top of a bounce) come out of the physics. Players find tricks we never designed. That's where the depth comes from.
+- The pizza box flops off your arm on the stairs.
+- You wind up a throw, let go too late, and hit yourself in the face.
+- You stack box five, step back proudly, trip, and take the tower down with you.
 
-**Why it's fun in 20 seconds:** the launch feels great, the crashes are funny, and a retry takes one tap.
-**Why it's fun for 2 hours:** you can learn to time tucks and sprawls and chain bounces, grabs and smashes into big combos, and there's always a better line through a course.
+**Why it's fun in 30 seconds:** one job, one obvious goal, a funny failure, retry in a tap.
+**Why it's fun for 2 hours:** the controls have a real skill ceiling (momentum throws, climbing, two-handed carries, using props as tools), and jobs can be solved many ways. Speedruns and silly solutions both count.
 
-Tone: slapstick, cartoon, no gore. Hits give stars, "OOF!" text, wobbly eyes, and band-aids that build up on Dummy over a run.
-
----
-
-## 2. Core loop
-
-```
- ┌──────────────┐   ~2s    ┌──────────────┐  5–30s   ┌──────────────┐   1 tap
- │  AIM (drag)  │ ───────► │  FLIGHT      │ ───────► │  SCORE CARD  │ ─────────┐
- │ power+angle  │          │ hold=tuck    │          │ distance +   │          │
- └──────────────┘          │ release=     │          │ style combo  │          │
-        ▲                  │ sprawl       │          └──────────────┘          │
-        └──────────────────┴──────────────┴────────────────────────────────────┘
-                              instant retry — no loading, no menus
-```
-
-The run ends when Dummy **comes to rest** (speed under a threshold for 1.5s) or passes the finish.
-
-### Scoring
-
-| Source | How |
-|---|---|
-| **Distance** | Base score, metres travelled along the course |
-| **Airtime** | Points per second off the ground |
-| **Flips** | Full torso rotations; tucked flips count ×1, sprawled flips ×2 (harder) |
-| **Bounces** | Trampoline/surface rebounds in a chain without stopping |
-| **Smash** | Breaking glass, crates, pins |
-| **Grab** | Catching a pole/ledge/rope with a hand during sprawl; swinging off it is a bonus |
-| **Pinball** | Hitting 3+ different surfaces within 1 second |
-| **Landing** | Ending a run upright on two feet ("Stuck it!") gives a big multiplier |
-
-Tricks build a **combo multiplier** that stays alive as long as Dummy keeps doing something new within ~1.5s. Repeating the same trick decays its value, so players have to mix tricks up.
+Tone: slapstick, warm, no gore. Tumbler is clumsy and determined, never hurt, and gets back up with a little "hup!"
 
 ---
 
-## 3. Session design (elevator vs. lost evening)
+## 2. Controls
 
-| Time available | Mode | What you do |
+The body does the low-level work. You give it **intent**.
+
+| Action | Phone (landscape, two thumbs) | Keyboard + mouse |
 |---|---|---|
-| **10–60 seconds** | **Quick Fling** (default, opens straight in) | Endless procedural course. App opens on the aim screen, no taps needed first. Beat your best. |
-| **2–5 minutes** | **Daily Gauntlet** | One seeded course, the same for everyone, all day. Unlimited tries, best counts. Ghost of your best run. |
-| **15+ minutes** | **Stunt Book** (career) | ~60 handcrafted challenges in themed sets: *"Land in the bathtub," "Knock all 10 pins," "Grab 3 ropes without touching ground," "Score 50k without tucking."* 1–3 stars each. |
-| **Open-ended** | **Junkyard** (sandbox) | Place props, spawn multiple Dummies, tweak gravity, slo-mo, save and share levels as a short code. |
+| **Move** | Left thumb: virtual stick (left/right) | A / D |
+| **Jump** | Flick the stick up | W / Space |
+| **Reach** | Right thumb: drag anywhere. Both hands reach toward that point, relative to the body | Mouse position |
+| **Grab** | While the right thumb is down, hands grip whatever they touch | Hold left / right mouse button (one per hand) |
+| **Let go / throw** | Lift the right thumb. Thrown objects keep the hand's real velocity, so flicking fast throws hard | Release the button |
+
+Key decisions:
+
+- **Arms are physical.** Hands are pulled toward the target by joint motors with *limited strength*, so they swing, overshoot and wobble. Heavy objects drag your arms down, and fast flicks make the whole body lurch. Nothing is animated. Every throw is real physics.
+- **Throwing has no aim meter.** You swing the hand and let go. Timing and arc are the skill.
+- **Balance is assisted, not guaranteed.** An "upright spring" keeps the torso up, but a big hit, a heavy load, or running into a doorframe can knock it over. Then Tumbler sits up and recovers in ~0.7s. Falls cost time, not lives.
+- **Legs are automatic.** A procedural gait drives the legs while you push the stick. You never control legs directly. Hands are hard enough.
+
+---
+
+## 3. What you can do with the body
+
+Every job is built from a small set of physical verbs, so skill carries over between jobs:
+
+| Verb | How it works physically |
+|---|---|
+| **Grab** | Hand touches a grabbable surface while grip is held → temporary joint between hand and object |
+| **Carry** | Grab + move; heavy items slow you, tall items wobble and tip |
+| **Two-hand carry** | Grab with both hands, so wide or heavy objects stay steady (phone: both hands grab together by default) |
+| **Throw** | Swing + release; velocity comes from the hand |
+| **Press / punch** | Hand hits a button or lever above a force threshold |
+| **Push / pull** | Grab a heavy object and walk |
+| **Climb** | Grab a ledge, reach up, and the body pulls itself up toward the hand |
+| **Swing** | Grab a rope or bar and pump with the stick |
+| **Tool use** | Grabbed objects become extensions of the arm: a broom to reach a button, a plank as a ramp, a box to stand on |
+
+Tool use is where players come up with their own solutions. The doorbell is too high? Stack a crate, throw a shoe at it, or climb the drainpipe.
+
+---
+
+## 4. The jobs (gig catalogue)
+
+Each gig is a tiny side-on room or street, **15–60 seconds**, with one clear goal shown as a picture (no reading needed).
+
+| Gig | Goal | What goes wrong |
+|---|---|---|
+| **Paper Route** | Throw newspapers onto porches while running past | Timing your throws while moving; windows break if you throw too hard |
+| **Doorbell** | Ring a bell that's slightly too high | Jumping and punching, or finding something to stand on |
+| **Pizza Up** | Carry a pizza up three flights of stairs | The box slides off a tilted arm; it has to arrive flat |
+| **Stack It** | Build a tower of mismatched boxes to a height line | Placing gently with wobbly hands; your own elbow is the biggest threat |
+| **Hang the Painting** | Get a frame onto a wall hook, level | Fine control, two hands |
+| **Moving Day** | Get a sofa through a door into the van | Rotating a big object; it pins you to the wall |
+| **Basket Case** | Throw 5 laundry socks into a basket across the room | Pure throwing skill |
+| **Plant Sitter** | Water 4 plants with a watering can (particle water) | Tilt control: too much and you flood the floor |
+| **Button Panic** | Press flashing buttons spread around the room before they time out | Lunging and punching under time pressure |
+| **Fetch** | Get a cat out of a tree | Climbing; the cat is also a ragdoll and doesn't want to come |
+| **Bowling Alley Repair** | Reset 10 pins upright | Delicate placement; knocking one over knocks others |
+| **Window Washer** | Scrub dirt spots on a building while hanging from a rope | Swinging and reaching at the same time |
+
+Launch target: **~24 gigs**, each with 3 variants (layout, objects, hazards), so ~72 different rounds.
+
+### Scoring per gig
+- **Done / not done** (the core).
+- **Time** → 1–3 stars.
+- **Bonus tags** for style and chaos: *No Falls*, *One-Throw*, *Trick Shot* (bank a throw off a wall), *Butterfingers* (dropped it 5 times and still finished), *Collateral* (broke 3+ things on the way). Silly failures get rewarded too, so failing is still fun.
+
+---
+
+## 5. Session design (elevator vs. lost evening)
+
+| Time | Mode | What it is |
+|---|---|---|
+| **30 seconds** | **Quick Gig** (default) | App opens straight into a random gig. Finish it, tap, next gig. No menus. |
+| **2–3 minutes** | **Shift** | 5 gigs back to back with a shared clock, then a pay slip with your total. Each day's Daily Shift is seeded the same for everyone, with ghost replays. |
+| **15+ minutes** | **Career** | Work your way through the town's neighbourhoods (Suburb → Docks → Downtown → Skyscraper). Earnings unlock new gigs, harder variants and "boss jobs" (e.g. *move a piano down a hill*). |
+| **Open-ended** | **Tower** | Endless stacking. Random junk arrives on a conveyor; build as high as you can before it falls. Global leaderboard. Easy to start and hard to put down. |
+| **Open-ended** | **Day Off** | Sandbox: a town street full of props. Mess around, set up stunts, record clips. |
 
 Rules for the short-session case:
-- **Cold start to first launch < 3 seconds.** No splash screens, no login.
-- **Fully playable one-handed, portrait.** Thumb anywhere on screen: drag to aim, hold for tuck.
-- **Closing the app mid-run loses nothing important.** Progress saves on every score card.
-- **Works offline** (PWA).
+- **Cold start to playing < 3 seconds.** No login, no splash, no tutorial screens. The first gig is the tutorial.
+- **Each gig is self-explanatory** from one icon and the room layout.
+- **Leaving mid-gig loses nothing.** Progress saves after every gig.
+- **Offline-capable** (PWA).
 
 ---
 
-## 4. Progression & unlocks
+## 6. Progression & unlocks
 
-Unlocks change **physics** as well as looks, so each one gives you new ways to play:
+Unlocks change the **body**, which changes how you solve jobs:
 
-| Suit | Effect |
+| Unlock | Effect |
 |---|---|
-| Default | Balanced |
-| **Rubber** | Very bouncy, low grip, wild pinball runs |
-| **Lead** | Heavy, smashes everything, short flights |
-| **Wingsuit** | Sprawl gives real lift (glide control) |
-| **Velcro** | Grabs anything, not just poles |
-| **Noodle** | Weak joint motors, extra floppy, tuck is barely possible. A hard mode for experts. |
+| **Long Arms** | Huge reach, but weaker grip and more flail |
+| **Strongman** | Heavy items feel light; delicate jobs get harder |
+| **Sticky Gloves** | Easier grabs; letting go cleanly is harder |
+| **Short Legs** | Faster, lower, wobblier |
+| **Big Head** | Purely cosmetic, very funny |
+| **Uniforms / hats** | Cosmetic, earned from bonus tags |
 
-Launchers (also unlockable): **Slingshot** (default), **Cannon** (fixed angle, more power), **Catapult** (spins Dummy on release), **Bumper Car** (Dummy starts seated and gets ejected).
+Tools you can bring on a job (one slot): **Plunger** (sticks to walls), **Umbrella** (slow fall), **Broom** (extra reach), **Spring Shoes** (big jumps). Some gigs get much easier, or much funnier, with the right tool.
 
-Unlock currency: **Stars** from the Stunt Book plus milestones ("travel 10 km total," "1,000 bounces"). No ads, no energy timers. Nothing should stop a 20-second session.
+Currency is **wages** from gigs. No ads, no energy, no timers that stop a short session.
 
 ---
 
-## 5. The physics (where the fun comes from)
+## 7. The physics
 
-### 5.1 Ragdoll rig (2D)
+### 7.1 Engine & view
+- **2D side-on.** Stacking and throwing read clearly from the side, it plays well on a phone, and the scope stays manageable.
+- **Rapier 2D, deterministic build (WASM).** It has good joint motors, CCD for fast throws, and gives identical results on every device. That makes Daily Shift ghosts and replays tiny input logs instead of video.
+- Fixed **120 Hz** step, interpolated rendering, seeded RNG only inside the simulation.
 
-11 rigid bodies, 10 revolute joints:
+### 7.2 Tumbler's rig
 
 ```
-            (head)
-              │ neck
+             (head)
+               │ neck
    upperArmL─(chest)─upperArmR
-      │        │ spine      │
-   foreArmL (pelvis)    foreArmR
-            ╱     ╲
-      thighL       thighR
-         │            │
-      shinL         shinR
+       │       │ spine     │
+   foreArmL (pelvis)   foreArmR
+      │       ╱   ╲        │
+   handL  thighL  thighR  handR
+             │      │
+           shinL  shinR
+            (feet)
 ```
 
-- Each joint has **angle limits** (knees bend one way, the neck doesn't spin 360°).
-- Each joint has a **motor** driving toward a target angle with **capped torque**. This is an *active ragdoll*: the body *tries* to reach a pose but physics can overpower it. Big hits knock Dummy out of a pose, and Dummy fights back toward it.
-- **Pose targets:**
-  - `TUCK`: knees to chest, arms wrapped, chin down. High motor torque.
-  - `SPRAWL`: limbs extended, slight spread. Medium torque.
-  - `DAZED` (for 0.4s after a very hard impact): motors drop to near zero, fully limp. This gives the funny floppy moments and stops tuck-spam from absorbing everything.
-- **Pose blending:** targets interpolate over ~80ms so switching poses looks like a real body moving.
-- Tucking pulls mass inward, so **angular velocity rises from conservation of angular momentum** without any special code. Spin control just works.
+- **13 bodies**: head, chest, pelvis, 2× upper arm, 2× forearm, 2× hand, 2× thigh, 2× shin.
+- Joints have angle limits and **PD motors with capped torque**.
+- **Arm controller:** two-bone IK computes target shoulder/elbow angles toward the reach point; motors chase them with limited strength. That limit is where the flail comes from, so tuning it is the most important part of the game feel.
+- **Balance controller:** torque on chest and pelvis toward upright, scaled by "stability", which drops when hit hard, when carrying a lot, or when falling. Below a threshold Tumbler falls over, then a recovery routine stands them back up.
+- **Gait:** procedural stepping (target foot positions from velocity, leg motors chase them). It looks a bit drunk, on purpose.
+- **Grip:** on contact while grip is held, create a weld/revolute joint between hand and object, with a break force so very heavy loads or sharp yanks rip free.
 
-### 5.2 Engine choice
-
-**Rapier 2D (`@dimforge/rapier2d-deterministic`, WASM)**, because:
-- **Cross-platform determinism.** The same seed plus the same input timeline gives the same result on every device. That means replays and Daily Gauntlet ghosts can be stored as *input logs* (a few hundred bytes) instead of recorded positions, and shared as codes.
-- Good joint motors, CCD for fast bodies (Dummy at 40 m/s hitting a thin glass pane must not tunnel through), and solid performance on phones.
-
-Fallback: Planck.js (pure JS Box2D) if WASM gives us problems.
-
-### 5.3 Simulation rules
-
-- Fixed **120 Hz** physics step, decoupled from render, with interpolated rendering.
-- Inputs are timestamped to physics ticks (for determinism and replays).
-- Joint and body velocity clamps, plus a sanity check that resets a ragdoll if it ever "explodes" (a classic ragdoll bug).
-- CCD enabled on all Dummy parts and thin props.
-
-### 5.4 Prop catalogue (v1)
-
-| Prop | Behaviour |
-|---|---|
-| Trampoline | High restitution; tuck on contact gives a bigger bounce |
-| Fan | Force field; sprawl catches far more air than tuck |
-| Seesaw | Hinged plank; can launch other props *at* you |
-| Wrecking ball | Pendulum, timing hazard or launch opportunity |
-| Glass pane | Breaks above an impulse threshold (tuck gets through, sprawl bounces off) |
-| Crates | Stackable, breakable |
-| Bowling pins | Light, scatter beautifully |
-| Conveyor | Surface velocity |
-| Rope / pole | Grab targets for sprawl; ropes are jointed chains |
-| Booster cannon | Catches Dummy and re-fires along a fixed vector |
-| Sticky wall | Absorbs momentum, a "stop here" puzzle element |
-| Ice | Zero friction; sliding combos |
-
-Each prop is designed so **tuck and sprawl interact with it differently**. That rule is what makes the one-button control deep.
+### 7.3 Objects
+- Each prop has mass, friction, restitution, a "grabbable" flag, and an optional **breakable** threshold.
+- Goal triggers are physical checks: *object inside zone and resting for 0.5s*, *button impulse > X*, *tower top > height line for 3s*.
 
 ---
 
-## 6. Course generation (Quick Fling & Daily)
+## 8. Game feel ("juice") checklist
 
-- The course is built from **hand-authored chunks** (~40 to start), each 15–30 m long, tagged by difficulty and "flow type" (bounce, smash, grab, slide).
-- Chunks are stitched by seeded RNG with rules: entry and exit heights must match, flow types vary, difficulty ramps up with distance.
-- This keeps the hand-tuned feel of designed levels with endless variety. The same seed system powers the Daily Gauntlet (`seed = date`).
-
----
-
-## 7. Game feel ("juice") checklist
-
-- **Hit-stop**: 30–60ms freeze on big impacts, scaled by impulse.
-- **Slo-mo**: brief 0.3× time on near misses, grabs and huge smashes.
-- **Camera**: leads in the direction of velocity, zooms out with speed, small shake on impact.
-- **Audio**: impact sounds picked and pitched by impulse and material; Dummy grunts; an "ooOOOoo" voice that rises with airtime; a crowd that reacts to the combo.
-- **Trick popups** that stack ("FLIP! ×2 · SMASH · PINBALL!").
-- **Band-aids & stars** pile up on Dummy across the run, so the damage is a visual record of the run.
-- **Replay**: the score card plays your best 3 seconds in slo-mo automatically. One tap exports a GIF.
+- **Hit-stop** (40ms) on big impacts and on clean throws landing in a target.
+- **Slo-mo** on trick shots and on the final moment of a gig ("will it land?").
+- **Camera** frames Tumbler plus the current goal, zooms out for long throws.
+- **Audio**: effort grunts that scale with load, a "hup!" on recovery, satisfying thunks per material, a jingle and cash-register sound on job completion.
+- **Faces**: Tumbler's eyes track the held object and widen when they're about to fall.
+- **Instant replay** of the last 4 seconds on every completion and every great failure. One tap to share as a GIF.
 
 ---
 
-## 8. Tech stack
+## 9. Tech stack
 
 | Concern | Choice |
 |---|---|
 | Language | TypeScript |
 | Build | Vite |
 | Physics | Rapier 2D deterministic (WASM) |
-| Rendering | PixiJS (WebGL, falls back to canvas) |
-| Audio | Web Audio API (small synthesized/sample set) |
-| Platform | Mobile-first web + PWA (installable, offline). Wrap with Capacitor later for app stores if wanted. |
-| Persistence | localStorage / IndexedDB for progress; replays as compact input logs |
-| Tests | Vitest: determinism tests (same seed + inputs ⇒ identical final state hash), scoring unit tests |
+| Rendering | PixiJS |
+| Audio | Web Audio API |
+| Platform | Mobile-first web + PWA; Capacitor wrapper for app stores later |
+| Persistence | localStorage / IndexedDB; replays as input logs |
+| Tests | Vitest: determinism hash tests, goal-trigger tests, controller unit tests |
 
 ### Proposed structure
 
 ```
 src/
-  main.ts              boot, game loop (fixed step + interpolation)
+  main.ts                 boot, fixed-step loop + interpolation
   physics/
-    world.ts           Rapier setup, step, CCD config
-    ragdoll.ts         rig construction, joint limits, motors
-    poses.ts           TUCK / SPRAWL / DAZED targets + blending
-    grab.ts            hand-to-prop temporary joints
-  props/               one file per prop type + registry
-  course/
-    chunks/            JSON chunk definitions
-    generator.ts       seeded stitching
-  game/
-    run.ts             run state machine (aim → flight → rest → score)
-    scoring.ts         trick detection + combo system
-    input.ts           drag-aim, hold/release, tick-stamped log
-    replay.ts          record/playback from input logs
-  render/              Pixi scene, camera, particles, popups
+    world.ts              Rapier setup, stepping, CCD
+    body/
+      rig.ts              build Tumbler's 13-part ragdoll
+      armController.ts    IK reach targets → motor targets
+      balance.ts          upright torque, stability, fall/recover
+      gait.ts             procedural stepping
+      grip.ts             hand ↔ object joints, break forces
+  props/                  prop definitions (box, pizza, sock, button, rope, …)
+  gigs/
+    gig.ts                gig interface: setup, goal check, scoring tags
+    paperRoute.ts … tower.ts
+  modes/                  quickGig, shift, career, tower, dayOff
+  input/                  touch sticks, mouse/keyboard, tick-stamped log
+  replay/                 record/playback
+  render/                 Pixi scene, camera, faces, particles
   audio/
-  ui/                  score card, menus, Stunt Book
+  ui/                     job icon, pay slip, star screen, menus
 tests/
 ```
 
 ---
 
-## 9. Milestones
+## 10. Milestones
 
-Each milestone ends with something playable. **M0 is a go/no-go check:** if flinging the ragdoll around an empty room isn't fun for 10 minutes with no goals, nothing built on top will save it, so we tune until it is.
+**M0 is a go/no-go check:** if walking around an empty room grabbing and throwing boxes isn't fun on its own, no job built on top will fix it. We tune until it is.
 
 | # | Milestone | Deliverable | Done when |
 |---|---|---|---|
-| **M0** | **Physics toy** | Ragdoll + slingshot + tuck/sprawl, flat ground, a trampoline, a wall, some pins. Debug sliders for motor torque, mass, restitution. | Launching and crashing is fun with no score. Tuck spin-up feels clearly different from sprawl. |
-| **M1** | **Core loop** | Run state machine, 10 course chunks + generator, distance/airtime/flip scoring, instant retry, mobile touch input, portrait layout. | A full run takes < 30s; retry < 0.5s; plays well on a phone. |
-| **M2** | **Juice pass** | Hit-stop, slo-mo, camera, audio, popups, band-aids, auto-replay on the score card. | Playtesters laugh on their first crash. |
-| **M3** | **Depth** | Full trick set (bounce, smash, grab, pinball, stuck-landing), combo multiplier, all v1 props, 40 chunks. | Skilled players reliably score 3–5× new players. |
-| **M4** | **Meta** | Daily Gauntlet + ghosts (deterministic replays), suits, launchers, stats, unlocks. | A reason to come back tomorrow. |
-| **M5** | **Stunt Book** | 60 handcrafted challenges, star ratings. | 2+ hours of designed content. |
-| **M6** | **Junkyard & share** | Sandbox editor, level share codes, GIF export, PWA offline install. | A level made on one phone loads on another. |
+| **M0** | **Body toy** | Rig, balance, gait, arm reach, grip, throw. One room with boxes, a ball and a button. Live tuning sliders (arm strength, balance, grip force). Mouse+keyboard and touch. | Throwing a ball at a button is funny and satisfying; you can stack 3 boxes with practice. |
+| **M1** | **First gigs** | Gig framework (goal triggers, timer, stars), 4 gigs: Basket Case, Doorbell, Stack It, Pizza Up. Quick Gig mode with instant next/retry. | A new player completes a gig in < 60s and immediately wants the next one. |
+| **M2** | **Juice** | Faces, audio, hit-stop, slo-mo, camera framing, instant replay. | Playtesters laugh during their first minute. |
+| **M3** | **Content & depth** | 12 gigs with variants, bonus tags, climbing/swinging/tool use, Shift mode. | Experienced players finish gigs 3× faster than new ones. |
+| **M4** | **Meta** | Career map, wages, body unlocks, tools, Daily Shift with ghosts. | A reason to come back tomorrow. |
+| **M5** | **Tower & Day Off** | Endless Tower with leaderboard, sandbox street. | Sessions over 20 minutes in Tower. |
+| **M6** | **Ship polish** | 24 gigs, PWA offline, GIF sharing, performance pass on low-end phones. | Runs at 60fps on a 4-year-old phone. |
 
 ---
 
-## 10. Risks & mitigations
+## 11. Risks & mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Ragdoll feels floaty or mushy | M0 exists to tune this; expose every parameter as a live slider; reference real fall footage for timing |
-| Physics explosions / jitter | Velocity clamps, joint limit softness tuning, 120 Hz step, auto-reset guard |
-| Tunnelling at high speed | CCD on all dynamic Dummy parts and thin props |
-| Determinism breaks (ghosts desync) | Deterministic Rapier build, no `Math.random` in sim (seeded RNG only), CI test that hashes the final state |
-| One-button control feels shallow | The "every prop reacts differently to tuck vs. sprawl" rule; Stunt Book challenges that teach advanced timing |
-| Mobile perf | Cap active debris bodies (sleep/despawn off-screen), pool particles, budget 2ms/frame for physics |
+| Controls feel frustrating instead of funny | M0 is a go/no-go check; arm strength and balance on live sliders; tune toward "barely in control"; never punish falls harshly |
+| Two-thumb touch is hard on small screens | Generous dead zones, reach target relative to the body (not absolute), optional one-hand mode for simple gigs |
+| Physics explosions with grips and stacks | Grip joint break forces, velocity clamps, 120 Hz step, sleeping for resting stacks |
+| Gigs feel samey | Every gig must stress a *different* verb; variants change the solution, not just the layout |
+| Determinism breaks ghosts | Deterministic Rapier build, no `Math.random` in sim, CI hash test |
+| Mobile performance | Small rooms, capped debris, sleep resting bodies, 2ms physics budget |
 
 ---
 
-## 11. First step
+## 12. First step
 
-Start **M0**: scaffold Vite + TypeScript + Rapier + Pixi, build the 11-part active ragdoll with TUCK/SPRAWL motors, a slingshot launcher, and a small test room with a debug tuning panel. Then play it and tune it until it's fun before building anything else.
+Start **M0**: scaffold Vite + TypeScript + Rapier + Pixi, build Tumbler's 13-part active ragdoll with balance, gait, IK arm reach and grip, then a test room with boxes, a ball and a button, plus a tuning panel. Play it and tune it until grabbing and throwing are fun on their own.

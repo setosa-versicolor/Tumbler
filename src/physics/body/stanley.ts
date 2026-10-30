@@ -169,7 +169,7 @@ export class Stanley {
       if (intent.reach) {
         // The back arm aims a touch lower so the two hands don't sit on top of each other.
         const r = side === "L" ? { x: intent.reach.x, y: intent.reach.y - 0.06 } : intent.reach;
-        targets = reachTargets(shoulder, r, this.facing);
+        targets = reachTargets(shoulder, r, this.facing, arm.upper.rotation());
         strength = t.armStrength * (side === "L" ? 0.92 : 1);
       } else {
         targets = relaxedTargets(side, this.facing, gait.phase, gait.speedFrac, t.flail, airborne);
@@ -181,8 +181,9 @@ export class Stanley {
     }
 
     // Grips
-    this.grips.L.update(this.world, intent.grip.L && limp > 0.2, this.grips.R, t.throwAssist);
-    this.grips.R.update(this.world, intent.grip.R && limp > 0.2, this.grips.L, t.throwAssist);
+    const chestY = this.rig.pelvis.translation().y + 0.35;
+    this.grips.L.update(this.world, intent.grip.L && limp > 0.2, this.grips.R, t.throwAssist, chestY);
+    this.grips.R.update(this.world, intent.grip.R && limp > 0.2, this.grips.L, t.throwAssist, chestY);
     this.climb(intent, t, dt);
   }
 

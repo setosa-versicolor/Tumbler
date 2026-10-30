@@ -11,12 +11,17 @@ import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
 import { dayOff } from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
-import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2, SIGN_OFF } from "../src/story/scripts";
+import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, SIGN_OFF } from "../src/story/scripts";
 import { crateExpectations } from "../src/levels/docks/crateExpectations";
 import { fishToss } from "../src/levels/docks/fishToss";
 import { rollOut } from "../src/levels/docks/rollOut";
 import { crowsNest } from "../src/levels/docks/crowsNest";
 import type { GameEvent } from "../src/sim/game";
+import { movingDay } from "../src/levels/downtown/movingDay";
+import { hangThePainting } from "../src/levels/downtown/hangThePainting";
+import { pinReset } from "../src/levels/downtown/pinReset";
+import { coffeeRun } from "../src/levels/downtown/coffeeRun";
+import { wrapAngle } from "../src/sim/math";
 import type { Level } from "../src/levels/level";
 
 beforeAll(() => initPhysics());
@@ -159,7 +164,7 @@ describe("Pizza Up", () => {
 });
 
 describe("Cutscenes", () => {
-  for (const script of [ONBOARDING, REVIEW_1, REVIEW_2]) {
+  for (const script of [ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3]) {
     it(`${script.id} plays through to the end with Stanley back at the door`, () => {
       const g = play(office);
       const scene = new Cutscene(script, g);
@@ -427,13 +432,13 @@ describe("Surprises", () => {
 describe("Gerald's jokes", () => {
   it("no line is used twice anywhere in the cutscenes, except the sign-off", () => {
     const lines = [
-      ...[ONBOARDING, REVIEW_1, REVIEW_2].flatMap((s) => s.steps.flatMap((st) => ("text" in st ? [st.text] : []))),
+      ...[ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3].flatMap((s) => s.steps.flatMap((st) => ("text" in st ? [st.text] : []))),
       ...Object.values(BARKS).flat(),
     ];
     // The sign-off is the one line that's meant to repeat.
     const dupes = lines.filter((l, i) => lines.indexOf(l) !== i && l !== SIGN_OFF);
     expect(dupes).toEqual([]);
-    for (const script of [ONBOARDING, REVIEW_1, REVIEW_2]) {
+    for (const script of [ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3]) {
       expect(script.steps.some((st) => st.do === "say" && st.text === SIGN_OFF), script.id).toBe(true);
     }
   });
@@ -478,5 +483,109 @@ describe("Picking things up", () => {
     const fell = seeds.filter((s) => reachLow(laundryDay, 1, s) > 0).length;
     expect(fell).toBeGreaterThan(0);
     expect(fell).toBeLessThan(10);
+  });
+});
+
+describe("Moving Day", () => {
+  it("is done with the sofa in the van", () => {
+    const g = play(movingDay);
+    g.props.find((p) => p.kind === "sofa")!.body.setTranslation({ x: 13.2, y: 1.2 }, true);
+    run(g, 1.5);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("the sofa doesn't fit through the doorway overhead", () => {
+    const g = play(movingDay);
+    const sofa = g.props.find((p) => p.kind === "sofa")!.body;
+    sofa.setTranslation({ x: 5.0, y: 2.5 }, true);
+    sofa.setGravityScale(0, true);
+    sofa.setLinvel({ x: 2, y: 0 }, true);
+    run(g, 1);
+    expect(sofa.translation().x).toBeLessThan(5.9);
+  });
+
+  it("Stanley can walk up the ramp into the van", () => {
+    const g = play(movingDay);
+    g.props.find((p) => p.fragile)!.body.setTranslation({ x: 1.0, y: 0.51 }, true);
+    moveStanley(g, 7.0, 0);
+    run(g, 3, { move: 0.5 });
+    const p = g.stanley.rig.pelvis.translation();
+    expect(p.x).toBeGreaterThan(11.5);
+    expect(p.y).toBeGreaterThan(1.6);
+  });
+});
+
+describe("Hang the Painting", () => {
+  it("hooks when the wire reaches the hook, then counts once it hangs level", () => {
+    const g = play(hangThePainting);
+    const painting = g.props.find((p) => p.kind === "painting")!;
+    painting.body.setGravityScale(0, true);
+    painting.body.setTranslation({ x: 9.2, y: 2.55 - (painting.hh - 0.06) }, true);
+    painting.body.setRotation(0.2, true);
+    const ev = collect(g, 0.2);
+    painting.body.setGravityScale(1, true);
+    expect(ev.some((e) => e.type === "score" && e.text === "Hooked!")).toBe(true);
+    run(g, 6);
+    expect(g.progress.done).toBe(true);
+  });
+});
+
+describe("Pin Reset", () => {
+  it("is done with six pins standing on the deck", () => {
+    const g = play(pinReset);
+    g.props.filter((p) => p.kind === "pin").slice(0, 6).forEach((p, i) => {
+      p.body.setTranslation({ x: 10.3 + i * 0.36, y: 0.2 }, true);
+      p.body.setRotation(0, true);
+    });
+    run(g, 2);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("a pin grabbed by its end dangles upright", () => {
+    const g = play(pinReset);
+    const pin = g.props.find((p) => p.kind === "pin")!.body;
+    pin.setTranslation({ x: 2.3, y: 0.075 }, true);
+    pin.setRotation(Math.PI / 2, true);
+    run(g, 0.5);
+    // The pin's end nearest Stanley.
+    const end = { x: pin.translation().x - 0.16, y: 0.08 };
+    run(g, 1.5, { reach: end, grip: { L: true, R: true } });
+    expect(g.held.has(pin)).toBe(true);
+    // Lift smoothly, the way a thumb would, then hold it out.
+    const from = { ...end };
+    run(g, 2.5, (t) => {
+      const k = Math.min(1, t / 1.2);
+      const to = { x: g.stanley.shoulder.x + 0.6, y: g.stanley.shoulder.y + 0.1 };
+      return { reach: { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k }, grip: { L: true, R: true } };
+    });
+    // It swings like a pendulum, centred on hanging straight down.
+    let sum = 0;
+    for (let i = 0; i < 120; i++) {
+      run(g, 1 / 120, { reach: { x: g.stanley.shoulder.x + 0.6, y: g.stanley.shoulder.y + 0.1 }, grip: { L: true, R: true } });
+      sum += wrapAngle(pin.rotation() - (Math.cos(pin.rotation()) < 0 ? Math.PI : 0));
+    }
+    expect(g.held.has(pin)).toBe(true);
+    expect(Math.abs(sum / 120)).toBeLessThan(0.25);
+  });
+});
+
+describe("Coffee Run", () => {
+  it("Stanley can carry the tray over and serve the coffees", { timeout: 20000 }, () => {
+    const g = play(coffeeRun);
+    g.props.find((p) => p.kind === "lamp")!.body.setTranslation({ x: 13.7, y: 0.51 }, true);
+    const tray = g.props.find((p) => p.kind === "tray")!.body;
+    const hold = { L: true, R: true };
+    const sh = () => g.stanley.shoulder;
+    run(g, 0.5);
+    run(g, 2, { move: -0.4 });
+    const grabAt = { x: tray.translation().x + 0.3, y: tray.translation().y + 0.03 };
+    run(g, 1, { reach: grabAt, grip: hold });
+    run(g, 0.5, { reach: { x: grabAt.x, y: 1.2 }, grip: hold });
+    // Swing it across in front, like a thumb sweeping over.
+    for (let k = 0; k <= 180; k++) run(g, 1 / 120, () => ({ reach: { x: sh().x - Math.cos((Math.PI * k) / 180) * 0.6, y: 1.2 }, grip: hold }));
+    run(g, 10, () => ({ move: g.stanley.rig.pelvis.translation().x < 11.4 ? 0.45 : 0, reach: { x: sh().x + 0.6, y: 1.2 }, grip: hold }));
+    run(g, 1, () => ({ reach: { x: sh().x + 0.6, y: 0.95 }, grip: hold }));
+    run(g, 2, () => ({ reach: { x: sh().x + 0.6, y: 0.95 } }));
+    expect(g.progress.done).toBe(true);
   });
 });

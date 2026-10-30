@@ -222,8 +222,33 @@ export const REVIEW_2: Script = {
   ],
 };
 
+export const REVIEW_3: Script = {
+  id: "review-3",
+  title: "Performance Review #3",
+  steps: [
+    { do: "walk", to: VISIT },
+    { do: "say", text: "Stanley! Downtown! Big city, big jobs, big… feedback." },
+    { do: "say", text: "The office move: complete. Everything arrived. The client says the sofa is now 'load-bearing.'" },
+    { do: "fidget", at: "nameplate", time: 0.9 },
+    { do: "say", text: "The gallery has rated us one star. That's up from zero, because they added a zero option. Specifically for us." },
+    { do: "say", text: "Their curator says she's never seen anyone hang a painting like that. I believe her." },
+    { do: "say", text: "The bowling alley's pins are all standing. The bowling alley's staff are not. They've gone home. Early. Upset." },
+    { do: "fidget", at: "mug", time: 0.9 },
+    { do: "say", text: "And reception got their coffee. Some of it in cups." },
+    { do: "say", text: "People throw around words like 'erratic.' I prefer 'agile.'" },
+    { do: "say", text: "*Sips, thinking about the word 'agile.'*", aside: true },
+    { do: "say", text: "Downtown was, in hindsight, too down. What you need is altitude." },
+    { do: "fidget", at: "photo", time: 0.8 },
+    { do: "say", text: "A skyscraper. Fifty floors. Washing windows. I genuinely can't think of a single way that goes wrong." },
+    { do: "ifCalm", text: "…Not one thing broken. Is that a cry for help? Blink twice." },
+    { do: "say", text: SIGN_OFF },
+    { do: "walk", to: DOOR },
+  ],
+};
+
 export const SCRIPTS: Record<string, Script> = {
   [ONBOARDING.id]: ONBOARDING,
   [REVIEW_1.id]: REVIEW_1,
   [REVIEW_2.id]: REVIEW_2,
+  [REVIEW_3.id]: REVIEW_3,
 };

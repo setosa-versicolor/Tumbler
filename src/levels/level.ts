@@ -80,3 +80,12 @@ export const HARBOUR: Theme = {
   floor: "#4e5b52",
   floorTop: "#5f6d62",
 };
+
+export const OFFICE: Theme = {
+  outdoor: false,
+  top: "#e6ebf0",
+  bottom: "#d3dae2",
+  floor: "#5f6670",
+  floorTop: "#7a828c",
+  stripe: "rgba(255,255,255,0.12)",
+};

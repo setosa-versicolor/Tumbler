@@ -1,5 +1,5 @@
 import { DIM, type Side } from "./rig";
-import { clamp, limbAngleFor, type Vec } from "../../sim/math";
+import { clamp, limbAngleFor, wrapAngle, type Vec } from "../../sim/math";
 
 const L1 = DIM.upperArm.len;
 /** Elbow to hand centre (forearm plus wrist offset). */
@@ -12,17 +12,27 @@ export interface ArmTargets {
 }
 
 /**
- * Two-bone IK from the shoulder to a world point. The elbow bends downward
- * for targets in front of Stanley and upward for targets behind, which keeps
- * it from popping between solutions near straight up.
+ * Two-bone IK from the shoulder to a world point.
  */
-export function reachTargets(shoulder: Vec, target: Vec, facing: 1 | -1): ArmTargets {
+export function reachTargets(shoulder: Vec, target: Vec, facing: 1 | -1, currentUpper?: number): ArmTargets {
   const dx = target.x - shoulder.x;
   const dy = target.y - shoulder.y;
   const dist = clamp(Math.hypot(dx, dy), 0.08, ARM_REACH - 0.005);
   const phi = Math.atan2(dy, dx);
   const cosA = clamp((L1 * L1 + dist * dist - L2 * L2) / (2 * L1 * dist), -1, 1);
-  const a1 = phi - facing * Math.acos(cosA);
+  // Two ways to bend an elbow. Prefer whichever is closer to where the upper
+  // arm already is, so the elbow doesn't snap to the other side when Stanley
+  // turns round (flinging whatever he's holding). With no current pose, bend
+  // it downward for targets in front.
+  let sign: number = facing;
+  if (currentUpper !== undefined) {
+    const upperFor = (s: number) => {
+      const a = phi - s * Math.acos(cosA);
+      return limbAngleFor(Math.cos(a), Math.sin(a));
+    };
+    sign = Math.abs(wrapAngle(upperFor(1) - currentUpper)) <= Math.abs(wrapAngle(upperFor(-1) - currentUpper)) ? 1 : -1;
+  }
+  const a1 = phi - sign * Math.acos(cosA);
   const ex = shoulder.x + L1 * Math.cos(a1);
   const ey = shoulder.y + L1 * Math.sin(a1);
   const hx = shoulder.x + dist * Math.cos(phi);

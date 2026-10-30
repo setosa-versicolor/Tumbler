@@ -4,7 +4,7 @@ import { Stanley, type Intent } from "../physics/body/stanley";
 import { Kit, shatter, type Button, type Flight, type Prop, type Solid, type Water } from "../levels/kit";
 import type { Level, LevelInstance, Progress } from "../levels/level";
 import type { Tuning } from "./tuning";
-import { clamp, rng, type Vec } from "./math";
+import { clamp, rng, wrapAngle, type Vec } from "./math";
 
 export type GameEvent =
   | { type: "press" }
@@ -135,6 +135,7 @@ export class Game {
 
     // Throws: something we were holding just left the hand, fast.
     const held = this.held;
+    for (const p of this.props) if (p.keepLevel && held.has(p.body)) this.level_(p);
     for (const b of this.lastHeld) {
       if (held.has(b)) continue;
       const v = b.linvel();
@@ -194,7 +195,7 @@ export class Game {
       st.timer = 0;
       return false;
     }
-    if (dv > BREAK_DV) return true;
+    if (dv > (p.toughness ?? BREAK_DV)) return true;
     if (Math.abs(p.body.rotation()) > BREAK_TILT) return true;
     if (this.stanley.balance.standingOn === p.body || st.carried) {
       st.timer += DT;
@@ -252,5 +253,12 @@ export class Game {
       st.teleport(this.level.spawn);
     }
     return events;
+  }
+
+  /** A careful carry: a held tray leans back toward level, but only so hard. */
+  private level_(p: Prop) {
+    const b = p.body;
+    const torque = clamp(-25 * wrapAngle(b.rotation()) - 1.5 * b.angvel(), -15, 15);
+    b.applyTorqueImpulse(torque * DT, true);
   }
 }

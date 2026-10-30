@@ -8,6 +8,10 @@ import { crateExpectations } from "../levels/docks/crateExpectations";
 import { fishToss } from "../levels/docks/fishToss";
 import { rollOut } from "../levels/docks/rollOut";
 import { crowsNest } from "../levels/docks/crowsNest";
+import { movingDay } from "../levels/downtown/movingDay";
+import { hangThePainting } from "../levels/downtown/hangThePainting";
+import { pinReset } from "../levels/downtown/pinReset";
+import { coffeeRun } from "../levels/downtown/coffeeRun";
 
 export interface Chapter {
   id: string;
@@ -24,7 +28,7 @@ export interface Chapter {
 export const CHAPTERS: Chapter[] = [
   { id: "suburb", title: "The Suburb", intro: "onboarding", review: "review-1", levels: [dingDong, laundryDay, stackIt, pizzaUp] },
   { id: "docks", title: "The Docks", review: "review-2", levels: [crateExpectations, fishToss, rollOut, crowsNest] },
-  { id: "downtown", title: "Downtown", levels: [], comingSoon: true },
+  { id: "downtown", title: "Downtown", review: "review-3", levels: [movingDay, hangThePainting, pinReset, coffeeRun] },
   { id: "skyscraper", title: "The Skyscraper", levels: [], comingSoon: true },
 ];
 
@@ -81,6 +85,26 @@ export const MEMOS: Record<string, string[]> = {
     "MEMO: The bell has been rung. The whole harbour knows. The whole harbour has opinions.",
     "MEMO: Health & Safety would like a word. Several words. A pamphlet.",
     "MEMO: Remember, the fastest way down is not a career strategy.",
+  ],
+  "moving-day": [
+    "MEMO: Sofa delivered. The doorframe has asked for a transfer.",
+    "MEMO: Reminder that 'pivot' is a technique, not something you shout at the sofa.",
+    "MEMO: The van driver has requested hazard pay. Retroactively.",
+  ],
+  "hang-the-painting": [
+    "MEMO: Painting hung. Curator hung up. Different meanings, same day.",
+    "MEMO: Please use the stool. The stool is there for a reason. The reason is you.",
+    "MEMO: The gallery has asked us to 'never, ever' again. Strong engagement.",
+  ],
+  "pin-reset": [
+    "MEMO: Pins reset. Staff also need resetting.",
+    "MEMO: The bowling alley says you have 'natural spare energy.' Not sure that's a compliment.",
+    "MEMO: Reminder that the pins are not to be juggled. Even if you're good at it. You're not.",
+  ],
+  "coffee-run": [
+    "MEMO: Coffee delivered. The carpet also had some.",
+    "MEMO: Reception would like their coffee 'less acrobatic' next time.",
+    "MEMO: You are now on the do-not-hand-a-tray list. It's a short list. You're on it twice.",
   ],
   "pizza-up": [
     "MEMO: Pizza was 'technically' delivered. Great hustle!",

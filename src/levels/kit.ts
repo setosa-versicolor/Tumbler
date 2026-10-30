@@ -1,6 +1,6 @@
 import type { Collider, PrismaticImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../physics/world";
-import { FLOOR_GROUPS, G_BODY, G_FLOOR, G_PROP, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
+import { FLOOR_GROUPS, G_BODY, G_FLOOR, G_PROP, G_WORLD, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
 import { rng, type Vec } from "../sim/math";
 
 // Building blocks for levels: static solids, loose props and buttons.
@@ -22,7 +22,12 @@ export type SolidKind =
   | "house"
   | "dock"
   | "hull"
-  | "post";
+  | "post"
+  | "counter"
+  | "van"
+  | "vanramp"
+  | "partition"
+  | "lane";
 
 export interface Solid {
   x: number;
@@ -57,7 +62,15 @@ export type PropKind =
   | "shard"
   | "fish"
   | "barrel"
-  | "bottles";
+  | "bottles"
+  | "sofa"
+  | "painting"
+  | "stool"
+  | "pin"
+  | "bowlingball"
+  | "tray"
+  | "cup"
+  | "trophy";
 
 export interface Prop {
   kind: PropKind;
@@ -70,6 +83,10 @@ export interface Prop {
   tag?: string;
   /** Breaks if knocked over, bumped, stood on, or picked up and put down. */
   fragile?: boolean;
+  /** How hard a bump (m/s of sudden velocity change) a fragile thing survives. */
+  toughness?: number;
+  /** While held, gently tries to stay level (trays). Jolts still win. */
+  keepLevel?: boolean;
   /** Shard outline (local coordinates), for broken bits. */
   shape?: Vec[];
   /** Drawing variant set by the level (e.g. an offended gnome). */
@@ -77,6 +94,10 @@ export interface Prop {
 }
 
 export interface BoxOptions {
+  /** Hangs from the hand on a pivot when grabbed, instead of being held rigidly. */
+  dangle?: boolean;
+  /** Balances on one hand like a waiter's tray: pivots, stays level, rides above Stanley's arms. */
+  balances?: boolean;
   kind?: PropKind;
   density?: number;
   color?: string;
@@ -202,7 +223,7 @@ export class Kit {
         ? BODY_ONLY_GROUPS
         : opts.collides === "props"
           ? PROP_ONLY_GROUPS
-          : kind === "floor" || kind === "ground"
+          : kind === "floor" || kind === "ground" || kind === "vanramp"
             ? FLOOR_GROUPS
             : WORLD_GROUPS;
     const col = this.world.createCollider(
@@ -241,6 +262,7 @@ export class Kit {
         .setCcdEnabled(true)
         .setAngularDamping(0.2),
     );
+    if (o.dangle || o.balances) body.userData = { dangle: o.dangle, balances: o.balances };
     this.world.createCollider(
       RAPIER.ColliderDesc.cuboid(hw, hh)
         .setDensity(o.density ?? 14)
@@ -252,6 +274,19 @@ export class Kit {
     const prop: Prop = { kind: o.kind ?? "box", body, hw, hh, color: o.color ?? this.boxColor(), tag: o.tag };
     this.props.push(prop);
     return prop;
+  }
+
+  /** A serving tray with a raised lip at each end, so things on it can slosh but not slide off. */
+  tray(x: number, y: number, hw: number): Prop {
+    const p = this.box(x, y, hw, 0.025, { kind: "tray", density: 10, friction: 1.0, color: "#9aa0a8", balances: true });
+    for (const s of [-1, 1]) {
+      this.world.createCollider(
+        RAPIER.ColliderDesc.cuboid(0.02, 0.06).setTranslation(s * (hw - 0.02), 0.06).setDensity(10).setFriction(1).setCollisionGroups(PROP_GROUPS),
+        p.body,
+      );
+    }
+    p.keepLevel = true;
+    return p;
   }
 
   ball(x: number, y: number, r: number, o: BoxOptions = {}): Prop {
@@ -319,16 +354,24 @@ export class Kit {
    * Something tall and breakable in the way: too tall to hop over cleanly,
    * and it breaks however you deal with it.
    */
-  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp" | "bottles"): Prop {
+  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp" | "bottles" | "cup" | "trophy"): Prop {
     const dims = {
       vase: [0.2, 0.42, "#e9eef6"],
       planter: [0.26, 0.44, "#c4704a"],
       lamp: [0.2, 0.5, "#f2d58a"],
       bottles: [0.3, 0.4, "#b9895a"],
+      cup: [0.06, 0.06, "#f4f4f4"],
+      trophy: [0.16, 0.34, "#e2b13c"],
     } as const;
     const [hw, hh, color] = dims[kind];
     const p = this.box(x, groundY + hh + 0.005, hw, hh, { kind, density: 8, friction: 0.6, color });
     p.fragile = true;
+    if (kind === "cup") {
+      // Cups spill when they tip, but a passing hand (or head, as the tray
+      // goes overhead) shouldn't knock them flying: they pass in front of Stanley.
+      p.toughness = 3.5;
+      p.body.collider(0).setCollisionGroups(groups(G_PROP, G_WORLD | G_FLOOR | G_PROP));
+    }
     return p;
   }
 
@@ -339,6 +382,8 @@ export class Kit {
 }
 
 const SHARD_COLORS: Record<string, string[]> = {
+  cup: ["#f4f4f4", "#e9e2d6", "#6b4a3a"],
+  trophy: ["#e2b13c", "#c9962a", "#5b4b3a"],
   bottles: ["#5d8a52", "#7bb36a", "#b9895a", "#8fc7d9"],
   vase: ["#e9eef6", "#3d6fb6", "#e9eef6", "#c9d6ea"],
   planter: ["#c4704a", "#a95a38", "#5f9440", "#6aa34a"],

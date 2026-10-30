@@ -404,7 +404,11 @@ Changes from the plan:
 
 **Little surprises:** every job has one or two, for whoever happens to notice. They're not tracked or counted; the scenery just reacts, with a quiet caption. Several are early clues for the Gerald reveal.
 
-Next: Chapter 3 "Downtown" (office move, hanging a painting, Review #3), then Quick Gig / Shift modes.
+**Chapter 3 "Downtown": done.** Moving Day, Hang the Painting, Pin Reset, Coffee Run, and Performance Review #3. New: rotated ramps, a hook that catches a painting's wire, things that dangle from one hand (pins), trays that balance on one hand and stay roughly level, cups that spill if tipped.
+
+Grabbing got friendlier along the way: hands catch things within a few centimetres; fixed geometry is only grabbed above chest height (so counters and desk edges don't latch on); when touching several things the hand takes the most substantial; and the elbow no longer snaps to the other side when Stanley turns round.
+
+Next: Chapter 4 "The Skyscraper" (window washing at height, Review #4 and the reveal), then the final job and ending, then Quick Gig / Shift modes.
 
 ## 14. First step (done)
 

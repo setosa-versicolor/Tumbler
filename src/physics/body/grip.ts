@@ -1,8 +1,11 @@
 import type { Collider, ImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../world";
-import { GRAB_QUERY } from "../groups";
+import { G_FLOOR, G_PROP, G_WORLD, GRAB_QUERY, groups, PROP_GROUPS } from "../groups";
 import { DIM } from "./rig";
 import type { Vec } from "../../sim/math";
+
+/** Held trays and dangling things don't collide with Stanley. */
+const HELD_APART_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP);
 
 /** How far a grip can be yanked before it slips. */
 const SLIP_DISTANCE = 0.22;
@@ -25,7 +28,8 @@ export class Grip {
    * yanking the arm there in one step.
    */
   private slide: Vec | null = null;
-  private shape = new RAPIER.Ball(DIM.hand.r + 0.025);
+  /** Hands catch things within a few centimetres; fingers reach a bit past the palm. */
+  private shape = new RAPIER.Ball(DIM.hand.r + 0.065);
 
   constructor(private hand: RigidBody) {}
 
@@ -43,7 +47,13 @@ export class Grip {
     return { x: p.x + this.anchor.x * c - this.anchor.y * s, y: p.y + this.anchor.x * s + this.anchor.y * c };
   }
 
-  update(world: World, wantGrip: boolean, other: Grip, throwAssist: number) {
+  /**
+   * `minStaticY`: fixed geometry (ledges, walls) is only grabbed above this
+   * height, about chest level. That's where you'd grab something to climb;
+   * lower down, a hand brushing a counter or desk edge on its way to the
+   * thing on top shouldn't latch on.
+   */
+  update(world: World, wantGrip: boolean, other: Grip, throwAssist: number, minStaticY = -Infinity) {
     if (!wantGrip) {
       if (this.joint) this.release(world, throwAssist, other);
       return;
@@ -61,12 +71,20 @@ export class Grip {
       return;
     }
     const h = this.hand.translation();
-    // Prefer loose things over fixed surfaces: reaching for a sock on a
-    // shelf should get the sock, not the shelf.
+    // Prefer loose things over fixed surfaces (reaching for a sock on a shelf
+    // gets the sock, not the shelf), and the most substantial loose thing
+    // over little ones (reaching for a tray gets the tray, not a cup on it).
     let found: Collider | null = null;
+    let best = -1;
     world.intersectionsWithShape(h, 0, this.shape, (c) => {
-      if (!found || c.parent()?.isDynamic()) found = c;
-      return !found.parent()?.isDynamic();
+      const b = c.parent();
+      if (!b?.isDynamic() && h.y < minStaticY) return true;
+      const score = b?.isDynamic() ? 1 + b.mass() : 0;
+      if (score > best) {
+        best = score;
+        found = c;
+      }
+      return true;
     }, undefined, GRAB_QUERY);
     const col = found as Collider | null;
     const target = col?.parent();
@@ -90,7 +108,21 @@ export class Grip {
 
   private attach(world: World, col: Collider, target: RigidBody, other: Grip) {
     const hand = this.hand.translation();
-    const h = (!target.isDynamic() && this.ledgeCorner(col, hand)) || hand;
+    // Trays balance on one hand, and dangly things (pins) hang from one hand.
+    // A second hand would just tip or wedge them.
+    const centre = (target.userData as { balances?: boolean } | undefined)?.balances;
+    const dangly = (target.userData as { dangle?: boolean } | undefined)?.dangle;
+    if ((centre || dangly) && other.held === target) return;
+    let h = (!target.isDynamic() && this.ledgeCorner(col, hand)) || hand;
+    if (dangly) {
+      // Grab a dangly thing on its centre line, so it hangs straight.
+      const tp = target.translation();
+      const a = target.rotation();
+      const he = col.halfExtents();
+      const along = (hand.x - tp.x) * -Math.sin(a) + (hand.y - tp.y) * Math.cos(a);
+      const t = Math.max(-(he?.y ?? 0), Math.min(he?.y ?? 0, along));
+      h = { x: tp.x - Math.sin(a) * t, y: tp.y + Math.cos(a) * t };
+    }
     // Offset from the hand to the grab point, in the hand's frame.
     const ha = this.hand.rotation();
     const ox = h.x - hand.x;
@@ -103,13 +135,17 @@ export class Grip {
     const dx = h.x - tp.x;
     const dy = h.y - tp.y;
     this.anchor = { x: dx * c - dy * s, y: dx * s + dy * c };
-    const pivot = !target.isDynamic() || other.held === target;
+    // Trays balance on the hand (a pivot) rather than being clamped to it.
+    const pivot = !target.isDynamic() || other.held === target || !!dangly || !!centre;
     const data = pivot
       ? RAPIER.JointData.revolute(this.slide ?? { x: 0, y: 0 }, this.anchor)
       : RAPIER.JointData.fixed(this.slide ?? { x: 0, y: 0 }, 0, this.anchor, this.hand.rotation() - ta);
     this.joint = world.createImpulseJoint(data, this.hand, target, true);
     this.joint.setContactsEnabled(false);
     this.held = target;
+    // A tray on the hand rides above Stanley's arms, and a dangling pin hangs
+    // in front of them, instead of being levered about by his own body.
+    if (centre || dangly) for (let i = 0; i < target.numColliders(); i++) target.collider(i).setCollisionGroups(HELD_APART_GROUPS);
   }
 
   release(world: World, throwAssist: number, other: Grip) {
@@ -117,6 +153,10 @@ export class Grip {
     world.removeImpulseJoint(this.joint, true);
     this.slide = null;
     const obj = this.held!;
+    const ud = obj.userData as { balances?: boolean; dangle?: boolean } | undefined;
+    if (ud?.balances || ud?.dangle) {
+      for (let i = 0; i < obj.numColliders(); i++) obj.collider(i).setCollisionGroups(PROP_GROUPS);
+    }
     this.joint = null;
     this.held = null;
     // A small boost on real throws (not gentle drops) so throwing feels punchy.

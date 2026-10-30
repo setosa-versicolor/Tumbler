@@ -451,6 +451,14 @@ export class Renderer {
   }
 
   private drawSolid(s: Solid, game: Game) {
+    if (s.angle) {
+      // Rotated solids (ramps): draw the rotated box.
+      const c = Math.cos(s.angle);
+      const sn = Math.sin(s.angle);
+      const corner = (dx: number, dy: number) => ({ x: s.x + dx * c - dy * sn, y: s.y + dx * sn + dy * c });
+      this.poly([corner(-s.hw, -s.hh), corner(s.hw, -s.hh), corner(s.hw, s.hh), corner(-s.hw, s.hh)], s.kind === "vanramp" ? "#9aa0a8" : "#8a7a6a");
+      return;
+    }
     const x0 = s.x - s.hw;
     const x1 = s.x + s.hw;
     const y0 = s.y - s.hh;
@@ -500,6 +508,19 @@ export class Renderer {
       case "post":
         this.roundRect(x0, y0, x1, y1, 0.05, "#5b4330");
         this.rect(x0 - 0.02, y1 - 0.06, x1 + 0.02, y1, "#6b5340");
+        return;
+      case "van":
+        this.rect(x0, y0, x1, y1, "#e9e4da");
+        this.rect(x0, y1 - 0.05, x1, y1, "#c9c4ba");
+        return;
+      case "partition":
+        this.rect(x0, y0, x1, y1, "#b8bec6");
+        this.rect(x0 - 0.05, y0 - 0.06, x1 + 0.05, y0, "#8a9099");
+        return;
+      case "counter":
+        this.rect(x0, y0, x1, y1, "#c9ccd1");
+        this.rect(x0 - 0.04, y1 - 0.06, x1 + 0.04, y1, "#5f6670");
+        for (let x = x0 + 0.4; x < x1; x += 0.8) this.rect(x - 0.01, y0 + 0.1, x + 0.01, y1 - 0.15, "rgba(0,0,0,0.15)");
         return;
       case "porch":
         this.rect(x0, y0, x1, y1, "#c9b49a");
@@ -819,6 +840,114 @@ export class Renderer {
         ctx.fillStyle = "rgba(0,0,0,0.15)";
         for (const f of [-0.4, 0.3]) ctx.fillRect(-w, f * h, w * 2, h * 0.1);
         label("FRAGILE", "#c0392b", h * 0.32);
+        break;
+      case "sofa":
+        // Back, seat cushions, arms.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.roundRect(-w, -h, w * 2, h * 2, h * 0.35);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        for (const dx of [-0.45, 0.05]) {
+          ctx.beginPath();
+          ctx.roundRect(dx * w, -h * 0.1, w * 0.42, h * 0.7, h * 0.2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        ctx.fillRect(-w, -h, w * 0.14, h * 2);
+        ctx.fillRect(w * 0.86, -h, w * 0.14, h * 2);
+        break;
+      case "painting":
+        // Gilt frame around a little landscape.
+        body(2);
+        ctx.fillStyle = "#8fc1d9";
+        ctx.fillRect(-w * 0.8, -h * 0.75, w * 1.6, h * 1.5);
+        ctx.fillStyle = "#86b955";
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.8, h * 0.75);
+        ctx.lineTo(-w * 0.8, h * 0.1);
+        ctx.quadraticCurveTo(-w * 0.2, -h * 0.4, w * 0.3, h * 0.15);
+        ctx.quadraticCurveTo(w * 0.6, -h * 0.1, w * 0.8, h * 0.05);
+        ctx.lineTo(w * 0.8, h * 0.75);
+        ctx.fill();
+        ctx.fillStyle = "#fff1a8";
+        ctx.beginPath();
+        ctx.arc(w * 0.45, -h * 0.4, h * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case "stool":
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-w, -h, w * 2, h * 0.3);
+        ctx.fillRect(-w * 0.85, -h * 0.7, w * 0.2, h * 1.7);
+        ctx.fillRect(w * 0.65, -h * 0.7, w * 0.2, h * 1.7);
+        ctx.fillRect(-w * 0.85, h * 0.1, w * 1.7, h * 0.12);
+        break;
+      case "pin":
+        // Bowling pin: neck at the top (local +y is up, canvas y is flipped).
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.55, h);
+        ctx.bezierCurveTo(-w * 1.2, h * 0.3, -w * 1.1, -h * 0.1, -w * 0.45, -h * 0.4);
+        ctx.bezierCurveTo(-w * 0.35, -h * 0.6, -w * 0.9, -h * 0.85, -w * 0.4, -h);
+        ctx.lineTo(w * 0.4, -h);
+        ctx.bezierCurveTo(w * 0.9, -h * 0.85, w * 0.35, -h * 0.6, w * 0.45, -h * 0.4);
+        ctx.bezierCurveTo(w * 1.1, -h * 0.1, w * 1.2, h * 0.3, w * 0.55, h);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#e85d5d";
+        ctx.fillRect(-w * 0.5, -h * 0.55, w, h * 0.08);
+        ctx.fillRect(-w * 0.55, -h * 0.42, w * 1.1, h * 0.06);
+        break;
+      case "bowlingball":
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        for (const [dx, dy] of [[-0.25, -0.35], [0.1, -0.45], [-0.05, -0.1]] as const) {
+          ctx.beginPath();
+          ctx.arc(dx * w, dy * w, w * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      case "tray":
+        body(h);
+        // Raised lips at each end.
+        ctx.fillStyle = p.color;
+        for (const s of [-1, 1]) ctx.fillRect(s > 0 ? w - w * 0.12 : -w, -h * 5, w * 0.12, h * 5);
+        break;
+      case "cup":
+        // A coffee cup with a sleeve and a lid.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.8, h);
+        ctx.lineTo(w * 0.8, h);
+        ctx.lineTo(w, -h * 0.7);
+        ctx.lineTo(-w, -h * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#6b4a3a";
+        ctx.fillRect(-w * 0.9, -h * 0.2, w * 1.8, h * 0.5);
+        ctx.fillStyle = "#e8e2d6";
+        ctx.fillRect(-w * 1.1, -h, w * 2.2, h * 0.32);
+        break;
+      case "trophy":
+        // A big gold bowling trophy on a wooden base.
+        ctx.fillStyle = "#5b4b3a";
+        ctx.fillRect(-w, h * 0.55, w * 2, h * 0.45);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-w * 0.15, -h * 0.2, w * 0.3, h * 0.8);
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.9, -h);
+        ctx.lineTo(w * 0.9, -h);
+        ctx.quadraticCurveTo(w * 0.8, -h * 0.15, 0, -h * 0.15);
+        ctx.quadraticCurveTo(-w * 0.8, -h * 0.15, -w * 0.9, -h);
+        ctx.fill();
+        outline();
         break;
       case "cooler":
         body(w * 0.2);

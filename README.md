@@ -8,7 +8,7 @@ A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body
 - **Chapter 2, The Docks:** **Crate Expectations** (crates onto a boat across open water; there's a gangplank if you think of it), **Fish Toss** (slippery fish into an ice bin), **Roll Out the Barrels** (heavy barrels into the hold, past a bollard) and **Crow's Nest** (climb the rigging, ring the ship's bell), then Performance Review #2.
 - **Water:** everything floats, and falling in gets you a splash and a trip back to the start.
 - **Reviews** play out in Gerald's office with live physics: Stanley walks in under real physics, so what he knocks over is different every time, and Gerald reacts to each mishap.
-- **Hidden surprises 🔍** in every job (9 so far), counted on the job board. No spoilers here.
+- **Little surprises** hidden around the jobs for anyone who happens to notice. Nothing tracks or counts them, and no spoilers here.
 - **Something breakable in the way** in every job (a planter, a vase, a lamp). Knock it over, stand on it, or carefully carry it aside: it breaks regardless, and Gerald bills it to your mother.
 - **Stars** for speed, bonus tags (No Falls, Speed Demon, Clumsy Professional, Collateral Damage) and a memo from the boss on every score card.
 - **Job board** (☰) with your stars, unlocked jobs, cutscene rewatch and the **Day Off** sandbox (the original test room).

@@ -350,13 +350,13 @@ describe("Fish Toss", () => {
     expect(ev.some((e) => e.type === "score" && e.text === "Slippery!")).toBe(true);
   });
 
-  it("throwing something at the seagull is a secret", () => {
+  it("throwing something at the seagull scares it off", () => {
     const g = play(fishToss);
     const fish = g.props.find((p) => p.kind === "fish")!.body;
     fish.setTranslation({ x: 9.2, y: 2.4 }, true);
     fish.setLinvel({ x: 2, y: 0 }, true);
     const ev = collect(g, 1);
-    expect(ev.filter((e) => e.type === "secret").map((e) => (e as { id: string }).id)).toEqual(["gull"]);
+    expect(ev.filter((e) => e.type === "surprise").map((e) => (e as { id: string }).id)).toEqual(["gull"]);
   });
 });
 
@@ -412,19 +412,19 @@ describe("Crow's Nest", () => {
   });
 });
 
-describe("Secrets", () => {
+describe("Surprises", () => {
   it("knocking the gnome over offends him, once", () => {
     const g = play(dingDong);
     const gnome = g.props.find((p) => p.kind === "gnome")!;
     gnome.body.setRotation(1.5, true);
     const ev = collect(g, 1);
-    expect(ev.filter((e) => e.type === "secret")).toHaveLength(1);
+    expect(ev.filter((e) => e.type === "surprise")).toHaveLength(1);
     expect(gnome.mood).toBe("offended");
   });
 
   it("pointing at the wedding photo finds it", () => {
     const g = play(laundryDay);
     const ev = collect(g, 1.5, { reach: { x: 5.25, y: 2.8 } });
-    expect(ev.some((e) => e.type === "secret" && e.id === "wedding")).toBe(true);
+    expect(ev.some((e) => e.type === "surprise" && e.id === "wedding")).toBe(true);
   });
 });

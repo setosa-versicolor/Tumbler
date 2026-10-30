@@ -1,5 +1,5 @@
 import { HARBOUR, type Level } from "../level";
-import { Curio } from "../secrets";
+import { Curio } from "../curio";
 
 const A = { x0: 5.6, x1: 7.2, y: 2.0 };
 const B = { x0: 7.8, x1: 9.4, y: 3.9 };

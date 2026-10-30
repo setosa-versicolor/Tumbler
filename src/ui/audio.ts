@@ -106,9 +106,6 @@ export const sfx = {
     [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.22, "triangle", 0.14, i * 0.09));
   },
   star: (i: number) => tone(880 + i * 220, 880 + i * 220, 0.18, "sine", 0.16),
-  secret: () => {
-    [988, 1319, 1568, 1976].forEach((f, i) => tone(f, f, 0.18, "sine", 0.09, i * 0.07));
-  },
   splash: (big: boolean) => {
     burst(big ? 0.6 : 0.3, 700, big ? 0.6 : 0.3, 200, 0.5);
     burst(big ? 0.4 : 0.2, 2500, big ? 0.25 : 0.12, 1200, 0.7);

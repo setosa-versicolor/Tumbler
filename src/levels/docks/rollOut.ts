@@ -1,6 +1,6 @@
 import { HARBOUR, type Level } from "../level";
 import type { Prop } from "../kit";
-import { Curio } from "../secrets";
+import { Curio } from "../curio";
 
 const DOCK_Y = 1.0;
 const HOLD = { x0: 11, x1: 13.5 };

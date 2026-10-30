@@ -77,7 +77,6 @@ export function boardCard(o: {
   save: SaveData;
   sandbox: Level;
   rewatch: { id: string; title: string }[];
-  secrets: { found: number; total: number };
   onPlay: (level: Level) => void;
   onSandbox: () => void;
   onRewatch: (id: string) => void;
@@ -114,7 +113,7 @@ export function boardCard(o: {
   return h(
     "div",
     { class: "card board" },
-    h("div", { class: "board-head" }, h("div", {}, h("h1", {}, "Job Board"), h("p", { class: "sub" }, `Odd Jobs Ltd. · Employee: Stanley T. · ★ ${total} · 🔍 ${o.secrets.found}/${o.secrets.total} secrets`)), o.onClose && h("button", { class: "close", click: o.onClose, "aria-label": "Close" }, "✕")),
+    h("div", { class: "board-head" }, h("div", {}, h("h1", {}, "Job Board"), h("p", { class: "sub" }, `Odd Jobs Ltd. · Employee: Stanley T. · ★ ${total}`)), o.onClose && h("button", { class: "close", click: o.onClose, "aria-label": "Close" }, "✕")),
     ...chapters,
     h(
       "section",
@@ -148,7 +147,7 @@ export function chapterCard(o: {
     o.ready
       ? h("p", { class: "goal" }, `Next stop: ${o.next}. Gerald is confident it'll be a better fit.`)
       : h("p", { class: "goal" }, `Next stop: ${o.next}. It's still being built. Gerald is confident it'll be a better fit.`),
-    h("p", { class: "controls" }, "Or go back for ★★★ and secrets 🔍 on every job, or take a Day Off."),
+    h("p", { class: "controls" }, "Or go back for ★★★ on every job, or take a Day Off."),
     h(
       "div",
       { class: "row" },

@@ -96,18 +96,6 @@ export const TAGS = {
   collateral: "Collateral Damage",
 } as const;
 
-/** Every hidden surprise, by level, for the job board's counter. */
-export const SECRETS: { id: string; level: string }[] = [
-  { id: "gnome", level: "ding-dong" },
-  { id: "henderson", level: "ding-dong" },
-  { id: "wedding", level: "laundry-day" },
-  { id: "bike", level: "stack-it" },
-  { id: "knock", level: "pizza-up" },
-  { id: "crab", level: "crate-expectations" },
-  { id: "gull", level: "fish-toss" },
-  { id: "message", level: "roll-out" },
-  { id: "golfball", level: "crows-nest" },
-];
 
 /** A chapter can be played once the one before it is finished (all jobs done). */
 export function chapterUnlocked(index: number, jobsDone: (id: string) => boolean): boolean {

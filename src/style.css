@@ -130,26 +130,6 @@ body.ready #loading { opacity: 0; pointer-events: none; }
   pointer-events: none;
 }
 
-#toast {
-  position: fixed;
-  top: max(58px, calc(env(safe-area-inset-top) + 50px));
-  left: 50%;
-  max-width: min(520px, calc(100vw - 32px));
-  transform: translate(-50%, -12px);
-  background: #2a2230;
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
-  padding: 10px 16px;
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s, transform 0.25s;
-  text-align: center;
-}
-#toast.on { opacity: 1; transform: translate(-50%, 0); }
-
 #skip-btn {
   position: fixed;
   right: 16px;

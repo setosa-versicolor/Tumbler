@@ -15,8 +15,8 @@ export type GameEvent =
   | { type: "impact"; pos: Vec; strength: number }
   | { type: "throw"; speed: number }
   | { type: "break"; pos: Vec; kind: string }
-  /** A hidden surprise was found. */
-  | { type: "secret"; id: string; text: string; pos: Vec }
+  /** Someone noticed one of the little surprises in a level. */
+  | { type: "surprise"; id: string; text: string; pos: Vec }
   | { type: "complete" };
 
 /** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
@@ -58,8 +58,8 @@ export class Game {
   breaks = 0;
   /** What the player asked for this step (levels use it to notice where you're pointing). */
   intent: Intent = { move: 0, jump: false, reach: null, grip: { L: false, R: false } };
-  /** Secrets found this attempt. */
-  secrets = new Set<string>();
+  /** Surprises already set off this attempt. */
+  private surprises = new Set<string>();
   progress: Progress = { done: false };
   /** Time the goal was reached, or null. */
   doneAt: number | null = null;
@@ -91,7 +91,7 @@ export class Game {
     this.time = 0;
     this.falls = 0;
     this.breaks = 0;
-    this.secrets = new Set();
+    this.surprises = new Set();
     this.doneAt = null;
     this.fragile.clear();
     this.rand = rng(this.seed);
@@ -168,9 +168,9 @@ export class Game {
     }
 
     for (const ev of this.inst.update?.(this, DT) ?? []) {
-      if (ev.type === "secret") {
-        if (this.secrets.has(ev.id)) continue;
-        this.secrets.add(ev.id);
+      if (ev.type === "surprise") {
+        if (this.surprises.has(ev.id)) continue;
+        this.surprises.add(ev.id);
       }
       events.push(ev);
     }

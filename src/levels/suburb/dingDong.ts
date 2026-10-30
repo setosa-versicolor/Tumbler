@@ -1,5 +1,5 @@
 import { OUTDOOR, type Level } from "../level";
-import { Curio } from "../secrets";
+import { Curio } from "../curio";
 import type { GameEvent } from "../../sim/game";
 
 const HOUSE_X = 11.5;
@@ -23,7 +23,7 @@ export const dingDong: Level = {
     const bell = kit.button(HOUSE_X, BELL_Y, 0.06, 0.09);
     kit.box(6.2, 0.3, 0.3, 0.3, { kind: "crate", density: 10, color: "#b9895a" });
     const gnome = kit.box(8.4, 0.23, 0.13, 0.22, { kind: "gnome", density: 20, color: "#d9453c" });
-    // Secrets: knock the gnome over (he takes it personally); ring the bell
+    // Surprises: knock the gnome over (he takes it personally); ring the bell
     // by throwing something at it (Mrs. Henderson takes THAT personally).
     const offended = new Curio("gnome", "The gnome is deeply offended.", { x0: 0, y0: 0, x1: 0, y1: 0 });
     const henderson = new Curio("henderson", "Mrs. Henderson: \"Did you just THROW something at my door?\"", { x0: HOUSE_X + 0.4, y0: 3.0, x1: HOUSE_X + 1.3, y1: 3.9 });

@@ -122,6 +122,7 @@ export class Renderer {
   /** Shown as a crosshair when the reach point comes from a mouse. */
   cursor: Vec | null = null;
   bubble: Bubble | null = null;
+  private notes: { text: string; pos: Vec; age: number }[] = [];
   /** Off-screen goal indicator. */
   goal: { pos: Vec; icon: string } | null = null;
 
@@ -193,7 +194,13 @@ export class Renderer {
     }
   }
 
+  /** A small, quiet caption next to something in the world. No fanfare. */
+  note(text: string, pos: Vec) {
+    this.notes.push({ text, pos: { ...pos }, age: 0 });
+  }
+
   clearFx() {
+    this.notes = [];
     this.popups = [];
     this.particles = [];
     this.bubble = null;
@@ -1005,6 +1012,25 @@ export class Renderer {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    }
+    this.notes = this.notes.filter((n) => (n.age += dt) < 4.5);
+    for (const n of this.notes) {
+      const s = cam.toScreen({ x: n.pos.x, y: n.pos.y + Math.min(n.age, 1) * 0.15 });
+      const size = clamp(sc * 0.13, 12, 17);
+      ctx.font = `italic 600 ${size}px ${FONT}`;
+      ctx.globalAlpha = Math.min(1, n.age * 3, (4.5 - n.age) * 1.5);
+      ctx.textAlign = "center";
+      ctx.lineJoin = "round";
+      wrap(ctx, n.text, Math.min(cam.w * 0.6, 340)).forEach((line, i, all) => {
+        const y = s.y + (i - all.length + 1) * size * 1.25;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "rgba(255,255,255,0.9)";
+        ctx.strokeText(line, s.x, y);
+        ctx.fillStyle = C.ink;
+        ctx.fillText(line, s.x, y);
+      });
+      ctx.globalAlpha = 1;
+      ctx.textAlign = "left";
     }
     this.popups = this.popups.filter((p) => (p.age += dt) < 1.1);
     ctx.textAlign = "center";

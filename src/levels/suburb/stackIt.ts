@@ -1,6 +1,6 @@
 import { INDOOR, type Level } from "../level";
 import { measureStack } from "../stack";
-import { Curio } from "../secrets";
+import { Curio } from "../curio";
 import type { Renderer } from "../../render/renderer";
 
 const LINE = 1.6;

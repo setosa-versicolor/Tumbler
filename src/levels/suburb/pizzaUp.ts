@@ -1,6 +1,6 @@
 import { INDOOR, type Level } from "../level";
 import { wrapAngle } from "../../sim/math";
-import { Curio, inRect } from "../secrets";
+import { Curio, inRect } from "../curio";
 
 const LANDING_Y = 2.0;
 const MAT = { x0: 11.4, x1: 13.0 };

@@ -402,7 +402,7 @@ Changes from the plan:
 
 **Chapter 2 "The Docks": done.** Crate Expectations, Fish Toss, Roll Out the Barrels, Crow's Nest, and Performance Review #2. New systems: water (buoyancy, splash and respawn), slippery fish, a ship's bell, and a cap on how far Stanley steps up without jumping (so he pushes barrels instead of floating over them).
 
-**Hidden surprises:** every job has one or two, saved to progress and counted on the job board. Several of them are early clues for the Gerald reveal.
+**Little surprises:** every job has one or two, for whoever happens to notice. They're not tracked or counted; the scenery just reacts, with a quiet caption. Several are early clues for the Gerald reveal.
 
 Next: Chapter 3 "Downtown" (office move, hanging a painting, Review #3), then Quick Gig / Shift modes.
 

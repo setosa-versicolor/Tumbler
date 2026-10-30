@@ -8,7 +8,7 @@ import { Input } from "../input/input";
 import { Cutscene } from "../story/cutscene";
 import { BOSS, office } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
-import { CHAPTERS, chapterOf, MEMOS, SANDBOX, SECRETS, starsFor, TAGS, type Chapter } from "./campaign";
+import { CHAPTERS, chapterOf, MEMOS, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { clearSave, emptySave, loadSave, recordJob, writeSave, type SaveData } from "./save";
 import { boardCard, chapterCard, introCard, resultsCard } from "../ui/screens";
 import { sfx } from "../ui/audio";
@@ -44,7 +44,6 @@ export interface Dom {
   reset: HTMLButtonElement;
   skip: HTMLButtonElement;
   fade: HTMLElement;
-  toast: HTMLElement;
 }
 
 /** Runs the whole game: which level or cutscene is on, the cards over it, and saving. */
@@ -286,7 +285,6 @@ export class App {
         save: this.save,
         sandbox: SANDBOX,
         rewatch,
-        secrets: { found: SECRETS.filter((s) => this.save.secrets[s.id]).length, total: SECRETS.length },
         onPlay: (l) => this.startLevel(l),
         onSandbox: () => this.startLevel(SANDBOX),
         onRewatch: (id) => this.playCutscene(id, () => this.showBoard()),
@@ -403,13 +401,8 @@ export class App {
         case "throw":
           sfx.whoosh(ev.speed);
           break;
-        case "secret":
-          sfx.secret();
-          this.toast(`🔍 Secret found! ${ev.text}`);
-          if (!this.save.secrets[ev.id]) {
-            this.save.secrets[ev.id] = true;
-            writeSave(this.save);
-          }
+        case "surprise":
+          r.note(ev.text, ev.pos);
           break;
         case "splash":
           r.splash(ev.pos, ev.big);
@@ -471,16 +464,6 @@ export class App {
         : cut
           ? "Tap to speed up"
           : "";
-  }
-
-  private toastTimer = 0;
-  /** A short message across the top of the screen. */
-  toast(text: string) {
-    const el = this.dom.toast;
-    el.textContent = text;
-    el.classList.add("on");
-    clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => el.classList.remove("on"), 3800);
   }
 
   private drawSticks() {

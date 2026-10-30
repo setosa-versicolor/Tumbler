@@ -1,7 +1,7 @@
 import { INDOOR, type Level } from "../level";
 import type { Renderer } from "../../render/renderer";
 import type { Prop } from "../kit";
-import { Curio } from "../secrets";
+import { Curio } from "../curio";
 
 const BASKET = { x0: 9.6, x1: 10.8, y: 1.04, depth: 0.45 };
 const NEEDED = 3;

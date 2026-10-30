@@ -11,8 +11,9 @@ export interface Rect {
 export const inRect = (p: Vec, r: Rect) => p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1;
 
 /**
- * A hidden thing in the scenery. Found by touching it, or by pointing at it
- * for a moment (for things up on the wall).
+ * A little surprise hidden in the scenery, for whoever happens to notice it.
+ * Set off by touching it, or by pointing at it for a moment (for things up
+ * on the wall). Nothing tracks or counts these.
  */
 export class Curio {
   found = false;
@@ -40,10 +41,10 @@ export class Curio {
     return [this.reveal()];
   }
 
-  /** Mark found (for secrets triggered by other means). */
-  reveal(): Extract<GameEvent, { type: "secret" }> {
+  /** Set it off directly (for surprises triggered some other way). */
+  reveal(): Extract<GameEvent, { type: "surprise" }> {
     this.found = true;
     const r = this.rect;
-    return { type: "secret", id: this.id, text: this.text, pos: { x: (r.x0 + r.x1) / 2, y: r.y1 + 0.3 } };
+    return { type: "surprise", id: this.id, text: this.text, pos: { x: (r.x0 + r.x1) / 2, y: r.y1 + 0.3 } };
   }
 }

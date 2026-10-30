@@ -1,6 +1,6 @@
 import { HARBOUR, type Level } from "../level";
 import type { Prop } from "../kit";
-import { Curio } from "../secrets";
+import { Curio } from "../curio";
 import type { GameEvent } from "../../sim/game";
 import type { Renderer } from "../../render/renderer";
 

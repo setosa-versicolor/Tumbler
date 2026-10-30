@@ -1,7 +1,7 @@
 import type { RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { createWorld, DT } from "../physics/world";
 import { Stanley, type Intent } from "../physics/body/stanley";
-import { Kit, shatter, type Button, type Prop, type Solid } from "../levels/kit";
+import { Kit, shatter, type Button, type Flight, type Prop, type Solid } from "../levels/kit";
 import type { Level, LevelInstance, Progress } from "../levels/level";
 import type { Tuning } from "./tuning";
 import { rng, type Vec } from "./math";
@@ -22,6 +22,8 @@ const IMPACT_DV = 2.2;
 const BREAK_DV = 1.5;
 /** Tipped this far (radians), a fragile thing is done for. */
 const BREAK_TILT = 0.9;
+/** Chance per stair crossed at full sprint of tripping (Stanley's feet glide on a hidden ramp, so stairs need their own check). */
+const STAIR_TRIP_ODDS = 0.3;
 /** Seconds after being put down before a carried fragile thing gives up anyway. */
 const BREAK_AFTER_CARRY = 0.35;
 
@@ -38,6 +40,9 @@ export class Game {
   props: Prop[] = [];
   solids: Solid[] = [];
   buttons: Button[] = [];
+  flights: Flight[] = [];
+  /** Which stair Stanley is on (flight index * 1000 + step), or null. */
+  private stair: number | null = null;
   inst!: LevelInstance;
   /** Seconds since the level started. */
   time = 0;
@@ -66,6 +71,8 @@ export class Game {
     this.props = kit.props;
     this.solids = kit.solids;
     this.buttons = kit.buttons;
+    this.flights = kit.flights;
+    this.stair = null;
     this.stanley = new Stanley(this.world, this.level.spawn);
     this.time = 0;
     this.falls = 0;
@@ -91,7 +98,15 @@ export class Game {
     this.stanley.step(intent, this.tuning, DT);
     this.world.step();
     this.time += DT;
-    if (this.stanley.checkTrip(this.tuning, this.rand)) events.push({ type: "trip", pos: this.stanley.rig.head.translation() });
+    const stair = this.currentStair();
+    const crossedStair = stair !== null && this.stair !== null && stair !== this.stair;
+    this.stair = stair;
+    if (
+      this.stanley.checkTrip(this.tuning, this.rand) ||
+      (crossedStair && this.stanley.maybeTrip(STAIR_TRIP_ODDS, this.tuning, this.rand))
+    ) {
+      events.push({ type: "trip", pos: this.stanley.rig.head.translation() });
+    }
 
     for (const b of this.buttons) if (b.update(DT)) events.push({ type: "press" });
 
@@ -163,5 +178,20 @@ export class Game {
     }
     st.timer = 0;
     return false;
+  }
+
+  /** The stair under Stanley's hips, if he's standing on a flight. */
+  private currentStair(): number | null {
+    const st = this.stanley;
+    if (!st.balance.grounded) return null;
+    const p = st.rig.pelvis.translation();
+    for (let i = 0; i < this.flights.length; i++) {
+      const f = this.flights[i];
+      const step = Math.floor((p.x - f.x0) / f.run);
+      if (step < 0 || step >= f.steps) continue;
+      // On the flight, not under it.
+      if (p.y - st.balance.groundDist > f.y0 - 0.1) return i * 1000 + step;
+    }
+    return null;
   }
 }

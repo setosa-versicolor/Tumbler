@@ -143,6 +143,14 @@ export class Button {
   }
 }
 
+export interface Flight {
+  x0: number;
+  y0: number;
+  steps: number;
+  run: number;
+  rise: number;
+}
+
 /** Collides with Stanley only; props pass through (used for walkable stair ramps). */
 const BODY_ONLY_GROUPS = groups(G_FLOOR, G_BODY);
 /** Collides with props only (the visible stair steps, which Stanley glides over). */
@@ -153,6 +161,8 @@ export class Kit {
   readonly solids: Solid[] = [];
   readonly props: Prop[] = [];
   readonly buttons: Button[] = [];
+  /** Flights of stairs, for the stair-tripping check. */
+  readonly flights: Flight[] = [];
   readonly rand: () => number;
 
   constructor(readonly world: World, seed = 1) {
@@ -264,6 +274,7 @@ export class Kit {
    * don't get along).
    */
   stairs(x0: number, y0: number, steps: number, run: number, rise: number) {
+    this.flights.push({ x0, y0, steps, run, rise });
     for (let i = 0; i < steps; i++) {
       const top = y0 + rise * (i + 1);
       const x = x0 + run * i;

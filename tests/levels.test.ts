@@ -246,3 +246,26 @@ describe("Tripping", () => {
     for (const seed of [1, 2, 3, 4]) expect(sprintThroughSocks(1, seed, 0).trips).toBe(0);
   });
 });
+
+describe("Stairs", () => {
+  const climb = (move: number, seed: number) => {
+    const g = new Game({ ...DEFAULT_TUNING }, pizzaUp, seed);
+    // Start at the foot of the stairs, past the table.
+    for (const b of g.stanley.rig.bodies) {
+      const p = b.translation();
+      b.setTranslation({ x: p.x + 2.8, y: p.y }, true);
+    }
+    let trips = 0;
+    for (let i = 0; i < 120 * 3.5; i++) for (const e of g.step({ ...IDLE_INTENT, move })) if (e.type === "trip") trips++;
+    return trips;
+  };
+
+  it("sprinting up the stairs usually ends in a trip", () => {
+    const tripped = [1, 2, 3, 4, 5, 6].filter((seed) => climb(1, seed) > 0).length;
+    expect(tripped).toBeGreaterThanOrEqual(4);
+  });
+
+  it("walking up the stairs is safe", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) expect(climb(0.55, seed)).toBe(0);
+  });
+});

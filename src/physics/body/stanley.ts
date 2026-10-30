@@ -77,12 +77,21 @@ export class Stanley {
     const fresh = [...touching].some((h) => !this.footContacts.has(h));
     this.footContacts = touching;
     this.tripCooldown = Math.max(0, this.tripCooldown - DT);
-    if (!fresh || this.balance.posture !== "up" || this.tripCooldown > 0 || !this.balance.grounded) return false;
+    if (!fresh) return false;
+    return this.maybeTrip(0.75, t, rand);
+  }
 
+  /**
+   * Roll for a trip. `odds` is the chance at full sprint; it falls to zero
+   * at walking pace. Used for foot catches and for each stair crossed.
+   */
+  maybeTrip(odds: number, t: Tuning, rand: () => number): boolean {
+    if (this.balance.posture !== "up" || this.tripCooldown > 0 || !this.balance.grounded) return false;
     const speed = Math.abs(this.rig.pelvis.linvel().x);
     const risk = clamp((speed - TRIP_SAFE_SPEED) / (t.moveSpeed - TRIP_SAFE_SPEED), 0, 1);
+    if (risk === 0) return false;
     this.tripCooldown = 0.4;
-    if (rand() >= risk * 0.75 * t.trippiness) return false;
+    if (rand() >= risk * odds * t.trippiness) return false;
 
     // Face-plant: feet stop, top half keeps going.
     const f = Math.sign(this.rig.pelvis.linvel().x) || this.facing;

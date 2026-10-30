@@ -32,7 +32,16 @@ export class Cutscene {
   /** Fired with each new character so the UI can blip. */
   onType: (aside: boolean) => void = () => {};
 
-  constructor(readonly script: Script, private game: Game) {
+  /**
+   * `barkCounts` remembers how many times each object has already been
+   * joked about (across cutscenes), so Gerald never repeats himself. It's
+   * updated in place.
+   */
+  constructor(
+    readonly script: Script,
+    private game: Game,
+    private barkCounts: Record<string, number> = {},
+  ) {
     this.next();
   }
 
@@ -88,7 +97,11 @@ export class Cutscene {
     for (const inc of this.office.takeIncidents(this.game)) {
       if (this.barked.has(inc)) continue;
       this.barked.add(inc);
-      this.bark = { text: BARKS[inc], aside: true, shown: 0, held: 0 };
+      const n = this.barkCounts[inc] ?? 0;
+      const line = BARKS[inc][n];
+      if (!line) continue;
+      this.barkCounts[inc] = n + 1;
+      this.bark = { text: line, aside: true, shown: 0, held: 0 };
     }
 
     if (this.bark) {

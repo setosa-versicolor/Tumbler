@@ -240,7 +240,7 @@ export class App {
       this.load(office);
       // Extra flail for the walk-in. It's a performance review; nerves are high.
       this.game.tuning = { ...this.tuning, flail: Math.max(this.tuning.flail, 1.3) };
-      const scene = new Cutscene(script, this.game);
+      const scene = new Cutscene(script, this.game, this.save.barks);
       scene.onType = (aside) => sfx.blip(aside);
       this.mode = { kind: "cutscene", scene, then, ending: false };
     });

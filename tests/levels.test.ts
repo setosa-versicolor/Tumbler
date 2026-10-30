@@ -11,7 +11,7 @@ import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
 import { dayOff } from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
-import { ONBOARDING, REVIEW_1, REVIEW_2 } from "../src/story/scripts";
+import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2 } from "../src/story/scripts";
 import { crateExpectations } from "../src/levels/docks/crateExpectations";
 import { fishToss } from "../src/levels/docks/fishToss";
 import { rollOut } from "../src/levels/docks/rollOut";
@@ -426,5 +426,35 @@ describe("Surprises", () => {
     const g = play(laundryDay);
     const ev = collect(g, 1.5, { reach: { x: 5.25, y: 2.8 } });
     expect(ev.some((e) => e.type === "surprise" && e.id === "wedding")).toBe(true);
+  });
+});
+
+describe("Gerald's jokes", () => {
+  it("no line is used twice anywhere in the cutscenes", () => {
+    const lines = [
+      ...[ONBOARDING, REVIEW_1, REVIEW_2].flatMap((s) => s.steps.flatMap((st) => ("text" in st ? [st.text] : []))),
+      ...Object.values(BARKS).flat(),
+    ];
+    const dupes = lines.filter((l, i) => lines.indexOf(l) !== i);
+    expect(dupes).toEqual([]);
+  });
+
+  it("knocking the same thing over in later cutscenes gets the next joke, then silence", () => {
+    const counts: Record<string, number> = {};
+    const heard: (string | undefined)[] = [];
+    for (let i = 0; i < BARKS.cooler.length + 1; i++) {
+      const g = play(office);
+      const scene = new Cutscene(REVIEW_1, g, counts);
+      g.props.find((p) => p.tag === "cooler")!.body.setRotation(1.5, true);
+      let text: string | undefined;
+      for (let k = 0; k < 30 && !text; k++) {
+        g.step(scene.update(1 / 120));
+        const b = scene.bubble();
+        if (b?.aside) text = b.text;
+      }
+      heard.push(text);
+    }
+    expect(heard.slice(0, -1)).toEqual(BARKS.cooler);
+    expect(heard.at(-1)).toBeUndefined();
   });
 });

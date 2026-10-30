@@ -422,11 +422,6 @@ describe("Surprises", () => {
     expect(gnome.mood).toBe("offended");
   });
 
-  it("pointing at the wedding photo finds it", () => {
-    const g = play(laundryDay);
-    const ev = collect(g, 1.5, { reach: { x: 5.25, y: 2.8 } });
-    expect(ev.some((e) => e.type === "surprise" && e.id === "wedding")).toBe(true);
-  });
 });
 
 describe("Gerald's jokes", () => {

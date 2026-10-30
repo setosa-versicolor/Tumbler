@@ -1,6 +1,6 @@
 import type { Collider, PrismaticImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../physics/world";
-import { G_BODY, G_PROP, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
+import { FLOOR_GROUPS, G_BODY, G_PROP, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
 import { rng } from "../sim/math";
 
 // Building blocks for levels: static solids, loose props and buttons.
@@ -160,7 +160,14 @@ export class Kit {
     kind: SolidKind,
     opts: { friction?: number; angle?: number; hidden?: boolean; collides?: "all" | "body" | "props" } = {},
   ): Collider {
-    const g = opts.collides === "body" ? BODY_ONLY_GROUPS : opts.collides === "props" ? PROP_ONLY_GROUPS : WORLD_GROUPS;
+    const g =
+      opts.collides === "body"
+        ? BODY_ONLY_GROUPS
+        : opts.collides === "props"
+          ? PROP_ONLY_GROUPS
+          : kind === "floor" || kind === "ground"
+            ? FLOOR_GROUPS
+            : WORLD_GROUPS;
     const col = this.world.createCollider(
       RAPIER.ColliderDesc.cuboid(hw, hh)
         .setTranslation(x, y)

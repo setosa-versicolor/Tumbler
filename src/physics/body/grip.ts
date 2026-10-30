@@ -1,6 +1,6 @@
 import type { Collider, ImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../world";
-import { ENV_QUERY } from "../groups";
+import { GRAB_QUERY } from "../groups";
 import { DIM } from "./rig";
 import type { Vec } from "../../sim/math";
 
@@ -61,11 +61,13 @@ export class Grip {
       return;
     }
     const h = this.hand.translation();
+    // Prefer loose things over fixed surfaces: reaching for a sock on a
+    // shelf should get the sock, not the shelf.
     let found: Collider | null = null;
     world.intersectionsWithShape(h, 0, this.shape, (c) => {
-      found = c;
-      return false;
-    }, undefined, ENV_QUERY);
+      if (!found || c.parent()?.isDynamic()) found = c;
+      return !found.parent()?.isDynamic();
+    }, undefined, GRAB_QUERY);
     const col = found as Collider | null;
     const target = col?.parent();
     if (col && target) this.attach(world, col, target, other);

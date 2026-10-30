@@ -37,6 +37,8 @@ export class Stanley {
   facing: 1 | -1 = 1;
   /** Last reach point, for the eyes to look at. */
   lookAt: Vec | null = null;
+  /** How far bent over at the waist, 0..1. */
+  private bend = 0;
 
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);
@@ -56,7 +58,7 @@ export class Stanley {
     const pv = rig.pelvis.linvel();
 
     this.updateFacing(intent);
-    const { bend, crouch } = this.stoop(intent);
+    const { bend, crouch } = this.stoop(intent, dt);
     balance.update(this.world, rig, t, intent.move, this.facing, intent.jump, bend, crouch, dt);
     gait.update(pv.x, t.moveSpeed, dt);
 
@@ -136,14 +138,20 @@ export class Stanley {
     this.rig.chest.applyImpulse({ x: M * fx * dt, y: M * fy * dt }, true);
   }
 
-  /** Reaching below the hips bends Stanley over and squats him down. */
-  private stoop(intent: Intent): { bend: number; crouch: number } {
-    if (!intent.reach || this.balance.posture !== "up" || !this.balance.grounded) return { bend: 0, crouch: 0 };
-    const p = this.rig.pelvis.translation();
-    const low = clamp((p.y + 0.05 - intent.reach.y) / 0.75, 0, 1);
-    const near = clamp(2.2 - Math.abs(intent.reach.x - p.x), 0, 1);
-    const b = low * near;
-    return { bend: b, crouch: b * 0.3 };
+  /**
+   * Reaching below the hips bends Stanley over and squats him down. The bend
+   * eases in and out; snapping straight to it would read as falling over.
+   */
+  private stoop(intent: Intent, dt: number): { bend: number; crouch: number } {
+    let target = 0;
+    if (intent.reach && this.balance.posture === "up" && this.balance.grounded) {
+      const p = this.rig.pelvis.translation();
+      const low = clamp((p.y + 0.05 - intent.reach.y) / 0.75, 0, 1);
+      const near = clamp(2.2 - Math.abs(intent.reach.x - p.x), 0, 1);
+      target = low * near;
+    }
+    this.bend += clamp(target - this.bend, -dt * 3, dt * 3);
+    return { bend: this.bend, crouch: this.bend * 0.3 };
   }
 
   private updateFacing(intent: Intent) {

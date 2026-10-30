@@ -62,6 +62,27 @@ describe("Laundry Day", () => {
     expect(g.progress.done).toBe(true);
   });
 
+  it("Stanley can pick a sock up off the floor without falling over", () => {
+    const g = play(laundryDay);
+    const sock = g.props.filter((p) => p.kind === "sock").find((p) => p.body.translation().x > 2.5 && p.body.translation().y < 0.2)!.body;
+    run(g, 2, () => ({ move: g.stanley.rig.pelvis.translation().x < sock.translation().x - 0.65 ? 1 : 0 }));
+    run(g, 1.5, () => ({ reach: sock.translation(), grip: { L: true, R: true } }));
+    expect(g.held.has(sock)).toBe(true);
+    const s = () => g.stanley.shoulder;
+    run(g, 1.5, () => ({ reach: { x: s().x + 0.3, y: s().y + 0.4 }, grip: { L: true, R: true } }));
+    expect(sock.translation().y).toBeGreaterThan(1.4);
+    expect(g.falls).toBe(0);
+  });
+
+  it("hands never grab the floor", () => {
+    const g = play(laundryDay);
+    const p = g.stanley.rig.pelvis.translation();
+    run(g, 2, { reach: { x: p.x - 0.5, y: 0 }, grip: { L: true, R: true } });
+    expect(g.stanley.grips.L.held).toBeNull();
+    expect(g.stanley.grips.R.held).toBeNull();
+    expect(g.stanley.balance.posture).toBe("up");
+  });
+
   it("a thrown sock can reach the basket", () => {
     const g = play(laundryDay);
     const sock = g.props.find((p) => p.kind === "sock")!.body;

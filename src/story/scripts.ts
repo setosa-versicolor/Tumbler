@@ -73,4 +73,31 @@ export const REVIEW_1: Script = {
   ],
 };
 
-export const SCRIPTS: Record<string, Script> = { [ONBOARDING.id]: ONBOARDING, [REVIEW_1.id]: REVIEW_1 };
+export const REVIEW_2: Script = {
+  id: "review-2",
+  title: "Performance Review #2",
+  steps: [
+    { do: "walk", to: VISIT },
+    { do: "say", text: "Stanley. Come in. Mind the… yes. That's fine. Come in." },
+    { do: "say", text: "The Docks! Every crate reached its destination. Several of them reached several destinations." },
+    { do: "fidget", at: "mug", time: 0.9 },
+    { do: "say", text: "The fishmonger says he's never seen fish fly like that. He'd like to know if they were alive when they left." },
+    { do: "say", text: "The harbourmaster used the word 'unprecedented' in an email. I've asked HR to frame it." },
+    { do: "say", text: "And the ship's bell has been rung. Our lawyers confirm the ship was still technically in the water when you left, which counts." },
+    { do: "fidget", at: "files", time: 0.9 },
+    { do: "say", text: "We received more feedback this quarter than every previous quarter combined. That's what we in the business call growth." },
+    { do: "say", text: "Honestly? The Docks were just too nautical for someone with your gifts." },
+    { do: "say", text: "Downtown. That's where the professionals are. Wear a tie." },
+    { do: "fidget", at: "pens", time: 0.8 },
+    { do: "say", text: "…No tie. Ties are a grabbing hazard.", aside: true },
+    { do: "ifCalm", text: "…Huh. Nothing's broken. Twice in one career. I'm writing that down." },
+    { do: "say", text: "Say hi to your mother." },
+    { do: "walk", to: DOOR },
+  ],
+};
+
+export const SCRIPTS: Record<string, Script> = {
+  [ONBOARDING.id]: ONBOARDING,
+  [REVIEW_1.id]: REVIEW_1,
+  [REVIEW_2.id]: REVIEW_2,
+};

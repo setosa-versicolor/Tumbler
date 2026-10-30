@@ -1,5 +1,7 @@
 import { INDOOR, type Level } from "../level";
+import type { Renderer } from "../../render/renderer";
 import type { Prop } from "../kit";
+import { Curio } from "../secrets";
 
 const BASKET = { x0: 9.6, x1: 10.8, y: 1.04, depth: 0.45 };
 const NEEDED = 3;
@@ -31,6 +33,7 @@ export const laundryDay: Level = {
       );
     });
 
+    const wedding = new Curio("wedding", "\"Just Married.\" The cat looks thrilled.", { x0: 4.75, y0: 2.3, x1: 5.75, y1: 3.3 });
     const inBasket = () =>
       socks.filter((s) => {
         const p = s.body.translation();
@@ -43,11 +46,12 @@ export const laundryDay: Level = {
         const n = Math.min(inBasket(), NEEDED);
         return { done: n >= NEEDED, label: `Socks ${n}/${NEEDED}` };
       },
-      update: () => {
+      update: (game, dt) => {
+        const found = wedding.update(game, dt);
         const n = inBasket();
         const ev = n > last ? [{ type: "score" as const, text: "SWISH!", pos: { x: (BASKET.x0 + BASKET.x1) / 2, y: 2 } }] : [];
         last = n;
-        return ev;
+        return [...ev, ...found];
       },
       drawBack(r) {
         // Window, poster, rug.
@@ -57,6 +61,7 @@ export const laundryDay: Level = {
         r.rect(7.2, 2.3, 8.2, 3.6, "#e8a35c");
         r.text("ROCK", { x: 7.7, y: 3.05 }, 0.2, "#fff");
         r.rect(3.2, 0, 7.6, 0.03, "#c4706a");
+        drawWeddingPhoto(r, wedding.found ? wedding.age : -1);
       },
       drawFront(r) {
         // Basket weave in front of anything inside it.
@@ -69,3 +74,35 @@ export const laundryDay: Level = {
     };
   },
 };
+
+/** A framed wedding photo: a bride, a cat in a top hat, and a lot of questions. */
+function drawWeddingPhoto(r: Renderer, foundAge: number) {
+  r.rect(4.75, 2.3, 5.75, 3.3, "#c9a36a");
+  r.rect(4.83, 2.38, 5.67, 3.22, "#f3e9f5");
+  // Bride: dress, head, veil.
+  r.poly([{ x: 4.98, y: 2.4 }, { x: 5.26, y: 2.4 }, { x: 5.16, y: 2.82 }, { x: 5.08, y: 2.82 }], "#ffffff");
+  r.circle({ x: 5.12, y: 2.92 }, 0.08, "#f2c79b");
+  r.poly([{ x: 5.02, y: 3.0 }, { x: 5.22, y: 3.0 }, { x: 5.28, y: 2.62 }, { x: 4.96, y: 2.62 }], "rgba(255,255,255,0.75)");
+  r.circle({ x: 5.09, y: 2.93 }, 0.012, "#2a2230");
+  r.circle({ x: 5.15, y: 2.93 }, 0.012, "#2a2230");
+  // Bouquet.
+  r.circle({ x: 5.22, y: 2.68 }, 0.04, "#e85d5d");
+  // Groom: a ginger cat in a bow tie and top hat, sitting tall.
+  r.roundRect(5.36, 2.42, 5.58, 2.72, 0.08, "#e8a35c");
+  r.circle({ x: 5.47, y: 2.82 }, 0.1, "#e8a35c");
+  r.poly([{ x: 5.38, y: 2.88 }, { x: 5.41, y: 2.98 }, { x: 5.44, y: 2.9 }], "#e8a35c");
+  r.poly([{ x: 5.5, y: 2.9 }, { x: 5.53, y: 2.98 }, { x: 5.56, y: 2.88 }], "#e8a35c");
+  r.rect(5.4, 2.95, 5.54, 3.12, "#2a2230");
+  r.rect(5.37, 2.94, 5.57, 2.97, "#2a2230");
+  r.poly([{ x: 5.42, y: 2.73 }, { x: 5.47, y: 2.7 }, { x: 5.42, y: 2.67 }], "#2a2230");
+  r.poly([{ x: 5.52, y: 2.73 }, { x: 5.47, y: 2.7 }, { x: 5.52, y: 2.67 }], "#2a2230");
+  r.line({ x: 5.43, y: 2.84 }, { x: 5.45, y: 2.82 }, 0.012, "#2a2230");
+  r.line({ x: 5.49, y: 2.82 }, { x: 5.51, y: 2.84 }, 0.012, "#2a2230");
+  r.text("JUST MARRIED", { x: 5.25, y: 3.17 }, 0.06, "#c0392b");
+  if (foundAge >= 0 && foundAge < 2.5) {
+    for (let i = 0; i < 3; i++) {
+      const t = (foundAge + i * 0.4) % 1.6;
+      r.text("♥", { x: 5.25 + (i - 1) * 0.25, y: 3.3 + t * 0.5 }, 0.16, `rgba(232,93,93,${1 - t / 1.6})`);
+    }
+  }
+}

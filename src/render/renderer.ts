@@ -98,7 +98,7 @@ interface Particle {
   size: number;
   color: string;
   spin: number;
-  shape: "star" | "confetti" | "dust";
+  shape: "star" | "confetti" | "dust" | "drop";
 }
 
 export interface Bubble {
@@ -294,12 +294,27 @@ export class Renderer {
     for (const s of game.solids) if (!s.hidden) this.drawSolid(s, game);
     for (const b of game.buttons) {
       const p = b.cap.translation();
-      this.roundRect(p.x - b.hw, p.y - b.hh, p.x + b.hw, p.y + b.hh, 0.03, b.lit > 0 ? "#ff5a4f" : "#d6453c");
+      if (b.style === "bell") {
+        // A brass ship's bell on a bracket; it swings a little when rung.
+        const swing = b.lit > 0 ? Math.sin(b.lit * 18) * 0.06 * b.lit : 0;
+        this.line({ x: p.x + b.hw, y: p.y + b.hh + 0.08 }, { x: p.x + swing, y: p.y + b.hh + 0.08 }, 0.04, "#5b4330");
+        this.poly(
+          [
+            { x: p.x - b.hw * 0.55 + swing, y: p.y + b.hh },
+            { x: p.x + b.hw * 0.55 + swing, y: p.y + b.hh },
+            { x: p.x + b.hw * 1.2 + swing, y: p.y - b.hh },
+            { x: p.x - b.hw * 1.2 + swing, y: p.y - b.hh },
+          ],
+          b.lit > 0 ? "#ffd84a" : "#d4a53a",
+        );
+        this.circle({ x: p.x + swing * 1.6, y: p.y - b.hh - 0.03 }, 0.035, "#8a6a2a");
+      } else this.roundRect(p.x - b.hw, p.y - b.hh, p.x + b.hw, p.y + b.hh, 0.03, b.lit > 0 ? "#ff5a4f" : "#d6453c");
     }
     for (const p of game.props) this.drawProp(p);
     game.inst.drawMid?.(this, game);
     this.drawShadow(game);
     this.drawStanley(game, dt);
+    this.drawWater(game);
     game.inst.drawFront?.(this, game);
     this.drawFx(dt);
     if (this.cursor) {
@@ -374,7 +389,17 @@ export class Renderer {
         this.circle({ x: x + 0.4 * s, y: cy + 0.15 }, 0.45 * s, "rgba(255,255,255,0.9)");
         this.circle({ x: x + 0.85 * s, y: cy }, 0.32 * s, "rgba(255,255,255,0.9)");
       }
-      for (let i = 0; i < 6; i++) this.circle({ x: i * 3.2 - 1, y: -1.2 }, 2.6, "#a9d98a");
+      if (theme.sea) {
+        this.rect(-10, -1, bw + 10, 2.4, "#5a9fc4");
+        this.rect(-10, 2.3, bw + 10, 2.4, "rgba(255,255,255,0.5)");
+        for (let i = 0; i < 8; i++) {
+          const x = ((i * 4.7 + this.time * 0.15) % (bw + 6)) - 2;
+          this.line({ x, y: 1.6 + (i % 3) * 0.25 }, { x: x + 0.5, y: 1.6 + (i % 3) * 0.25 }, 0.03, "rgba(255,255,255,0.45)");
+        }
+        // A distant ship.
+        this.poly([{ x: bw * 0.7, y: 2.4 }, { x: bw * 0.7 + 1.4, y: 2.4 }, { x: bw * 0.7 + 1.2, y: 2.2 }, { x: bw * 0.7 + 0.2, y: 2.2 }], "#3e5a70");
+        this.rect(bw * 0.7 + 0.5, 2.4, bw * 0.7 + 0.6, 3.0, "#3e5a70");
+      } else for (let i = 0; i < 6; i++) this.circle({ x: i * 3.2 - 1, y: -1.2 }, 2.6, "#a9d98a");
     } else {
       const a = cam.toScreen({ x: 0, y: bh });
       ctx.fillRect(a.x, a.y, bw * cam.scale, bh * cam.scale);
@@ -390,6 +415,31 @@ export class Renderer {
       this.rect(-10, -5, 0, bh + 10, "#5b4b5e");
       this.rect(bw, -5, bw + 10, bh + 10, "#5b4b5e");
       this.rect(-10, bh, bw + 10, bh + 10, "#5b4b5e");
+    }
+  }
+
+  /** Translucent water with a wobbling surface. */
+  private drawWater(game: Game) {
+    for (const w of game.waters) {
+      const pts: Vec[] = [];
+      for (let x = w.x0; x <= w.x1 + 0.001; x += 0.1) pts.push({ x, y: w.y + Math.sin(x * 3 + this.time * 2.5) * 0.03 });
+      this.poly([...pts, { x: w.x1, y: -0.05 }, { x: w.x0, y: -0.05 }], "rgba(60,130,180,0.62)");
+      for (let i = 0; i < pts.length - 1; i += 2) this.line(pts[i], pts[i + 1], 0.025, "rgba(255,255,255,0.55)");
+    }
+  }
+
+  splash(pos: Vec, big: boolean) {
+    for (let i = 0; i < (big ? 26 : 10); i++) {
+      this.particles.push({
+        pos: { x: pos.x + (Math.random() - 0.5) * 0.3, y: pos.y },
+        vel: { x: (Math.random() - 0.5) * (big ? 4 : 2), y: 1.5 + Math.random() * (big ? 4 : 2.5) },
+        age: 0,
+        life: 0.9,
+        size: 0.04 + Math.random() * 0.04,
+        color: "rgba(150,200,235,0.9)",
+        spin: 0,
+        shape: "drop",
+      });
     }
   }
 
@@ -428,6 +478,21 @@ export class Renderer {
           this.rect(x0 + 0.06, y - 0.01, x1 - 0.06, y + 0.01, "rgba(0,0,0,0.2)");
           this.circle({ x: s.x, y: y + (y1 - y0) / 6 }, 0.035, "#e8c77a");
         }
+        return;
+      case "dock":
+        this.rect(x0, y0, x1, y1, "#7a5a40");
+        this.rect(x0, y1 - 0.1, x1, y1, "#9a7552");
+        for (let x = x0 + 0.5; x < x1; x += 0.5) this.rect(x, y1 - 0.1, x + 0.02, y1, "rgba(0,0,0,0.2)");
+        for (let x = x0 + 0.6; x < x1; x += 1.6) this.rect(x, y0, x + 0.16, y1 - 0.1, "#5b4330");
+        return;
+      case "hull":
+        this.rect(x0, y0, x1, y1, "#2f5d8a");
+        this.rect(x0, y1 - 0.12, x1, y1, "#f4efe6");
+        this.rect(x0, y0 + 0.25, x1, y0 + 0.4, "#c0392b");
+        return;
+      case "post":
+        this.roundRect(x0, y0, x1, y1, 0.05, "#5b4330");
+        this.rect(x0 - 0.02, y1 - 0.06, x1 + 0.02, y1, "#6b5340");
         return;
       case "porch":
         this.rect(x0, y0, x1, y1, "#c9b49a");
@@ -531,6 +596,35 @@ export class Renderer {
         ctx.lineTo(w * 0.8, -h * 0.45);
         ctx.lineTo(w * 0.1, -h * 1.05);
         ctx.fill();
+        {
+          // Face: content, or (once knocked over) furious.
+          const mad = p.mood === "offended";
+          ctx.fillStyle = mad ? "rgba(220,60,60,0.35)" : "rgba(232,120,120,0.35)";
+          for (const sx of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(sx * w * 0.38, -h * 0.17, w * 0.13, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillStyle = C.ink;
+          ctx.strokeStyle = C.ink;
+          ctx.lineWidth = Math.max(1, w * 0.1);
+          for (const sx of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(sx * w * 0.22, -h * 0.3, w * (mad ? 0.09 : 0.07), 0, Math.PI * 2);
+            ctx.fill();
+            if (mad) {
+              ctx.beginPath();
+              ctx.moveTo(sx * w * 0.42, -h * 0.44);
+              ctx.lineTo(sx * w * 0.08, -h * 0.36);
+              ctx.stroke();
+            }
+          }
+          if (mad) {
+            ctx.beginPath();
+            ctx.ellipse(0, h * 0.06, w * 0.14, w * 0.18, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
         break;
       case "mug":
         body(w * 0.3);
@@ -663,6 +757,61 @@ export class Renderer {
           ctx.fill();
           outline();
         }
+        break;
+      case "fish": {
+        // A fish: body, tail, eye. Slightly smug.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.ellipse(-w * 0.1, 0, w * 0.85, h * 1.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(w * 0.65, 0);
+        ctx.lineTo(w * 1.05, -h * 1.1);
+        ctx.lineTo(w * 1.05, h * 1.1);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(-w * 0.62, -h * 0.25, h * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = C.ink;
+        ctx.beginPath();
+        ctx.arc(-w * 0.64, -h * 0.25, h * 0.17, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case "barrel":
+        // Seen side-on but spinning as it rolls: staves rotate with the body.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        ctx.fill();
+        outline();
+        ctx.strokeStyle = "#5b4330";
+        ctx.lineWidth = Math.max(2, w * 0.12);
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 0.82, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(1, w * 0.05);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * w * 0.15, Math.sin(a) * w * 0.15);
+          ctx.lineTo(Math.cos(a) * w * 0.82, Math.sin(a) * w * 0.82);
+          ctx.stroke();
+        }
+        break;
+      case "bottles":
+        // A crate of bottles, necks poking out the top.
+        ctx.fillStyle = "#5d8a52";
+        for (const dx of [-0.6, -0.2, 0.2, 0.6]) {
+          ctx.fillRect(dx * w - w * 0.12, -h * 1.15, w * 0.24, h * 0.5);
+          ctx.fillRect(dx * w - w * 0.06, -h * 1.35, w * 0.12, h * 0.25);
+        }
+        body(2);
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        for (const f of [-0.4, 0.3]) ctx.fillRect(-w, f * h, w * 2, h * 0.1);
+        label("FRAGILE", "#c0392b", h * 0.32);
         break;
       case "cooler":
         body(w * 0.2);
@@ -836,6 +985,13 @@ export class Renderer {
         ctx.fillStyle = p.color;
         ctx.fillRect(-p.size * sc, -p.size * sc * 0.4, p.size * sc * 2, p.size * sc * 0.8);
         ctx.restore();
+      } else if (p.shape === "drop") {
+        p.vel.y -= 9.8 * dt;
+        ctx.globalAlpha = 1 - t;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, p.size * sc, 0, Math.PI * 2);
+        ctx.fill();
       } else if (p.shape === "star") {
         p.vel.y -= 4 * dt;
         ctx.fillStyle = p.color;

@@ -15,9 +15,11 @@ export interface SaveData {
   jobs: Record<string, JobRecord>;
   /** Cutscenes already watched. */
   seen: Record<string, boolean>;
+  /** Hidden surprises found. */
+  secrets: Record<string, boolean>;
 }
 
-export const emptySave = (): SaveData => ({ v: 1, jobs: {}, seen: {} });
+export const emptySave = (): SaveData => ({ v: 1, jobs: {}, seen: {}, secrets: {} });
 
 export interface Storage {
   getItem(key: string): string | null;
@@ -39,7 +41,7 @@ export function loadSave(store: Storage | null = storage()): SaveData {
     if (!raw) return emptySave();
     const data = JSON.parse(raw);
     if (data?.v !== 1) return emptySave();
-    return { v: 1, jobs: data.jobs ?? {}, seen: data.seen ?? {} };
+    return { v: 1, jobs: data.jobs ?? {}, seen: data.seen ?? {}, secrets: data.secrets ?? {} };
   } catch {
     return emptySave();
   }

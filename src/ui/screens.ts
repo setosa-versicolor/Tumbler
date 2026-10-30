@@ -1,4 +1,4 @@
-import type { Chapter } from "../app/campaign";
+import { chapterUnlocked, type Chapter } from "../app/campaign";
 import type { JobRecord, SaveData } from "../app/save";
 import type { Level } from "../levels/level";
 
@@ -77,6 +77,7 @@ export function boardCard(o: {
   save: SaveData;
   sandbox: Level;
   rewatch: { id: string; title: string }[];
+  secrets: { found: number; total: number };
   onPlay: (level: Level) => void;
   onSandbox: () => void;
   onRewatch: (id: string) => void;
@@ -88,9 +89,10 @@ export function boardCard(o: {
     if (c.comingSoon) {
       return h("section", { class: "chapter soon" }, h("h2", {}, `${ci + 1}. ${c.title}`), h("p", {}, "Coming soon. Gerald is confident it'll be a better fit."));
     }
+    const open = chapterUnlocked(ci, (id) => !!o.save.jobs[id]);
     const jobs = c.levels.map((l, i) => {
       const rec = o.save.jobs[l.id];
-      const unlocked = i === 0 || !!o.save.jobs[c.levels[i - 1].id];
+      const unlocked = open && (i === 0 || !!o.save.jobs[c.levels[i - 1].id]);
       return h(
         "button",
         { class: `job ${unlocked ? "" : "locked"} ${rec ? "done" : ""}`, ...(unlocked ? { click: () => o.onPlay(l) } : { disabled: "" }) },
@@ -112,7 +114,7 @@ export function boardCard(o: {
   return h(
     "div",
     { class: "card board" },
-    h("div", { class: "board-head" }, h("div", {}, h("h1", {}, "Job Board"), h("p", { class: "sub" }, `Odd Jobs Ltd. · Employee: Stanley T. · ★ ${total}`)), o.onClose && h("button", { class: "close", click: o.onClose, "aria-label": "Close" }, "✕")),
+    h("div", { class: "board-head" }, h("div", {}, h("h1", {}, "Job Board"), h("p", { class: "sub" }, `Odd Jobs Ltd. · Employee: Stanley T. · ★ ${total} · 🔍 ${o.secrets.found}/${o.secrets.total} secrets`)), o.onClose && h("button", { class: "close", click: o.onClose, "aria-label": "Close" }, "✕")),
     ...chapters,
     h(
       "section",
@@ -129,15 +131,29 @@ export function boardCard(o: {
   );
 }
 
-export function chapterCard(o: { title: string; next: string; onBoard: () => void; onSandbox: () => void }): HTMLElement {
+export function chapterCard(o: {
+  title: string;
+  next: string;
+  ready: boolean;
+  onNext: () => void;
+  onBoard: () => void;
+  onSandbox: () => void;
+}): HTMLElement {
   return h(
     "div",
     { class: "card intro" },
     h("div", { class: "kicker" }, "Chapter complete"),
-    h("div", { class: "big-icon" }, "🏡"),
+    h("div", { class: "big-icon" }, "🏅"),
     h("h1", {}, o.title),
-    h("p", { class: "goal" }, `Next stop: ${o.next}. It's still being built. Gerald is confident it'll be a better fit.`),
-    h("p", { class: "controls" }, "Until then: go back for ★★★ on every job, or take a Day Off."),
-    h("div", { class: "row" }, h("button", { class: "secondary", click: o.onSandbox }, "🛋️ Day Off"), h("button", { class: "primary", click: o.onBoard }, "Job Board")),
+    o.ready
+      ? h("p", { class: "goal" }, `Next stop: ${o.next}. Gerald is confident it'll be a better fit.`)
+      : h("p", { class: "goal" }, `Next stop: ${o.next}. It's still being built. Gerald is confident it'll be a better fit.`),
+    h("p", { class: "controls" }, "Or go back for ★★★ and secrets 🔍 on every job, or take a Day Off."),
+    h(
+      "div",
+      { class: "row" },
+      h("button", { class: "secondary", click: o.ready ? o.onBoard : o.onSandbox }, o.ready ? "Job Board" : "🛋️ Day Off"),
+      h("button", { class: "primary", click: o.ready ? o.onNext : o.onBoard }, o.ready ? `${o.next} ▸` : "Job Board"),
+    ),
   );
 }

@@ -8,7 +8,7 @@ import { Input } from "../input/input";
 import { Cutscene } from "../story/cutscene";
 import { BOSS, office } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
-import { CHAPTERS, chapterOf, MEMOS, SANDBOX, starsFor, TAGS } from "./campaign";
+import { CHAPTERS, chapterOf, MEMOS, SANDBOX, SECRETS, starsFor, TAGS, type Chapter } from "./campaign";
 import { clearSave, emptySave, loadSave, recordJob, writeSave, type SaveData } from "./save";
 import { boardCard, chapterCard, introCard, resultsCard } from "../ui/screens";
 import { sfx } from "../ui/audio";
@@ -44,6 +44,7 @@ export interface Dom {
   reset: HTMLButtonElement;
   skip: HTMLButtonElement;
   fade: HTMLElement;
+  toast: HTMLElement;
 }
 
 /** Runs the whole game: which level or cutscene is on, the cards over it, and saving. */
@@ -81,11 +82,13 @@ export class App {
 
   /** Pick up where the player left off. */
   start() {
-    const ch = CHAPTERS[0];
-    if (ch.intro && !this.save.seen[ch.intro]) return this.playCutscene(ch.intro, () => this.startLevel(ch.levels[0]));
-    const next = ch.levels.find((l) => !this.save.jobs[l.id]);
-    if (next) return this.startLevel(next);
-    if (ch.review && !this.save.seen[ch.review]) return this.playCutscene(ch.review, () => this.chapterDone());
+    for (const ch of CHAPTERS) {
+      if (ch.comingSoon) break;
+      if (ch.intro && !this.save.seen[ch.intro]) return this.playCutscene(ch.intro, () => this.startLevel(ch.levels[0]));
+      const next = ch.levels.find((l) => !this.save.jobs[l.id]);
+      if (next) return this.startLevel(next);
+      if (ch.review && !this.save.seen[ch.review]) return this.playCutscene(ch.review, () => this.chapterDone(ch));
+    }
     this.load(SANDBOX);
     this.mode = { kind: "sandbox" };
     this.showBoard();
@@ -209,21 +212,23 @@ export class App {
     const following = ch.levels[ch.levels.indexOf(level) + 1];
     if (following) return { next: () => this.startLevel(following), label: "Next job ▸" };
     if (ch.review && !this.save.seen[ch.review]) {
-      return { next: () => this.playCutscene(ch.review!, () => this.chapterDone()), label: "See the boss ▸" };
+      return { next: () => this.playCutscene(ch.review!, () => this.chapterDone(ch)), label: "See the boss ▸" };
     }
+    const after = CHAPTERS[CHAPTERS.indexOf(ch) + 1];
+    if (after && !after.comingSoon) return { next: () => this.startLevel(after.levels[0]), label: `${after.title} ▸` };
     return { next: () => this.showBoard(), label: "Job Board ▸" };
   }
 
-  private chapterDone() {
-    const i = CHAPTERS.findIndex((c) => c.review && this.save.seen[c.review]);
-    const ch = CHAPTERS[Math.max(0, i)];
-    const next = CHAPTERS[Math.max(0, i) + 1];
+  private chapterDone(ch: Chapter) {
+    const next = CHAPTERS[CHAPTERS.indexOf(ch) + 1];
     this.load(SANDBOX);
     this.mode = { kind: "card" };
     this.dom.overlay.replaceChildren(
       chapterCard({
         title: ch.title,
         next: next?.title ?? "???",
+        ready: !!next && !next.comingSoon,
+        onNext: () => next && this.startLevel(next.levels[0]),
         onBoard: () => this.showBoard(),
         onSandbox: () => this.startLevel(SANDBOX),
       }),
@@ -281,6 +286,7 @@ export class App {
         save: this.save,
         sandbox: SANDBOX,
         rewatch,
+        secrets: { found: SECRETS.filter((s) => this.save.secrets[s.id]).length, total: SECRETS.length },
         onPlay: (l) => this.startLevel(l),
         onSandbox: () => this.startLevel(SANDBOX),
         onRewatch: (id) => this.playCutscene(id, () => this.showBoard()),
@@ -397,6 +403,19 @@ export class App {
         case "throw":
           sfx.whoosh(ev.speed);
           break;
+        case "secret":
+          sfx.secret();
+          this.toast(`🔍 Secret found! ${ev.text}`);
+          if (!this.save.secrets[ev.id]) {
+            this.save.secrets[ev.id] = true;
+            writeSave(this.save);
+          }
+          break;
+        case "splash":
+          r.splash(ev.pos, ev.big);
+          sfx.splash(ev.big);
+          if (ev.big) r.popup("SPLOOSH!", { x: ev.pos.x, y: ev.pos.y + 1 }, "#3b6ea8");
+          break;
         case "trip":
           sfx.trip();
           r.popup(TRIP_WORDS[Math.floor(Math.random() * TRIP_WORDS.length)], { x: ev.pos.x, y: ev.pos.y + 0.5 }, "#f08a3c");
@@ -452,6 +471,16 @@ export class App {
         : cut
           ? "Tap to speed up"
           : "";
+  }
+
+  private toastTimer = 0;
+  /** A short message across the top of the screen. */
+  toast(text: string) {
+    const el = this.dom.toast;
+    el.textContent = text;
+    el.classList.add("on");
+    clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => el.classList.remove("on"), 3800);
   }
 
   private drawSticks() {

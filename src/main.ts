@@ -21,6 +21,7 @@ async function boot() {
       reset: $("#reset-btn"),
       skip: $("#skip-btn"),
       fade: $("#fade"),
+      toast: $("#toast"),
     },
     tuning,
   );

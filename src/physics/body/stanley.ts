@@ -102,6 +102,22 @@ export class Stanley {
     return true;
   }
 
+  /** Put Stanley back on his feet at `origin` (feet position), dropping anything held. */
+  teleport(origin: Vec) {
+    for (const side of SIDES) this.grips[side].release(this.world, 1, this.grips[side === "L" ? "R" : "L"]);
+    const p = this.rig.pelvis.translation();
+    const dx = origin.x - p.x;
+    const dy = origin.y + DIM.standHeight + 0.05 - p.y;
+    for (const b of this.rig.bodies) {
+      const q = b.translation();
+      b.setTranslation({ x: q.x + dx, y: q.y + dy }, true);
+      b.setRotation(0, true);
+      b.setLinvel({ x: 0, y: 0 }, true);
+      b.setAngvel(0, true);
+    }
+    this.balance.knockDown(0.3);
+  }
+
   /** Drop whatever we're holding of `body` (e.g. it just broke). */
   letGo(body: RigidBody) {
     for (const side of SIDES) {

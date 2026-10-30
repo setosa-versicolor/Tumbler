@@ -12,6 +12,8 @@ export interface Theme {
   floorTop: string;
   /** Wallpaper stripe colour (indoor only). */
   stripe?: string;
+  /** Outdoor scenes by the harbour: draw the sea on the horizon. */
+  sea?: boolean;
 }
 
 export interface Progress {
@@ -68,4 +70,13 @@ export const OUTDOOR: Theme = {
   bottom: "#dff3fb",
   floor: "#6b9a45",
   floorTop: "#86b955",
+};
+
+export const HARBOUR: Theme = {
+  outdoor: true,
+  sea: true,
+  top: "#f7b98a",
+  bottom: "#fde6c4",
+  floor: "#4e5b52",
+  floorTop: "#5f6d62",
 };

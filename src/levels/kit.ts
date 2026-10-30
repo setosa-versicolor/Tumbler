@@ -19,7 +19,10 @@ export type SolidKind =
   | "table"
   | "bed"
   | "landing"
-  | "house";
+  | "house"
+  | "dock"
+  | "hull"
+  | "post";
 
 export interface Solid {
   x: number;
@@ -51,7 +54,10 @@ export type PropKind =
   | "vase"
   | "planter"
   | "lamp"
-  | "shard";
+  | "shard"
+  | "fish"
+  | "barrel"
+  | "bottles";
 
 export interface Prop {
   kind: PropKind;
@@ -66,6 +72,8 @@ export interface Prop {
   fragile?: boolean;
   /** Shard outline (local coordinates), for broken bits. */
   shape?: Vec[];
+  /** Drawing variant set by the level (e.g. an offended gnome). */
+  mood?: string;
 }
 
 export interface BoxOptions {
@@ -92,6 +100,8 @@ export class Button {
   presses = 0;
   /** Seconds the light stays on after a press. */
   lit = 0;
+  /** How it's drawn. */
+  style: "button" | "bell" = "button";
   private down = false;
   private cooldown = 0;
   readonly restX: number;
@@ -143,6 +153,13 @@ export class Button {
   }
 }
 
+export interface Water {
+  x0: number;
+  x1: number;
+  /** Surface height. */
+  y: number;
+}
+
 export interface Flight {
   x0: number;
   y0: number;
@@ -163,6 +180,8 @@ export class Kit {
   readonly buttons: Button[] = [];
   /** Flights of stairs, for the stair-tripping check. */
   readonly flights: Flight[] = [];
+  /** Stretches of water: things float, Stanley splashes. */
+  readonly waters: Water[] = [];
   readonly rand: () => number;
 
   constructor(readonly world: World, seed = 1) {
@@ -247,7 +266,7 @@ export class Kit {
         .setCollisionGroups(PROP_GROUPS),
       body,
     );
-    const prop: Prop = { kind: "ball", body, hw: r, hh: r, color: o.color ?? "#e85d5d", tag: o.tag };
+    const prop: Prop = { kind: o.kind ?? "ball", body, hw: r, hh: r, color: o.color ?? "#e85d5d", tag: o.tag };
     this.props.push(prop);
     return prop;
   }
@@ -292,12 +311,21 @@ export class Kit {
     this.solid(cx, cy - 0.02, len / 2 + 0.05, 0.02, "ramp", { angle, hidden: true, collides: "body", friction: 0.4 });
   }
 
+  water(x0: number, x1: number, surface: number) {
+    this.waters.push({ x0, x1, y: surface });
+  }
+
   /**
    * Something tall and breakable in the way: too tall to hop over cleanly,
    * and it breaks however you deal with it.
    */
-  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp"): Prop {
-    const dims = { vase: [0.2, 0.42, "#e9eef6"], planter: [0.26, 0.44, "#c4704a"], lamp: [0.2, 0.5, "#f2d58a"] } as const;
+  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp" | "bottles"): Prop {
+    const dims = {
+      vase: [0.2, 0.42, "#e9eef6"],
+      planter: [0.26, 0.44, "#c4704a"],
+      lamp: [0.2, 0.5, "#f2d58a"],
+      bottles: [0.3, 0.4, "#b9895a"],
+    } as const;
     const [hw, hh, color] = dims[kind];
     const p = this.box(x, groundY + hh + 0.005, hw, hh, { kind, density: 8, friction: 0.6, color });
     p.fragile = true;
@@ -311,6 +339,7 @@ export class Kit {
 }
 
 const SHARD_COLORS: Record<string, string[]> = {
+  bottles: ["#5d8a52", "#7bb36a", "#b9895a", "#8fc7d9"],
   vase: ["#e9eef6", "#3d6fb6", "#e9eef6", "#c9d6ea"],
   planter: ["#c4704a", "#a95a38", "#5f9440", "#6aa34a"],
   lamp: ["#f2d58a", "#d9b860", "#6b5a4a", "#fff3c4"],

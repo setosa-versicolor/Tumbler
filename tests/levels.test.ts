@@ -11,7 +11,12 @@ import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
 import { dayOff } from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
-import { ONBOARDING, REVIEW_1 } from "../src/story/scripts";
+import { ONBOARDING, REVIEW_1, REVIEW_2 } from "../src/story/scripts";
+import { crateExpectations } from "../src/levels/docks/crateExpectations";
+import { fishToss } from "../src/levels/docks/fishToss";
+import { rollOut } from "../src/levels/docks/rollOut";
+import { crowsNest } from "../src/levels/docks/crowsNest";
+import type { GameEvent } from "../src/sim/game";
 import type { Level } from "../src/levels/level";
 
 beforeAll(() => initPhysics());
@@ -29,8 +34,8 @@ describe("every level", () => {
       run(g, 3);
       expect(g.stanley.balance.posture).toBe("up");
       const p = g.stanley.rig.pelvis.translation();
-      expect(p.y).toBeGreaterThan(0.75);
-      expect(p.y).toBeLessThan(1.1);
+      expect(p.y - level.spawn.y).toBeGreaterThan(0.75);
+      expect(p.y - level.spawn.y).toBeLessThan(1.1);
       expect(g.progress.done).toBe(false);
       expect(g.doneAt).toBeNull();
     });
@@ -154,7 +159,7 @@ describe("Pizza Up", () => {
 });
 
 describe("Cutscenes", () => {
-  for (const script of [ONBOARDING, REVIEW_1]) {
+  for (const script of [ONBOARDING, REVIEW_1, REVIEW_2]) {
     it(`${script.id} plays through to the end with Stanley back at the door`, () => {
       const g = play(office);
       const scene = new Cutscene(script, g);
@@ -267,5 +272,159 @@ describe("Stairs", () => {
 
   it("walking up the stairs is safe", () => {
     for (const seed of [1, 2, 3, 4, 5, 6]) expect(climb(0.55, seed)).toBe(0);
+  });
+});
+
+const collect = (g: Game, seconds: number, intent: Partial<Intent> | ((t: number) => Partial<Intent>) = {}) => {
+  const out: GameEvent[] = [];
+  const steps = Math.round(seconds * 120);
+  for (let i = 0; i < steps; i++) out.push(...g.step({ ...IDLE_INTENT, ...(typeof intent === "function" ? intent(i / 120) : intent) }));
+  return out;
+};
+const moveStanley = (g: Game, dx: number, dy: number) => {
+  for (const b of g.stanley.rig.bodies) {
+    const p = b.translation();
+    b.setTranslation({ x: p.x + dx, y: p.y + dy }, true);
+  }
+};
+
+describe("Crate Expectations", () => {
+  it("is done with three crates on deck", () => {
+    const g = play(crateExpectations);
+    g.props.filter((p) => p.kind === "crate").forEach((c, i) => c.body.setTranslation({ x: 12 + i * 0.8, y: 1.7 }, true));
+    run(g, 1.5);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("falling in the water is a splash and a trip back to the start", () => {
+    const g = play(crateExpectations);
+    moveStanley(g, 8.5, 0.5);
+    const ev = collect(g, 2);
+    expect(ev.some((e) => e.type === "splash" && e.big)).toBe(true);
+    expect(g.falls).toBe(1);
+    expect(Math.abs(g.stanley.rig.pelvis.translation().x - crateExpectations.spawn.x)).toBeLessThan(0.6);
+  });
+
+  it("crates float", () => {
+    const g = play(crateExpectations);
+    const crate = g.props.find((p) => p.kind === "crate")!.body;
+    crate.setTranslation({ x: 10, y: 2 }, true);
+    run(g, 3);
+    expect(crate.translation().y).toBeGreaterThan(0.5);
+    expect(crate.translation().y).toBeLessThan(1.0);
+  });
+
+  it("Stanley can jump the gap to the boat", () => {
+    const g = play(crateExpectations);
+    g.props.find((p) => p.fragile)!.body.setTranslation({ x: 2.5, y: 1.45 }, true);
+    moveStanley(g, 5.5, 0);
+    let jumped = false;
+    run(g, 3, () => {
+      const x = g.stanley.rig.pelvis.translation().x;
+      const jump = !jumped && x > 8.45;
+      if (jump) jumped = true;
+      return { move: 1, jump };
+    });
+    expect(g.stanley.rig.pelvis.translation().x).toBeGreaterThan(11.2);
+    expect(g.stanley.rig.pelvis.translation().y).toBeGreaterThan(1.9);
+  });
+});
+
+describe("Fish Toss", () => {
+  it("is done with four fish in the ice", () => {
+    const g = play(fishToss);
+    g.props.filter((p) => p.kind === "fish").slice(0, 4).forEach((f, i) => f.body.setTranslation({ x: 11.7 + i * 0.3, y: 1.4 + i * 0.15 }, true));
+    run(g, 1.5);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("fish slip out of Stanley's hands when he runs with them", () => {
+    const g = play(fishToss);
+    const fish = g.props.find((p) => p.kind === "fish")!.body;
+    fish.setTranslation({ x: 3.4, y: 1.6 }, true);
+    fish.setGravityScale(0, true);
+    run(g, 1, () => ({ reach: fish.translation(), grip: { L: true, R: true } }));
+    fish.setGravityScale(1, true);
+    expect(g.held.has(fish)).toBe(true);
+    const ev = collect(g, 4, () => ({ move: g.stanley.rig.pelvis.translation().x < 6 ? 0.5 : -0.5, reach: { x: g.stanley.shoulder.x + 0.3, y: g.stanley.shoulder.y }, grip: { L: true, R: true } }));
+    expect(ev.some((e) => e.type === "score" && e.text === "Slippery!")).toBe(true);
+  });
+
+  it("throwing something at the seagull is a secret", () => {
+    const g = play(fishToss);
+    const fish = g.props.find((p) => p.kind === "fish")!.body;
+    fish.setTranslation({ x: 9.2, y: 2.4 }, true);
+    fish.setLinvel({ x: 2, y: 0 }, true);
+    const ev = collect(g, 1);
+    expect(ev.filter((e) => e.type === "secret").map((e) => (e as { id: string }).id)).toEqual(["gull"]);
+  });
+});
+
+describe("Roll Out the Barrels", () => {
+  it("is done with both barrels in the hold", () => {
+    const g = play(rollOut);
+    g.props.filter((p) => p.kind === "barrel").forEach((b, i) => b.body.setTranslation({ x: 11.6 + i * 0.9, y: 0.5 }, true));
+    run(g, 1.5);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("walking into a barrel rolls it along", () => {
+    const g = play(rollOut);
+    const barrel = g.props.find((p) => p.kind === "barrel")!.body;
+    const x0 = barrel.translation().x;
+    run(g, 2.5, { move: 0.5 });
+    expect(barrel.translation().x).toBeGreaterThan(x0 + 0.8);
+  });
+
+  it("the bollard stops a rolling barrel", () => {
+    const g = play(rollOut);
+    const barrel = g.props.find((p) => p.kind === "barrel")!.body;
+    barrel.setTranslation({ x: 6, y: 1.33 }, true);
+    barrel.setLinvel({ x: 2.5, y: 0 }, true);
+    run(g, 2);
+    expect(barrel.translation().x).toBeLessThan(7.2);
+  });
+});
+
+describe("Crow's Nest", () => {
+  it("Stanley can climb onto the first spar", () => {
+    const g = play(crowsNest);
+    g.props.find((p) => p.fragile)!.body.setTranslation({ x: 0.6, y: 0.41 }, true);
+    moveStanley(g, 3.2, 0);
+    run(g, 1);
+    const hold = { L: true, R: true };
+    const s = () => g.stanley.shoulder;
+    run(g, 0.6, (t) => ({ jump: t === 0, reach: { x: 5.75, y: 2.9 }, grip: hold }));
+    expect(g.stanley.grips.L.holdingStatic || g.stanley.grips.R.holdingStatic).toBe(true);
+    run(g, 1, () => ({ reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
+    run(g, 1, () => ({ move: 1, reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
+    run(g, 0.6, { move: 1 });
+    run(g, 0.8);
+    expect(g.stanley.rig.pelvis.translation().y).toBeGreaterThan(2.7);
+  });
+
+  it("from the crow's nest, Stanley can ring the bell", () => {
+    const g = play(crowsNest);
+    moveStanley(g, 6.5 - 1.8, 5.95);
+    run(g, 0.8);
+    for (let i = 0; i < 4 && !g.progress.done; i++) run(g, 1, (t) => ({ move: 0.3, jump: t === 0, reach: { x: 7.9, y: 6.55 } }));
+    expect(g.progress.done).toBe(true);
+  });
+});
+
+describe("Secrets", () => {
+  it("knocking the gnome over offends him, once", () => {
+    const g = play(dingDong);
+    const gnome = g.props.find((p) => p.kind === "gnome")!;
+    gnome.body.setRotation(1.5, true);
+    const ev = collect(g, 1);
+    expect(ev.filter((e) => e.type === "secret")).toHaveLength(1);
+    expect(gnome.mood).toBe("offended");
+  });
+
+  it("pointing at the wedding photo finds it", () => {
+    const g = play(laundryDay);
+    const ev = collect(g, 1.5, { reach: { x: 5.25, y: 2.8 } });
+    expect(ev.some((e) => e.type === "secret" && e.id === "wedding")).toBe(true);
   });
 });

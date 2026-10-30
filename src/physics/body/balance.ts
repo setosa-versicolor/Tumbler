@@ -12,6 +12,8 @@ const HOVER_HEIGHT = DIM.standHeight - 0.04;
 const HOVER_RANGE = DIM.standHeight + 0.18;
 const DOWN_TIME = 0.75;
 const RECOVER_TIME = 0.55;
+/** Tallest step (m) Stanley walks up without jumping. */
+const MAX_STEP_UP = 0.3;
 
 /**
  * Keeps Stanley standing. Rather than balancing on real feet (hard, and not
@@ -30,6 +32,9 @@ export class Balance {
   private timer = 0;
   private lastChestVel = { x: 0, y: 0 };
   private jumpCooldown = 0;
+  /** Height of the ground last stood on, and what it was. */
+  private groundY = 0;
+  private groundHandle = -1;
 
   knockDown(time = DOWN_TIME) {
     this.posture = "down";
@@ -73,14 +78,26 @@ export class Balance {
     // --- Ground probe ------------------------------------------------------
     const p = pelvis.translation();
     const ray = new RAPIER.Ray({ x: p.x, y: p.y }, { x: 0, y: -1 });
-    const rh = world.castRay(ray, HOVER_RANGE, true, undefined, ENV_QUERY);
-    this.groundDist = rh ? rh.timeOfImpact : Infinity;
+    let rh = world.castRay(ray, HOVER_RANGE, true, undefined, ENV_QUERY);
+    // While walking, Stanley can only step up so far at once (a porch, a
+    // stair). Anything taller is an obstacle to push or jump onto, not
+    // something the hover spring floats him over.
+    if (rh && this.grounded && rh.collider.handle !== this.groundHandle && p.y - rh.timeOfImpact > this.groundY + MAX_STEP_UP) {
+      rh = null;
+      this.groundDist = p.y - this.groundY;
+    } else {
+      this.groundDist = rh ? rh.timeOfImpact : Infinity;
+      if (rh) {
+        this.groundY = p.y - rh.timeOfImpact;
+        this.groundHandle = rh.collider.handle;
+      }
+    }
     const under = rh?.collider.parent();
     this.standingOn = rh && rh.timeOfImpact < HOVER_RANGE && under?.isDynamic() ? under : null;
     this.grounded = this.groundDist < HOVER_RANGE;
 
     // --- Hover spring under the pelvis --------------------------------------
-    if (rh && this.grounded) {
+    if (this.grounded) {
       const pv = pelvis.linvel();
       const k = 140;
       const c = 2 * 0.9 * Math.sqrt(k);
@@ -89,8 +106,7 @@ export class Balance {
       pelvis.applyImpulse({ x: 0, y: f * dt }, true);
       // Push down on whatever we stand on, so standing on a box squashes it into the floor
       // and standing on a ball rolls it away.
-      const under = rh.collider.parent();
-      if (under?.isDynamic()) {
+      if (rh && under?.isDynamic()) {
         under.applyImpulseAtPoint({ x: 0, y: -f * dt }, { x: p.x, y: p.y - rh.timeOfImpact }, true);
       }
     }

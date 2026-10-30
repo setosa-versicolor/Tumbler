@@ -1,19 +1,22 @@
 import type { RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { createWorld, DT } from "../physics/world";
 import { Stanley, type Intent } from "../physics/body/stanley";
-import { Kit, shatter, type Button, type Flight, type Prop, type Solid } from "../levels/kit";
+import { Kit, shatter, type Button, type Flight, type Prop, type Solid, type Water } from "../levels/kit";
 import type { Level, LevelInstance, Progress } from "../levels/level";
 import type { Tuning } from "./tuning";
-import { rng, type Vec } from "./math";
+import { clamp, rng, type Vec } from "./math";
 
 export type GameEvent =
   | { type: "press" }
   | { type: "score"; text: string; pos: Vec }
   | { type: "fall"; pos: Vec }
   | { type: "trip"; pos: Vec }
+  | { type: "splash"; pos: Vec; big: boolean }
   | { type: "impact"; pos: Vec; strength: number }
   | { type: "throw"; speed: number }
   | { type: "break"; pos: Vec; kind: string }
+  /** A hidden surprise was found. */
+  | { type: "secret"; id: string; text: string; pos: Vec }
   | { type: "complete" };
 
 /** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
@@ -41,6 +44,9 @@ export class Game {
   solids: Solid[] = [];
   buttons: Button[] = [];
   flights: Flight[] = [];
+  waters: Water[] = [];
+  private underwater = 0;
+  private wet = new Set<RigidBody>();
   /** Which stair Stanley is on (flight index * 1000 + step), or null. */
   private stair: number | null = null;
   inst!: LevelInstance;
@@ -50,6 +56,10 @@ export class Game {
   falls = 0;
   /** Things broken this attempt. */
   breaks = 0;
+  /** What the player asked for this step (levels use it to notice where you're pointing). */
+  intent: Intent = { move: 0, jump: false, reach: null, grip: { L: false, R: false } };
+  /** Secrets found this attempt. */
+  secrets = new Set<string>();
   progress: Progress = { done: false };
   /** Time the goal was reached, or null. */
   doneAt: number | null = null;
@@ -57,7 +67,8 @@ export class Game {
   private lastVel = new Map<RigidBody, Vec>();
   private lastHeld = new Set<RigidBody>();
   private fragile = new Map<RigidBody, FragileState>();
-  private rand = rng(1);
+  /** Seeded randomness for the sim (shards, trips, slippery fish). */
+  rand = rng(1);
 
   constructor(public tuning: Tuning, public level: Level, private seed = 1) {
     this.reset();
@@ -72,11 +83,15 @@ export class Game {
     this.solids = kit.solids;
     this.buttons = kit.buttons;
     this.flights = kit.flights;
+    this.waters = kit.waters;
+    this.underwater = 0;
+    this.wet = new Set();
     this.stair = null;
     this.stanley = new Stanley(this.world, this.level.spawn);
     this.time = 0;
     this.falls = 0;
     this.breaks = 0;
+    this.secrets = new Set();
     this.doneAt = null;
     this.fragile.clear();
     this.rand = rng(this.seed);
@@ -95,6 +110,7 @@ export class Game {
   step(intent: Intent): GameEvent[] {
     const events: GameEvent[] = [];
     this.world.gravity = { x: 0, y: -this.tuning.gravity };
+    this.intent = intent;
     this.stanley.step(intent, this.tuning, DT);
     this.world.step();
     this.time += DT;
@@ -127,6 +143,8 @@ export class Game {
     }
     this.lastHeld = held;
 
+    events.push(...this.swim());
+
     // Bumps and crashes, for sound; fragile things may break.
     const broken: Prop[] = [];
     for (const p of this.props) {
@@ -149,7 +167,13 @@ export class Game {
       events.push({ type: "break", pos, kind: p.kind });
     }
 
-    if (this.inst.update) events.push(...this.inst.update(this, DT));
+    for (const ev of this.inst.update?.(this, DT) ?? []) {
+      if (ev.type === "secret") {
+        if (this.secrets.has(ev.id)) continue;
+        this.secrets.add(ev.id);
+      }
+      events.push(ev);
+    }
     this.progress = this.inst.progress(this);
     if (this.progress.done && this.doneAt === null && !this.level.sandbox) {
       this.doneAt = this.time;
@@ -193,5 +217,40 @@ export class Game {
       if (p.y - st.balance.groundDist > f.y0 - 0.1) return i * 1000 + step;
     }
     return null;
+  }
+
+  /** Float things in water; fish Stanley out and put him back on the dock. */
+  private swim(): GameEvent[] {
+    const events: GameEvent[] = [];
+    if (!this.waters.length) return events;
+    const g = this.tuning.gravity;
+    const inWater = (x: number) => this.waters.find((w) => x > w.x0 && x < w.x1);
+    for (const p of this.props) {
+      const pos = p.body.translation();
+      const w = inWater(pos.x);
+      const depth = w ? clamp((w.y - (pos.y - p.hh)) / (2 * p.hh), 0, 1) : 0;
+      if (depth > 0 && w) {
+        // Everything floats here. It's that kind of harbour.
+        const m = p.body.mass();
+        const v = p.body.linvel();
+        p.body.applyImpulse({ x: -v.x * m * 2 * depth * DT, y: (m * g * 1.6 * depth - v.y * m * 3 * depth) * DT }, true);
+        p.body.setAngvel(p.body.angvel() * (1 - 2 * depth * DT), true);
+        if (!this.wet.has(p.body)) {
+          this.wet.add(p.body);
+          if (v.y < -1) events.push({ type: "splash", pos: { x: pos.x, y: w.y }, big: false });
+        }
+      } else this.wet.delete(p.body);
+    }
+    const st = this.stanley;
+    const pel = st.rig.pelvis.translation();
+    const w = inWater(pel.x);
+    this.underwater = w && pel.y < w.y + 0.2 ? this.underwater + DT : 0;
+    if (w && this.underwater > 0.35) {
+      this.underwater = 0;
+      // (The respawn knocks Stanley down, which counts as the fall.)
+      events.push({ type: "splash", pos: { x: pel.x, y: w.y }, big: true });
+      st.teleport(this.level.spawn);
+    }
+    return events;
   }
 }

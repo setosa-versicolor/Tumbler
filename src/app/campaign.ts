@@ -4,6 +4,10 @@ import { laundryDay } from "../levels/suburb/laundryDay";
 import { stackIt } from "../levels/suburb/stackIt";
 import { pizzaUp } from "../levels/suburb/pizzaUp";
 import { dayOff } from "../levels/dayOff";
+import { crateExpectations } from "../levels/docks/crateExpectations";
+import { fishToss } from "../levels/docks/fishToss";
+import { rollOut } from "../levels/docks/rollOut";
+import { crowsNest } from "../levels/docks/crowsNest";
 
 export interface Chapter {
   id: string;
@@ -19,7 +23,7 @@ export interface Chapter {
 
 export const CHAPTERS: Chapter[] = [
   { id: "suburb", title: "The Suburb", intro: "onboarding", review: "review-1", levels: [dingDong, laundryDay, stackIt, pizzaUp] },
-  { id: "docks", title: "The Docks", levels: [], comingSoon: true },
+  { id: "docks", title: "The Docks", review: "review-2", levels: [crateExpectations, fishToss, rollOut, crowsNest] },
   { id: "downtown", title: "Downtown", levels: [], comingSoon: true },
   { id: "skyscraper", title: "The Skyscraper", levels: [], comingSoon: true },
 ];
@@ -58,6 +62,26 @@ export const MEMOS: Record<string, string[]> = {
     "MEMO: Remember to lift with your legs. Or anything, really.",
     "MEMO: Garage looks great. The car has questions.",
   ],
+  "crate-expectations": [
+    "MEMO: The boat has been loaded. The harbour has been… involved.",
+    "MEMO: Reminder that crates are not luggage. They are cargo. Also not luggage.",
+    "MEMO: The crab has been informed of your conduct.",
+  ],
+  "fish-toss": [
+    "MEMO: Fish delivered. Several also delivered to the sea, which we're counting.",
+    "MEMO: The fishmonger has asked if you're 'always like this.' I said yes, proudly.",
+    "MEMO: Please wash your hands. Please wash the dock.",
+  ],
+  "roll-out": [
+    "MEMO: Barrels: in the hold. Hold: dented. Morale: high.",
+    "MEMO: Reminder that 'rolling' is a technique, not a lifestyle.",
+    "MEMO: The bollard is fine. The bollard is always fine.",
+  ],
+  "crows-nest": [
+    "MEMO: The bell has been rung. The whole harbour knows. The whole harbour has opinions.",
+    "MEMO: Health & Safety would like a word. Several words. A pamphlet.",
+    "MEMO: Remember, the fastest way down is not a career strategy.",
+  ],
   "pizza-up": [
     "MEMO: Pizza was 'technically' delivered. Great hustle!",
     "MEMO: Reminder that the stairs are not a shortcut.",
@@ -71,3 +95,23 @@ export const TAGS = {
   clumsy: "Clumsy Professional",
   collateral: "Collateral Damage",
 } as const;
+
+/** Every hidden surprise, by level, for the job board's counter. */
+export const SECRETS: { id: string; level: string }[] = [
+  { id: "gnome", level: "ding-dong" },
+  { id: "henderson", level: "ding-dong" },
+  { id: "wedding", level: "laundry-day" },
+  { id: "bike", level: "stack-it" },
+  { id: "knock", level: "pizza-up" },
+  { id: "crab", level: "crate-expectations" },
+  { id: "gull", level: "fish-toss" },
+  { id: "message", level: "roll-out" },
+  { id: "golfball", level: "crows-nest" },
+];
+
+/** A chapter can be played once the one before it is finished (all jobs done). */
+export function chapterUnlocked(index: number, jobsDone: (id: string) => boolean): boolean {
+  if (index === 0) return true;
+  const prev = CHAPTERS[index - 1];
+  return !prev.comingSoon && prev.levels.every((l) => jobsDone(l.id));
+}

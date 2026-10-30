@@ -1,5 +1,6 @@
 import { INDOOR, type Level } from "../level";
 import { wrapAngle } from "../../sim/math";
+import { Curio, inRect } from "../secrets";
 
 const LANDING_Y = 2.0;
 const MAT = { x0: 11.4, x1: 13.0 };
@@ -24,6 +25,8 @@ export const pizzaUp: Level = {
     kit.solid(11.25, LANDING_Y / 2, 2.75, LANDING_Y / 2, "landing");
     // The neighbours' lamp, at the top of the stairs, exactly where you'll be.
     kit.fragile(10.2, LANDING_Y, "lamp");
+    const door = { x0: 13.1, y0: LANDING_Y, x1: 14, y1: LANDING_Y + 2.2 };
+    const knock = new Curio("knock", "From inside 4B: \"We didn't order a pizza.\"", door);
     let settled = 0;
 
     const state = () => {
@@ -39,7 +42,12 @@ export const pizzaUp: Level = {
       update(game, dt) {
         const s = state();
         settled = s.onMat && s.resting && s.flat && !game.held.has(pizza.body) ? settled + dt : 0;
-        return [];
+        // Knock (a hand hitting the door with some speed).
+        const knocked = [game.stanley.rig.arms.L.hand, game.stanley.rig.arms.R.hand].some((h) => {
+          const v = h.linvel();
+          return inRect(h.translation(), { ...door, x0: door.x0 - 0.12 }) && Math.hypot(v.x, v.y) > 1.2;
+        });
+        return knocked && !knock.found ? [knock.reveal()] : [];
       },
       progress: () => {
         if (settled >= HOLD) return { done: true, label: "Delivered!" };

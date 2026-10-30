@@ -400,7 +400,11 @@ Changes from the plan:
 - Buttons count a hard smack from any side, not just a push straight in.
 - Grabs near a ledge corner slide the hand onto the corner over a few frames.
 
-Next: Chapter 2 "The Docks" (jobs + Review #2), then Quick Gig / Shift modes.
+**Chapter 2 "The Docks": done.** Crate Expectations, Fish Toss, Roll Out the Barrels, Crow's Nest, and Performance Review #2. New systems: water (buoyancy, splash and respawn), slippery fish, a ship's bell, and a cap on how far Stanley steps up without jumping (so he pushes barrels instead of floating over them).
+
+**Hidden surprises:** every job has one or two, saved to progress and counted on the job board. Several of them are early clues for the Gerald reveal.
+
+Next: Chapter 3 "Downtown" (office move, hanging a painting, Review #3), then Quick Gig / Shift modes.
 
 ## 14. First step (done)
 

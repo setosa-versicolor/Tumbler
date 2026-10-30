@@ -25,7 +25,8 @@ export const SIGN_OFF = "Say hi to your mother.";
  * Gerald's reactions to whatever Stanley knocks over, in order. Each time an
  * object comes to grief (across every cutscene, not just this one) he moves
  * on to the next line, so jokes don't repeat, and later lines call back to
- * earlier ones. A few double as clues. After the last line he starts over.
+ * earlier ones. A few double as clues; some are just a pointed sip of
+ * coffee. After the last line he starts over.
  */
 export const BARKS: Record<Incident, string[]> = {
   cooler: [
@@ -34,12 +35,14 @@ export const BARKS: Record<Incident, string[]> = {
     "Ummm, we really do prefer for the water cooler to be upright…",
     "I had the cooler bolted down. …I see the bolts were optional.",
     "Facilities has stopped asking. They just send a mop now.",
+    "*Loud, disappointed sip.*",
     "We're getting a water fountain. You can't knock over a fountain. Please don't prove me wrong.",
     "That's a brand-new cooler. It came with a little helmet. For it.",
     "The cooler's union rep would like a meeting.",
     "Every time you visit, the cooler and I share a look. This time it saw you coming.",
     "I've started bringing a canteen.",
     "Accounting has a line item now. It just says 'Stanley: hydration.'",
+    "*Sips from a canteen. Maintains eye contact.*",
     "You know, I think it lies down because it's tired. Let's go with that.",
   ],
   mug: [
@@ -48,6 +51,7 @@ export const BARKS: Record<Incident, string[]> = {
     "I buy mugs in bulk now. The supplier sent us a thank-you card.",
     "This one's plastic. …And it bounces. Good to know.",
     "I'll just drink from the pot.",
+    "*Sips directly from the coffee pot. It's still hot. He doesn't flinch.*",
     "I'm drinking straight from a thermos now. It lives in the drawer. Locked.",
     "Someone left a mug on my desk that just says 'BRACE.' I suspect HR.",
     "That one said 'World's Okayest Boss.' It was being generous, and now it's on the floor.",
@@ -61,6 +65,7 @@ export const BARKS: Record<Incident, string[]> = {
     "Those were the replacement good pens.",
     "I've switched to pencils. You can't spill a pencil. …Apparently you can.",
     "I'll sign things with my finger from now on.",
+    "*Long sip. Writes something down with a crayon.*",
     "I'm taking notes with a crayon now. A big, safe crayon.",
     "The pen cup has a tiny seatbelt now. It didn't help.",
     "Those pens had my initials on them. Well. Our initials.",
@@ -75,6 +80,7 @@ export const BARKS: Record<Incident, string[]> = {
     "Leave it, leave it. It's only got my name on it.",
     "I'm having that glued down. Facing the right way, for once.",
     "You know what, it's safer face-down.",
+    "*Sips. Doesn't look. Doesn't need to.*",
     "That nameplate spends more time on its back than I do on holiday.",
     "I've ordered a nameplate that's just a sphere. No front, no back. No falling.",
     "Some days I think that nameplate is trying to tell you something.",
@@ -89,6 +95,7 @@ export const BARKS: Record<Incident, string[]> = {
     "Please don't touch the photo. It's… personal.",
     "That photo has been through a lot. So have the people in it.",
     "I'm keeping that one in a drawer from now on.",
+    "*Very quiet sip.*",
     "Not the photo. Anything but the photo. …Well, also the mug.",
     "There's a reason that photo faces my way, Stanley.",
     "That was taken at a very happy time. Before you could walk.",
@@ -103,6 +110,7 @@ export const BARKS: Record<Incident, string[]> = {
     "That was the reorganised filing. It's re-reorganised now.",
     "I've asked HR to stop giving me paper.",
     "Leave them. Let them be free.",
+    "*Sips. Looks at the files. Sips again.*",
     "Those were your files, actually. Very thick. You'll be relieved.",
     "If anyone asks, that's our new filing system: 'scatter.'",
     "The shredder's going to be so jealous.",
@@ -117,6 +125,7 @@ export const BARKS: Record<Incident, string[]> = {
     "That was the replacement plant. Rest in peace, Fern the First.",
     "I've stopped naming them.",
     "The garden centre has asked if we're okay.",
+    "*A respectful sip, in memory of the plant.*",
     "We're down to cacti now. Mostly hug-resistant.",
     "That was a plastic plant. You broke a plastic plant. I'm honestly impressed.",
     "The plants have started leaning away from the door when you come in.",
@@ -131,11 +140,13 @@ export const BARKS: Record<Incident, string[]> = {
     "The floor again. You two are really getting to know each other.",
     "I had the carpet replaced with something softer. For you, specifically.",
     "Stay down there if you like. It's a judgement-free floor.",
+    "*Sips, looking down at you, for slightly too long.*",
     "Ah, there you are. Down there.",
     "Facilities wanted to put a mat there. I said, 'No, let him have his spot.'",
     "You fall with such commitment. That's a transferable skill.",
     "I'll just talk to the top of your head, then. Lovely hair.",
     "Gravity's given you a glowing review this quarter.",
+    "*Sip.* …*Sip.*",
     "Every time you hit the floor, the people downstairs send up flowers. Sympathy flowers.",
     "Take your time. The floor's not going anywhere. That's what I like about it.",
     "Honestly, you're at your most consistent down there.",
@@ -200,6 +211,7 @@ export const REVIEW_2: Script = {
     { do: "say", text: "And the ship's bell has been rung. Our lawyers confirm the ship was still technically in the water when you left, which counts." },
     { do: "fidget", at: "files", time: 0.9 },
     { do: "say", text: "We received more feedback this quarter than every previous quarter combined. That's what we in the business call growth." },
+    { do: "say", text: "*Long, thoughtful sip.*", aside: true },
     { do: "say", text: "Honestly? The Docks were just too nautical for someone with your gifts." },
     { do: "say", text: "Downtown. That's where the professionals are. Wear a tie." },
     { do: "fidget", at: "pens", time: 0.8 },

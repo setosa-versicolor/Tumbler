@@ -140,7 +140,10 @@ export class Cutscene {
         }
         break;
     }
-    this.office.talking = !!((this.bark ?? this.line) && (this.bark ?? this.line)!.shown < (this.bark ?? this.line)!.text.length);
+    const cur = this.bark ?? this.line;
+    this.office.talking = !!cur && cur.shown < cur.text.length;
+    // Stage directions like "*Loud, disappointed sip.*" get acted out.
+    this.office.sipping = !!cur && cur.text.startsWith("*") && /sip/i.test(cur.text);
     return intent;
   }
 

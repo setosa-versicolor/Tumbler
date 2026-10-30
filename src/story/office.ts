@@ -14,6 +14,8 @@ export type Incident = "mug" | "pens" | "nameplate" | "photo" | "files" | "plant
 export interface OfficeInstance extends LevelInstance {
   /** Gerald's mouth moves while this is true. */
   talking: boolean;
+  /** Gerald is making a point of drinking his coffee (a stage-direction line is up). */
+  sipping: boolean;
   /** Incidents that happened since the last call. */
   takeIncidents(game: Game): Incident[];
   /** How many things have been knocked over so far. */
@@ -52,6 +54,7 @@ export const office: Level = {
 
     const inst: OfficeInstance = {
       talking: false,
+      sipping: false,
       get mishaps() {
         return happened.size;
       },
@@ -82,7 +85,7 @@ export const office: Level = {
       drawBack: (r, game) => {
         drawOffice(r);
         // Drawn before the desk so the desk hides his legs.
-        drawBoss(r, inst.talking, game.time);
+        drawBoss(r, inst.talking && !inst.sipping, game.time, inst.sipping);
       },
     };
     return inst;
@@ -124,7 +127,7 @@ function drawOffice(r: Renderer) {
 }
 
 /** Gerald: seated, unflappable, permanently holding a coffee. */
-function drawBoss(r: Renderer, talking: boolean, t: number) {
+function drawBoss(r: Renderer, talking: boolean, t: number, sipping = false) {
   const { x, headY } = BOSS;
   // Suit.
   r.roundRect(x - 0.32, 0.85, x + 0.32, 1.6, 0.14, "#4a5160");
@@ -139,7 +142,7 @@ function drawBoss(r: Renderer, talking: boolean, t: number) {
   const open = talking ? 0.02 + 0.03 * Math.abs(Math.sin(t * 14)) : 0.008;
   r.roundRect(x - 0.12, headY - 0.15 - open, x - 0.02, headY - 0.13, 0.01, "#6b2a2a");
   // Arm and coffee, raised for a sip every few seconds.
-  const sip = Math.max(0, Math.sin(t * 0.9) - 0.85) / 0.15;
+  const sip = sipping ? 1 : Math.max(0, Math.sin(t * 0.9) - 0.85) / 0.15;
   const cup = { x: x - 0.32, y: 1.0 + sip * 0.55 };
   r.line({ x: x - 0.2, y: 1.45 }, cup, 0.11, "#4a5160");
   r.roundRect(cup.x - 0.07, cup.y - 0.02, cup.x + 0.05, cup.y + 0.14, 0.02, "#f4f4f4");

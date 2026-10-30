@@ -11,7 +11,7 @@ import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
 import { dayOff } from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
-import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2 } from "../src/story/scripts";
+import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2, SIGN_OFF } from "../src/story/scripts";
 import { crateExpectations } from "../src/levels/docks/crateExpectations";
 import { fishToss } from "../src/levels/docks/fishToss";
 import { rollOut } from "../src/levels/docks/rollOut";
@@ -430,16 +430,20 @@ describe("Surprises", () => {
 });
 
 describe("Gerald's jokes", () => {
-  it("no line is used twice anywhere in the cutscenes", () => {
+  it("no line is used twice anywhere in the cutscenes, except the sign-off", () => {
     const lines = [
       ...[ONBOARDING, REVIEW_1, REVIEW_2].flatMap((s) => s.steps.flatMap((st) => ("text" in st ? [st.text] : []))),
       ...Object.values(BARKS).flat(),
     ];
-    const dupes = lines.filter((l, i) => lines.indexOf(l) !== i);
+    // The sign-off is the one line that's meant to repeat.
+    const dupes = lines.filter((l, i) => lines.indexOf(l) !== i && l !== SIGN_OFF);
     expect(dupes).toEqual([]);
+    for (const script of [ONBOARDING, REVIEW_1, REVIEW_2]) {
+      expect(script.steps.some((st) => st.do === "say" && st.text === SIGN_OFF), script.id).toBe(true);
+    }
   });
 
-  it("knocking the same thing over in later cutscenes gets the next joke, then silence", () => {
+  it("knocking the same thing over in later cutscenes gets the next joke each time", () => {
     const counts: Record<string, number> = {};
     const heard: (string | undefined)[] = [];
     for (let i = 0; i < BARKS.cooler.length + 1; i++) {
@@ -455,6 +459,7 @@ describe("Gerald's jokes", () => {
       heard.push(text);
     }
     expect(heard.slice(0, -1)).toEqual(BARKS.cooler);
-    expect(heard.at(-1)).toBeUndefined();
+    // After the last one, he starts over rather than going quiet.
+    expect(heard.at(-1)).toBe(BARKS.cooler[0]);
   });
 });

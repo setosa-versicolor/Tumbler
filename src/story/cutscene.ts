@@ -98,8 +98,8 @@ export class Cutscene {
       if (this.barked.has(inc)) continue;
       this.barked.add(inc);
       const n = this.barkCounts[inc] ?? 0;
-      const line = BARKS[inc][n];
-      if (!line) continue;
+      const lines = BARKS[inc];
+      const line = lines[n % lines.length];
       this.barkCounts[inc] = n + 1;
       this.bark = { text: line, aside: true, shown: 0, held: 0 };
     }

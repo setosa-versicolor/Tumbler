@@ -18,7 +18,7 @@ export const fishToss: Level = {
   title: "Fish Toss",
   goal: `Get ${NEEDED} fish into the ice bin. They're slippery.`,
   icon: "🐟",
-  par: [22, 50],
+  par: [55, 100],
   bounds: { w: 14, h: 7 },
   spawn: { x: 2.8, y: DOCK_Y },
   target: { x: (BIN.x0 + BIN.x1) / 2, y: DOCK_Y + 0.8 },

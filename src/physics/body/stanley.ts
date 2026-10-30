@@ -29,7 +29,7 @@ const I_SHIN = 0.25;
 
 const SIDES: Side[] = ["L", "R"];
 
-export class Tumbler {
+export class Stanley {
   readonly rig: Rig;
   readonly balance = new Balance();
   readonly gait = new Gait();
@@ -118,7 +118,7 @@ export class Tumbler {
     const dy = intent.reach.y - shoulder.y;
     const len = Math.hypot(dx, dy) || 1;
     // Pushing down on a ledge presses the body up past arm's length (a mantle),
-    // so Tumbler can get his legs up and over.
+    // so Stanley can get his legs up and over.
     const press = clamp(-dy / len, 0, 1);
     const d = Math.min(len, ARM_REACH) + 0.8 * press;
     const want = { x: ax - (dx / len) * d + intent.move * 0.5, y: ay - (dy / len) * d };
@@ -136,7 +136,7 @@ export class Tumbler {
     this.rig.chest.applyImpulse({ x: M * fx * dt, y: M * fy * dt }, true);
   }
 
-  /** Reaching below the hips bends Tumbler over and squats them down. */
+  /** Reaching below the hips bends Stanley over and squats him down. */
   private stoop(intent: Intent): { bend: number; crouch: number } {
     if (!intent.reach || this.balance.posture !== "up" || !this.balance.grounded) return { bend: 0, crouch: 0 };
     const p = this.rig.pelvis.translation();

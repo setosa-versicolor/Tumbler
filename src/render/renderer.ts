@@ -32,7 +32,7 @@ export class Camera {
   resize(w: number, h: number) {
     this.w = w;
     this.h = h;
-    // Frame about 5.6m of height so Tumbler is big enough to read on a phone.
+    // Frame about 5.6m of height so Stanley is big enough to read on a phone.
     this.scale = Math.min(h / 5.6, w / (w < h ? 5 : 8));
   }
 
@@ -108,7 +108,7 @@ export class Renderer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     this.drawRoom(game);
     for (const p of game.props) this.drawProp(p);
-    this.drawTumbler(game, dt);
+    this.drawStanley(game, dt);
     this.drawFx(dt);
     if (this.cursor) {
       const s = cam.toScreen(this.cursor);
@@ -296,7 +296,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  // ------------------------------------------------------------- tumbler ---
+  // ------------------------------------------------------------- stanley ---
 
   private limb(body: RigidBody, len: number, r: number, color: string) {
     const { ctx, camera: cam } = this;
@@ -325,10 +325,10 @@ export class Renderer {
   }
 
   private drawArm(game: Game, side: Side, back: boolean) {
-    const arm = game.tumbler.rig.arms[side];
+    const arm = game.stanley.rig.arms[side];
     this.limb(arm.upper, DIM.upperArm.len, DIM.upperArm.r + 0.01, back ? C.shirtBack : C.shirt);
     this.limb(arm.fore, DIM.foreArm.len, DIM.foreArm.r, back ? C.skinBack : C.skin);
-    const gripping = !!game.tumbler.grips[side].held;
+    const gripping = !!game.stanley.grips[side].held;
     this.circle(arm.hand.translation(), DIM.hand.r, back ? C.skinBack : C.skin);
     if (gripping) {
       const s = this.camera.toScreen(arm.hand.translation());
@@ -341,20 +341,20 @@ export class Renderer {
   }
 
   private drawLeg(game: Game, side: Side, back: boolean) {
-    const leg = game.tumbler.rig.legs[side];
+    const leg = game.stanley.rig.legs[side];
     this.limb(leg.thigh, DIM.thigh.len, DIM.thigh.r, back ? C.pantsBack : C.pants);
     this.limb(leg.shin, DIM.shin.len, DIM.shin.r, back ? C.pantsBack : C.pants);
     // Shoe.
     const p = leg.shin.translation();
     const a = leg.shin.rotation();
-    const f = game.tumbler.facing;
+    const f = game.stanley.facing;
     const toe = rotate({ x: f * 0.09, y: -DIM.shin.len / 2 - 0.02 }, a);
     this.circle({ x: p.x + toe.x, y: p.y + toe.y }, 0.08, back ? "#3a2a26" : "#4c3730");
   }
 
-  private drawTumbler(game: Game, dt: number) {
+  private drawStanley(game: Game, dt: number) {
     const { ctx, camera: cam } = this;
-    const tb = game.tumbler;
+    const tb = game.stanley;
     const rig = tb.rig;
     const f = tb.facing;
     const back: Side = f > 0 ? "L" : "R";
@@ -392,7 +392,7 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(0, 0, hr, 0, Math.PI * 2);
     ctx.fill();
-    // Cap with a brim pointing the way Tumbler faces.
+    // Cap with a brim pointing the way Stanley faces.
     ctx.fillStyle = C.cap;
     ctx.beginPath();
     ctx.arc(0, -hr * 0.15, hr * 1.02, Math.PI, 0);

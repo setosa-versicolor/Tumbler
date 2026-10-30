@@ -34,7 +34,7 @@ async function boot() {
   const resize = () => renderer.resize();
   window.addEventListener("resize", resize);
   resize();
-  renderer.camera.follow(game.tumbler.position, 0, true);
+  renderer.camera.follow(game.stanley.position, 0, true);
 
   let last = performance.now();
   let acc = 0;
@@ -44,7 +44,7 @@ async function boot() {
     last = now;
     acc += dt * tuning.timeScale;
 
-    const tb = game.tumbler;
+    const tb = game.stanley;
     const intent = input.read(renderer.camera, tb.shoulder, tb.facing);
     let steps = 0;
     while (acc >= DT && steps < MAX_STEPS_PER_FRAME) {

@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { initPhysics } from "../src/physics/world";
 import { Game } from "../src/sim/game";
 import { DEFAULT_TUNING } from "../src/sim/tuning";
-import { IDLE_INTENT, type Intent } from "../src/physics/body/tumbler";
+import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
 import { wrapAngle } from "../src/sim/math";
 import { LEDGE } from "../src/props/room";
 
@@ -16,17 +16,17 @@ const run = (game: Game, seconds: number, intent: Partial<Intent> | ((t: number)
   }
 };
 
-const pelvis = (g: Game) => g.tumbler.rig.pelvis.translation();
-const tilt = (g: Game) => Math.abs(wrapAngle(g.tumbler.rig.chest.rotation()));
+const pelvis = (g: Game) => g.stanley.rig.pelvis.translation();
+const tilt = (g: Game) => Math.abs(wrapAngle(g.stanley.rig.chest.rotation()));
 
-describe("Tumbler body", () => {
+describe("Stanley's body", () => {
   it("stands upright on its own", () => {
     const g = new Game({ ...DEFAULT_TUNING });
     run(g, 4);
     expect(tilt(g)).toBeLessThan(0.25);
     expect(pelvis(g).y).toBeGreaterThan(0.75);
     expect(pelvis(g).y).toBeLessThan(1.05);
-    expect(g.tumbler.balance.posture).toBe("up");
+    expect(g.stanley.balance.posture).toBe("up");
   });
 
   it("runs right and left", () => {
@@ -39,7 +39,7 @@ describe("Tumbler body", () => {
     run(g, 1.5, { move: -1 });
     expect(pelvis(g).x).toBeLessThan(x1 - 2.5);
     run(g, 1);
-    expect(g.tumbler.balance.posture).toBe("up");
+    expect(g.stanley.balance.posture).toBe("up");
   });
 
   it("jumps", () => {
@@ -53,17 +53,17 @@ describe("Tumbler body", () => {
       maxY = Math.max(maxY, pelvis(g).y);
     }
     expect(maxY - y0).toBeGreaterThan(0.6);
-    // Jumping and landing shouldn't knock Tumbler over.
-    expect(g.tumbler.balance.posture).toBe("up");
+    // Jumping and landing shouldn't knock Stanley over.
+    expect(g.stanley.balance.posture).toBe("up");
   });
 
   it("reaches toward a target with the hands", () => {
     const g = new Game({ ...DEFAULT_TUNING });
     run(g, 1);
-    const s = g.tumbler.shoulder;
+    const s = g.stanley.shoulder;
     const target = { x: s.x + 0.5, y: s.y + 0.3 };
     run(g, 1, { reach: target });
-    const h = g.tumbler.rig.arms.R.hand.translation();
+    const h = g.stanley.rig.arms.R.hand.translation();
     expect(Math.hypot(h.x - target.x, h.y - target.y)).toBeLessThan(0.2);
   });
 
@@ -74,22 +74,22 @@ describe("Tumbler body", () => {
     run(g, 2, (t) => ({ move: pelvis(g).x < 3.5 && t < 1.5 ? 1 : 0 }));
     const box = g.props[0].body;
     run(g, 1.5, () => ({ reach: { x: box.translation().x - 0.3, y: box.translation().y }, grip: { L: true, R: true } }));
-    expect(g.tumbler.grips.R.held ?? g.tumbler.grips.L.held).toBe(box);
-    const s = g.tumbler.shoulder;
+    expect(g.stanley.grips.R.held ?? g.stanley.grips.L.held).toBe(box);
+    const s = g.stanley.shoulder;
     run(g, 1, { reach: { x: s.x + 0.2, y: s.y + 0.6 }, grip: { L: true, R: true } });
     expect(box.translation().y).toBeGreaterThan(1.2);
     run(g, 0.05, { grip: { L: false, R: false }, reach: { x: s.x + 0.6, y: s.y + 0.2 } });
-    expect(g.tumbler.grips.R.held).toBeNull();
+    expect(g.stanley.grips.R.held).toBeNull();
   });
 
   it("gets back up after being knocked down", () => {
     const g = new Game({ ...DEFAULT_TUNING });
     run(g, 1);
-    for (const b of g.tumbler.rig.bodies) b.applyImpulse({ x: b.mass() * 7, y: 0 }, true);
+    for (const b of g.stanley.rig.bodies) b.applyImpulse({ x: b.mass() * 7, y: 0 }, true);
     run(g, 0.3);
-    expect(g.tumbler.balance.posture).not.toBe("up");
+    expect(g.stanley.balance.posture).not.toBe("up");
     run(g, 4);
-    expect(g.tumbler.balance.posture).toBe("up");
+    expect(g.stanley.balance.posture).toBe("up");
     expect(tilt(g)).toBeLessThan(0.3);
   });
 
@@ -100,7 +100,7 @@ describe("Tumbler body", () => {
     let intent: Intent = IDLE_INTENT;
     for (let i = 0; i < 120 * 30; i++) {
       if (i % 30 === 0) {
-        const p = g.tumbler.position;
+        const p = g.stanley.position;
         intent = {
           move: r() * 2 - 1,
           jump: r() < 0.15,
@@ -109,12 +109,12 @@ describe("Tumbler body", () => {
         };
       }
       g.step(intent);
-      for (const b of g.tumbler.rig.bodies) {
+      for (const b of g.stanley.rig.bodies) {
         const v = b.linvel();
         expect(Number.isFinite(v.x) && Math.hypot(v.x, v.y) < 60).toBe(true);
       }
     }
-    const p = g.tumbler.position;
+    const p = g.stanley.position;
     expect(p.x > 0 && p.x < 16 && p.y > 0 && p.y < 8).toBe(true);
   });
 });
@@ -155,21 +155,21 @@ describe("Room", () => {
   it("can climb onto the ledge", () => {
     const g = new Game({ ...DEFAULT_TUNING });
     // Stand just left of the ledge.
-    for (const body of g.tumbler.rig.bodies) {
+    for (const body of g.stanley.rig.bodies) {
       const p = body.translation();
       body.setTranslation({ x: p.x + 7.6, y: p.y + 0.1 }, true);
     }
     run(g, 1);
     const hold = { L: true, R: true };
-    const s = () => g.tumbler.shoulder;
+    const s = () => g.stanley.shoulder;
     // Jump and grab the lip.
     run(g, 0.6, (t) => ({ jump: t === 0, reach: { x: LEDGE.x0 + 0.15, y: 3.0 }, grip: hold }));
-    expect(g.tumbler.grips.L.holdingStatic || g.tumbler.grips.R.holdingStatic).toBe(true);
+    expect(g.stanley.grips.L.holdingStatic || g.stanley.grips.R.holdingStatic).toBe(true);
     // Push down on it to haul up, swing over, let go.
     run(g, 1, () => ({ reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
     run(g, 1, () => ({ move: 1, reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
     run(g, 1.5, { move: 1 });
-    const p = g.tumbler.rig.pelvis.translation();
+    const p = g.stanley.rig.pelvis.translation();
     expect(p.x).toBeGreaterThan(LEDGE.x0 + 0.3);
     expect(p.y).toBeGreaterThan(LEDGE.y + 0.7);
   });

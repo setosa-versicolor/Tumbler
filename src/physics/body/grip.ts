@@ -10,7 +10,7 @@ const SLIP_DISTANCE = 0.22;
 /**
  * One hand's grip. While the player holds grip, the first thing the hand
  * touches gets welded to it. Static things (ledges, walls) get a pivot so
- * Tumbler can hang and swing; loose things get a weld so you can carry and
+ * Stanley can hang and swing; loose things get a weld so you can carry and
  * aim them — unless the other hand already has it, then a pivot too, so two
  * hands don't fight each other.
  */
@@ -62,7 +62,7 @@ export class Grip {
   /**
    * Grabbing a static block near one of its top corners (say, reaching up at
    * a ledge from below) takes hold of the corner itself — that's what a
-   * person would grab, and it lets Tumbler pull up and over.
+   * person would grab, and it lets Stanley pull up and over.
    */
   private ledgeCorner(col: Collider, h: Vec): Vec | null {
     const he = col.halfExtents();

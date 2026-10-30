@@ -1,6 +1,6 @@
 # Tumbler
 
-A wobbly active-ragdoll game about doing simple odd jobs with a body that won't cooperate. See [PLAN.md](PLAN.md) for the full concept and roadmap.
+A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body that won't cooperate. See [PLAN.md](PLAN.md) for the full concept and roadmap.
 
 **Current state: M0, the "body toy".** A single test room where you can run, jump, grab, carry, throw, stack and climb, with live tuning sliders. No goals yet, apart from three counters to mess around with:
 
@@ -8,11 +8,15 @@ A wobbly active-ragdoll game about doing simple odd jobs with a body that won't 
 - **Basket** on the left wall. Throw things into it.
 - **Stack**, the height of your tallest pile of boxes.
 
-## Run it
+## Play it
+
+**On any device:** https://setosa-versicolor.github.io/Tumbler/. Every push to `master` rebuilds and redeploys it via GitHub Actions (`.github/workflows/pages.yml`).
+
+## Run it locally
 
 ```bash
 npm install
-npm run dev      # then open the printed URL (use the Network one on your phone)
+npm run dev      # then open the printed URL
 ```
 
 `npm test` runs the headless physics tests. `npm run build` produces a static site in `dist/`.
@@ -36,7 +40,7 @@ Reach low to bend over and pick things up. Big overhand swings throw much harder
 
 - 13 rigid bodies (Rapier 2D, deterministic build) joined by revolute joints with limits. Arm segments don't collide with level geometry; hands do.
 - **Arms**: two-bone IK picks target angles; torque-capped PD "muscles" chase them, with the reaction torque applied to the parent, so arms overshoot, sag under load, and big swings yank the torso. Idle arms are weak and swing with the run cycle, so they flail.
-- **Balance**: a spring under the pelvis holds standing height, and torques keep the torso upright. A big lean or hit drops `stability` to near zero and Tumbler collapses, then gets back up.
+- **Balance**: a spring under the pelvis holds standing height, and torques keep the torso upright. A big lean or hit drops `stability` to near zero and Stanley collapses, then gets back up.
 - **Legs**: procedural gait, crouch and a hanging tuck, all driven by the same torque-capped muscles.
 - **Grip**: touching something while gripping welds the hand to it (or pivots, for static things and two-handed holds). Grabs near a ledge's top corner snap to the corner.
 
@@ -44,7 +48,7 @@ The constants that shape the feel live in `src/sim/tuning.ts`. The ⚙ panel edi
 
 ```
 src/
-  physics/body/   rig, motor, armController, balance, gait, grip, tumbler
+  physics/body/   rig, motor, armController, balance, gait, grip, stanley
   props/room.ts   the test room, props, button
   sim/game.ts     headless game state + stats
   render/         Canvas2D renderer + camera

@@ -1,4 +1,4 @@
-import type { Intent } from "../physics/body/tumbler";
+import type { Intent } from "../physics/body/stanley";
 import { ARM_REACH } from "../physics/body/armController";
 import type { Camera } from "../render/renderer";
 import { clamp, type Vec } from "../sim/math";

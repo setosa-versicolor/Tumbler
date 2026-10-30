@@ -1,6 +1,6 @@
 import type { World } from "@dimforge/rapier2d-deterministic-compat";
 import { createWorld, DT } from "../physics/world";
-import { Tumbler, type Intent } from "../physics/body/tumbler";
+import { Stanley, type Intent } from "../physics/body/stanley";
 import { BASKET, buildRoom, LEDGE, type Button, type Prop, type Solid } from "../props/room";
 import type { Tuning } from "./tuning";
 
@@ -17,7 +17,7 @@ export type GameEvent = { type: "press" } | { type: "basket" } | { type: "fall" 
 /** Everything inside the simulation. No DOM in here, so tests can run it headless. */
 export class Game {
   world!: World;
-  tumbler!: Tumbler;
+  stanley!: Stanley;
   props: Prop[] = [];
   solids: Solid[] = [];
   button!: Button;
@@ -36,7 +36,7 @@ export class Game {
     this.props = room.props;
     this.solids = room.solids;
     this.button = room.button;
-    this.tumbler = new Tumbler(this.world, { x: 2.5, y: 0 });
+    this.stanley = new Stanley(this.world, { x: 2.5, y: 0 });
     this.stats = { presses: 0, inBasket: 0, stack: 0, bestStack: this.stats.bestStack };
     this.time = 0;
   }
@@ -44,7 +44,7 @@ export class Game {
   step(intent: Intent): GameEvent[] {
     const events: GameEvent[] = [];
     this.world.gravity = { x: 0, y: -this.tuning.gravity };
-    this.tumbler.step(intent, this.tuning, DT);
+    this.stanley.step(intent, this.tuning, DT);
     this.world.step();
     this.time += DT;
 
@@ -52,7 +52,7 @@ export class Game {
       this.stats.presses++;
       events.push({ type: "press" });
     }
-    const posture = this.tumbler.balance.posture;
+    const posture = this.stanley.balance.posture;
     if (posture === "down" && this.lastPosture !== "down") events.push({ type: "fall" });
     this.lastPosture = posture;
 
@@ -74,7 +74,7 @@ export class Game {
    * it's part of a chain of touching boxes down to the floor.
    */
   private measureStack(): number {
-    const held = new Set([this.tumbler.grips.L.held, this.tumbler.grips.R.held]);
+    const held = new Set([this.stanley.grips.L.held, this.stanley.grips.R.held]);
     const boxes = this.props.filter((p) => {
       if (p.kind !== "box" || held.has(p.body)) return false;
       const v = p.body.linvel();

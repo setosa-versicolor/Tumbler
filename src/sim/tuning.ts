@@ -1,4 +1,4 @@
-// Every number that shapes how Tumbler feels lives here, so the tuning
+// Every number that shapes how Stanley feels lives here, so the tuning
 // panel can tweak it live. Units are SI (metres, kg, seconds, N·m).
 
 export interface Tuning {
@@ -22,9 +22,9 @@ export interface Tuning {
   jumpSpeed: number;
   /** Released objects get their velocity multiplied by this. 1 = pure physics. */
   throwAssist: number;
-  /** Torso tilt (radians) past which Tumbler falls over. */
+  /** Torso tilt (radians) past which Stanley falls over. */
   fallTilt: number;
-  /** Sudden chest velocity change (m/s in one step) that knocks Tumbler down. */
+  /** Sudden chest velocity change (m/s in one step) that knocks Stanley down. */
   knockdown: number;
   /** Gravity, m/s². */
   gravity: number;

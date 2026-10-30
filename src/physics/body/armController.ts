@@ -13,7 +13,7 @@ export interface ArmTargets {
 
 /**
  * Two-bone IK from the shoulder to a world point. The elbow bends downward
- * for targets in front of Tumbler and upward for targets behind, which keeps
+ * for targets in front of Stanley and upward for targets behind, which keeps
  * it from popping between solutions near straight up.
  */
 export function reachTargets(shoulder: Vec, target: Vec, facing: 1 | -1): ArmTargets {

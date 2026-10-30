@@ -3,7 +3,7 @@ import type { Collider, ImpulseJoint, RevoluteImpulseJoint, RigidBody, World } f
 import { ARM_GROUPS, BODY_GROUPS } from "../groups";
 import type { Vec } from "../../sim/math";
 
-// Tumbler's 13-part ragdoll. Built standing with feet on `origin`.
+// Stanley's 13-part ragdoll. Built standing with feet on `origin`.
 // Limb capsules run along local Y; proximal end at +Y, distal at -Y, so an
 // angle of 0 means "hanging straight down".
 
@@ -47,7 +47,7 @@ export interface Rig {
   legs: Record<Side, Leg>;
   bodies: RigidBody[];
   joints: ImpulseJoint[];
-  /** Collider handles belonging to Tumbler, for filtering. */
+  /** Collider handles belonging to Stanley, for filtering. */
   colliders: Set<number>;
   totalMass: number;
 }

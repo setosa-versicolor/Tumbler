@@ -6,7 +6,7 @@
 
 ## 1. The pitch
 
-**Tumbler** works for *Odd Jobs Ltd.*, a temp agency that sends him on short, simple gigs: *deliver this pizza, ring that doorbell, stack these boxes, throw the newspaper onto the porch, hang this painting.* A toddler could do any of them. Tumbler can't, because Tumbler is an **active ragdoll**: his legs run on their own, his arms flail toward wherever you point them, and his hands grab whatever they touch.
+**Stanley** (surname Tumbler, though the game keeps that quiet until the very end) works for *Odd Jobs Ltd.*, a temp agency that sends him on short, simple gigs: *deliver this pizza, ring that doorbell, stack these boxes, throw the newspaper onto the porch, hang this painting.* A toddler could do any of them. Stanley can't, because Stanley is an **active ragdoll**: his legs run on their own, his arms flail toward wherever you point them, and his hands grab whatever they touch.
 
 Every job is obvious. Doing it is a fight with physics, and that's the joke and the game:
 
@@ -17,7 +17,7 @@ Every job is obvious. Doing it is a fight with physics, and that's the joke and 
 **Why it's fun in 30 seconds:** one job, one obvious goal, a funny failure, retry in a tap.
 **Why it's fun for 2 hours:** the controls have a real skill ceiling (momentum throws, climbing, two-handed carries, using props as tools), and jobs can be solved many ways. Speedruns and silly solutions both count.
 
-Tone: slapstick, warm, no gore. Tumbler is clumsy and determined, never hurt, and gets back up with a little "hup!" Between chapters, Performance Review cutscenes with his relentlessly upbeat boss poke fun at work culture (see §7).
+Tone: slapstick, warm, no gore. Stanley is clumsy and determined, never hurt, and gets back up with a little "hup!" Between chapters, Performance Review cutscenes with his relentlessly upbeat boss poke fun at work culture (see §7).
 
 ---
 
@@ -37,7 +37,7 @@ Key decisions:
 
 - **Arms are physical.** Hands are pulled toward the target by joint motors with *limited strength*, so they swing, overshoot and wobble. Heavy objects drag your arms down, and fast flicks make the whole body lurch. Nothing is animated. Every throw is real physics.
 - **Throwing has no aim meter.** You swing the hand and let go. Timing and arc are the skill.
-- **Balance is assisted, not guaranteed.** An "upright spring" keeps the torso up, but a big hit, a heavy load, or running into a doorframe can knock it over. Then Tumbler sits up and recovers in ~0.7s. Falls cost time, not lives.
+- **Balance is assisted, not guaranteed.** An "upright spring" keeps the torso up, but a big hit, a heavy load, or running into a doorframe can knock it over. Then Stanley sits up and recovers in ~0.7s. Falls cost time, not lives.
 - **Legs are automatic.** A procedural gait drives the legs while you push the stick. You never control legs directly. Hands are hard enough.
 
 ---
@@ -129,21 +129,21 @@ Currency is **wages** from gigs. No ads, no energy, no timers that stop a short 
 
 ## 7. Story: Performance Reviews
 
-Between Career chapters, Tumbler is called into the boss's office for a **Performance Review**: a short, skippable cutscene that is mostly a joke about work culture. The jobs always technically got done. The clients are never happy. Nobody ever says why.
+Between Career chapters, Stanley is called into the boss's office for a **Performance Review**: a short, skippable cutscene that is mostly a joke about work culture. The jobs always technically got done. The clients are never happy. Nobody ever says why.
 
 ### 7.1 The cast
 
-- **Tumbler.** Never speaks. Communicates entirely through flailing, the occasional "hup!", and a hopeful face. Completely sincere about wanting to do a good job.
+- **Stanley.** Never speaks. Communicates entirely through flailing, the occasional "hup!", and a hopeful face. Completely sincere about wanting to do a good job.
 - **The Boss (Gerald).** Sits behind an enormous desk and never stands up. Unflappable, endlessly upbeat, fluent in corporate euphemism. Treats every disaster as a "learning" and every review ends with total confidence that the *next* job will be a better fit. Physically he's an active ragdoll too, but with very strong motors, so he barely reacts as things crash around him. He just sips his coffee.
 
 ### 7.2 How a review plays
 
 Each review follows the same five beats, so it lands in about 30–40 seconds:
 
-1. **The walk-in.** Tumbler walks from the door to the chair. This is the **real ragdoll on a scripted path**, so what gets knocked over is different every time. The office is full of physics props: a pen cup, a desk plant, a stack of mugs, a Newton's cradle, a water cooler, the nameplate, a framed photo, an "Employee of the Month" board.
+1. **The walk-in.** Stanley walks from the door to the chair. This is the **real ragdoll on a scripted path**, so what gets knocked over is different every time. The office is full of physics props: a pen cup, a desk plant, a stack of mugs, a Newton's cradle, a water cooler, the nameplate, a framed photo, an "Employee of the Month" board.
 2. **The good news.** The boss opens with the stats: every job on the sheet is marked *complete*.
 3. **The client feedback.** He reads it out, picking the most positive possible phrasing. The feedback is clearly about the chaos, but nobody says so.
-4. **The pivot.** The problem was never Tumbler. It was the *fit*. The next neighbourhood will suit his talents perfectly.
+4. **The pivot.** The problem was never Stanley. It was the *fit*. The next neighbourhood will suit his talents perfectly.
 5. **The walk-out.** More collateral damage. The boss doesn't look up.
 
 **Reactive one-liners ("barks"):** the boss has short lines for whatever the physics actually did during the walk-in and walk-out, chosen from what got hit:
@@ -155,17 +155,18 @@ Each review follows the same five beats, so it lands in about 30–40 seconds:
 | Nameplate knocked flat | "Leave it. It's a nameplate. Everyone knows who I am." |
 | Plant knocked over | "It's fake." *(beat)* "It was real." |
 | Newton's cradle set off | "That's actually how it's meant to work. Rare win." |
-| Tumbler falls over | "Take a seat. Or, yes, the floor is fine." |
+| Stanley falls over | "Take a seat. Or, yes, the floor is fine." |
 | Water cooler toppled | "Great news, everyone. We're hydrated." |
-| Tumbler grabs the boss | "Let's keep this professional. Hugs are a calendar invite." |
-| Employee of the Month board falls | It has Tumbler's photo for every month. "Unanimous, every month. The committee is very… the committee is me." |
+| Stanley grabs the boss | "Let's keep this professional. Hugs are a calendar invite." |
+| Employee of the Month board falls | It has Stanley's photo for every month. "Unanimous, every month. The committee is very… the committee is me." |
 | Nothing breaks at all | *Long pause.* "Huh." *(writes something down)* |
 
 **Hidden clues for the ending:** they're in every review but easy to miss on the first playthrough.
 - The **nameplate** is always turned away, half-hidden behind a mug, or knocked flat before the camera can read it.
 - The **framed family photo** on the desk always faces away from the camera.
 - Every review ends with the boss saying, as polite office small talk, *"Say hi to your mother."*
-- Tumbler's pay slips have a line item: *"Family discount (applied to you)."*
+- Stanley's pay slips have a line item: *"Family discount (applied to you)."*
+- Stanley's name badge, pay slips and job sheets only ever say **"Stanley T."** The surname is never spelled out until the reveal.
 - The Employee of the Month board, above.
 
 ### 7.3 The script (draft)
@@ -199,7 +200,7 @@ Each review follows the same five beats, so it lands in about 30–40 seconds:
 >
 > "We received more feedback this quarter than every previous quarter combined. That's what we in the business call growth."
 >
-> "The Docks were just too nautical for someone with your gifts. Downtown is where the professionals are. Wear a tie." *(watches Tumbler flail)* "No tie. Ties are a grabbing hazard."
+> "The Docks were just too nautical for someone with your gifts. Downtown is where the professionals are. Wear a tie." *(watches Stanley flail)* "No tie. Ties are a grabbing hazard."
 >
 > "Say hi to your mother."
 
@@ -221,7 +222,7 @@ Each review follows the same five beats, so it lands in about 30–40 seconds:
 >
 > "I've now placed you in every department, every neighbourhood and every job category we offer. I invented three new ones. 'Senior Associate Doorbell Consultant' was a real stretch for HR."
 >
-> *(He leans back and steeples his fingers. Long pause. For the first time the nameplate is standing upright and in focus: **GERALD TUMBLER, CEO**. The family photo slowly swivels round: Gerald, Mum, and a tiny Tumbler in a tiny cap, mid-flail.)*
+> *(He leans back and steeples his fingers. Long pause. For the first time the nameplate is standing upright and in focus: **GERALD TUMBLER, CEO**. The family photo slowly swivels round: Gerald, Mum, and a tiny Stanley in a tiny cap, mid-flail.)*
 >
 > "Son…"
 >
@@ -229,11 +230,11 @@ Each review follows the same five beats, so it lands in about 30–40 seconds:
 >
 > "It's what your grandfather did for me."
 >
-> *(Tumbler celebrates by flailing, which knocks the nameplate off the desk. Gerald calmly reveals an identical nameplate in his drawer: **T. TUMBLER JR., CEO**. He has clearly had it ready for years.)*
+> *(Stanley celebrates by flailing, which knocks the nameplate off the desk. Gerald calmly produces a matching nameplate from his drawer: **STANLEY TUMBLER, CEO**. He has clearly had it ready for years.)*
 
 ### 7.4 The final job: "Executive Action"
 
-The last gig in the game. Tumbler, now CEO, has one task: **move a file from one place to another.** A single manila folder is on the desk; the filing cabinet is across the corner office.
+The last gig in the game. Stanley, now CEO, has one task: **move a file from one place to another.** A single manila folder is on the desk; the filing cabinet is across the corner office.
 
 - The whole staff (and every client from the campaign) is pressed against the glass wall watching.
 - There's no timer and no fail state. Whatever chaos happens on the way (and the office gets destroyed), the job completes the moment the file is in the cabinet.
@@ -257,8 +258,8 @@ The last gig in the game. Tumbler, now CEO, has one task: **move a file from one
 
 ### 7.6 How it's built
 
-- **Office scene** is a normal physics room. The walk-in and walk-out are a scripted `Intent` timeline fed to the real Tumbler controller, so the chaos is always live physics, never canned animation.
-- **Barks** fire off physics events (prop tipped past 60°, prop hit the floor, Tumbler posture `down`, hand grip on the boss). One bark at a time, with a short cooldown.
+- **Office scene** is a normal physics room. The walk-in and walk-out are a scripted `Intent` timeline fed to the real Stanley controller, so the chaos is always live physics, never canned animation.
+- **Barks** fire off physics events (prop tipped past 60°, prop hit the floor, Stanley posture `down`, hand grip on the boss). One bark at a time, with a short cooldown.
 - **Dialogue** runs from per-review script files (`src/story/*.json`): speech bubbles with typewriter text, tap to advance, hold to skip.
 - **Reveal camera**: a small scripted camera (pan, zoom, hold) for the nameplate and photo reveal.
 
@@ -271,7 +272,7 @@ The last gig in the game. Tumbler, now CEO, has one task: **move a file from one
 - **Rapier 2D, deterministic build (WASM).** It has good joint motors, CCD for fast throws, and gives identical results on every device. That makes Daily Shift ghosts and replays tiny input logs instead of video.
 - Fixed **120 Hz** step, interpolated rendering, seeded RNG only inside the simulation.
 
-### 8.2 Tumbler's rig
+### 8.2 Stanley's rig
 
 ```
              (head)
@@ -289,7 +290,7 @@ The last gig in the game. Tumbler, now CEO, has one task: **move a file from one
 - **13 bodies**: head, chest, pelvis, 2× upper arm, 2× forearm, 2× hand, 2× thigh, 2× shin.
 - Joints have angle limits and **PD motors with capped torque**.
 - **Arm controller:** two-bone IK computes target shoulder/elbow angles toward the reach point; motors chase them with limited strength. That limit is where the flail comes from, so tuning it is the most important part of the game feel.
-- **Balance controller:** torque on chest and pelvis toward upright, scaled by "stability", which drops when hit hard, when carrying a lot, or when falling. Below a threshold Tumbler falls over, then a recovery routine stands him back up.
+- **Balance controller:** torque on chest and pelvis toward upright, scaled by "stability", which drops when hit hard, when carrying a lot, or when falling. Below a threshold Stanley falls over, then a recovery routine stands him back up.
 - **Gait:** procedural stepping (target foot positions from velocity, leg motors chase them). It looks a bit drunk, on purpose.
 - **Grip:** on contact while grip is held, create a weld/revolute joint between hand and object, with a break force so very heavy loads or sharp yanks rip free.
 
@@ -303,9 +304,9 @@ The last gig in the game. Tumbler, now CEO, has one task: **move a file from one
 
 - **Hit-stop** (40ms) on big impacts and on clean throws landing in a target.
 - **Slo-mo** on trick shots and on the final moment of a gig ("will it land?").
-- **Camera** frames Tumbler plus the current goal, zooms out for long throws.
+- **Camera** frames Stanley plus the current goal, zooms out for long throws.
 - **Audio**: effort grunts that scale with load, a "hup!" on recovery, satisfying thunks per material, a jingle and cash-register sound on job completion.
-- **Faces**: Tumbler's eyes track the held object and widen when he's about to fall.
+- **Faces**: Stanley's eyes track the held object and widen when he's about to fall.
 - **Instant replay** of the last 4 seconds on every completion and every great failure. One tap to share as a GIF.
 
 ---
@@ -331,7 +332,7 @@ src/
   physics/
     world.ts              Rapier setup, stepping, CCD
     body/
-      rig.ts              build Tumbler's 13-part ragdoll
+      rig.ts              build Stanley's 13-part ragdoll
       armController.ts    IK reach targets → motor targets
       balance.ts          upright torque, stability, fall/recover
       gait.ts             procedural stepping
@@ -390,4 +391,4 @@ tests/
 
 ## 14. First step (done)
 
-Start **M0**: scaffold Vite + TypeScript + Rapier + Pixi, build Tumbler's 13-part active ragdoll with balance, gait, IK arm reach and grip, then a test room with boxes, a ball and a button, plus a tuning panel. Play it and tune it until grabbing and throwing are fun on their own.
+Start **M0**: scaffold Vite + TypeScript + Rapier + Pixi, build Stanley's 13-part active ragdoll with balance, gait, IK arm reach and grip, then a test room with boxes, a ball and a button, plus a tuning panel. Play it and tune it until grabbing and throwing are fun on their own.

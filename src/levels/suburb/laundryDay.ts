@@ -50,7 +50,7 @@ export const laundryDay: Level = {
         last = n;
         return ev;
       },
-      drawBack(r) {
+      drawBack(r, game) {
         // Window, poster, rug.
         r.rect(2.2, 2.2, 3.8, 3.6, "#9fd3ec");
         r.rect(2.97, 2.2, 3.03, 3.6, "#f6f1e8");
@@ -74,6 +74,8 @@ export const laundryDay: Level = {
         );
         r.circle({ x: 7.7, y: 3.25 }, 0.07, "#cddbe9");
         r.rect(3.2, 0, 7.6, 0.03, "#c4706a");
+        // The groom, asleep on the bed. Married life suits him.
+        drawSleepingCat(r, game.time);
         drawWeddingPhoto(r);
       },
       drawFront(r) {
@@ -112,4 +114,20 @@ function drawWeddingPhoto(r: Renderer) {
   r.line({ x: 5.43, y: 2.84 }, { x: 5.45, y: 2.82 }, 0.012, "#2a2230");
   r.line({ x: 5.49, y: 2.82 }, { x: 5.51, y: 2.84 }, 0.012, "#2a2230");
   r.text("JUST MARRIED", { x: 5.25, y: 3.17 }, 0.06, "#c0392b");
+}
+
+function drawSleepingCat(r: Renderer, t: number) {
+  const x = 5.35;
+  const y = 0.72;
+  const breathe = Math.sin(t * 1.6) * 0.012;
+  r.roundRect(x - 0.24, y - 0.08, x + 0.2, y + 0.1 + breathe, 0.1, "#e8a35c");
+  r.circle({ x: x + 0.2, y: y + 0.04 }, 0.1, "#e8a35c");
+  r.poly([{ x: x + 0.14, y: y + 0.1 }, { x: x + 0.17, y: y + 0.19 }, { x: x + 0.22, y: y + 0.12 }], "#e8a35c");
+  r.poly([{ x: x + 0.22, y: y + 0.12 }, { x: x + 0.27, y: y + 0.19 }, { x: x + 0.29, y: y + 0.09 }], "#e8a35c");
+  r.line({ x: x + 0.15, y: y + 0.05 }, { x: x + 0.2, y: y + 0.05 }, 0.012, "#2a2230");
+  r.line({ x: x - 0.24, y: y - 0.02 }, { x: x - 0.36, y: y + 0.08 }, 0.04, "#e8a35c");
+  for (let i = 0; i < 3; i++) {
+    const k = (t * 0.35 + i / 3) % 1;
+    r.text("z", { x: x + 0.3 + k * 0.25, y: y + 0.25 + k * 0.45 }, 0.08 + k * 0.08, `rgba(42,34,48,${0.6 * (1 - k)})`);
+  }
 }

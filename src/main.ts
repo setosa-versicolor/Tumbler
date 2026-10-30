@@ -1,6 +1,8 @@
 import "./style.css";
 import { initPhysics } from "./physics/world";
 import { App } from "./app/app";
+import { ALL_LEVELS } from "./app/campaign";
+import { office } from "./story/office";
 import { loadTuning, mountTuningPanel } from "./ui/tuningPanel";
 import { unlockAudio } from "./ui/audio";
 
@@ -32,7 +34,7 @@ async function boot() {
   window.addEventListener("keydown", unlockAudio);
 
   // Handy for poking at the sim from the devtools console.
-  Object.assign(window, { tumbler: { app, tuning } });
+  Object.assign(window, { tumbler: { app, tuning, levels: [...ALL_LEVELS, office] } });
 
   app.start();
   let last = performance.now();

@@ -57,7 +57,7 @@ export const pinReset: Level = {
         return board.update(game, dt);
       },
       progress: () => ({ done: stable >= HOLD, label: `Pins standing ${Math.min(standing, NEEDED)}/${NEEDED}` }),
-      drawBack(r) {
+      drawBack(r, game) {
         // Neon, the lane's gutters, the pin deck, and the scoreboard.
         r.rect(DECK.x0, 0, DECK.x1, 0.03, "rgba(255,255,255,0.25)");
         for (const [x, y] of [[10.6, 0.03], [11.0, 0.03], [11.4, 0.03], [11.8, 0.03], [12.2, 0.03], [10.8, 0.03]] as const) r.circle({ x, y }, 0.035, "rgba(232,93,93,0.6)");
@@ -65,6 +65,17 @@ export const pinReset: Level = {
         r.text("HIGH SCORE", { x: 11.3, y: 3.55 }, 0.16, "#f2c94c");
         r.text("G.T.  ·  300", { x: 11.3, y: 3.1 }, 0.3, "#5de8c8");
         r.text("BOWL-O-RAMA", { x: 4.5, y: 3.6 }, 0.34, "#e85d9d");
+        // A disco ball, throwing spots of light about.
+        const ball = { x: 8.2, y: 3.5 };
+        r.line({ x: ball.x, y: 4.6 }, ball, 0.015, "#9aa0a8");
+        r.circle(ball, 0.22, "#c9ccd1");
+        for (let i = 0; i < 6; i++) {
+          const a = game.time * 1.3 + i;
+          r.circle({ x: ball.x + Math.cos(a) * 0.13, y: ball.y + Math.sin(a * 0.7) * 0.13 }, 0.035, "rgba(255,255,255,0.9)");
+          const sx = ((game.time * 0.35 + i * 0.37) % 1) * 13;
+          const sy = 1.2 + ((i * 0.53) % 1) * 2.4;
+          r.circle({ x: sx, y: sy }, 0.06, ["rgba(232,93,157,0.35)", "rgba(93,232,200,0.35)", "rgba(242,201,76,0.35)"][i % 3]);
+        }
         r.rect(2.0, 3.25, 7.0, 3.3, "rgba(232,93,157,0.5)");
       },
     };

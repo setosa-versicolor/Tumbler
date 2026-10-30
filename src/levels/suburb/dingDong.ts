@@ -1,5 +1,6 @@
 import { OUTDOOR, type Level } from "../level";
 import { Curio } from "../curio";
+import { toward } from "../../sim/math";
 import type { GameEvent } from "../../sim/game";
 
 const HOUSE_X = 11.5;
@@ -48,7 +49,7 @@ export const dingDong: Level = {
         if (thrown && !henderson.found) ev.push(henderson.reveal());
         return ev;
       },
-      drawBack(r) {
+      drawBack(r, game) {
         // The house: wall, roof, door, windows.
         r.rect(HOUSE_X, 0, 15, 4.6, "#e9c9a0");
         for (let y = 0.3; y < 4.6; y += 0.3) r.rect(HOUSE_X, y, 15, y + 0.02, "rgba(0,0,0,0.05)");
@@ -56,6 +57,17 @@ export const dingDong: Level = {
         r.rect(HOUSE_X + 0.25, 0.24, HOUSE_X + 1.25, 2.4, "#6e4a8e");
         r.circle({ x: HOUSE_X + 0.4, y: 1.3 }, 0.05, "#f2c94c");
         r.rect(HOUSE_X + 1.6, 1.4, HOUSE_X + 2.4, 2.4, "#bfe3f2");
+        // The Hendersons' cat, on the windowsill, judging.
+        const cat = { x: HOUSE_X + 1.8, y: 1.62 };
+        r.circle(cat, 0.16, "#5b4b5e");
+        r.poly([{ x: cat.x - 0.15, y: cat.y + 0.08 }, { x: cat.x - 0.1, y: cat.y + 0.24 }, { x: cat.x - 0.03, y: cat.y + 0.12 }], "#5b4b5e");
+        r.poly([{ x: cat.x + 0.15, y: cat.y + 0.08 }, { x: cat.x + 0.1, y: cat.y + 0.24 }, { x: cat.x + 0.03, y: cat.y + 0.12 }], "#5b4b5e");
+        const head = game.stanley.rig.head.translation();
+        for (const dx of [-0.06, 0.06]) {
+          const eye = { x: cat.x + dx, y: cat.y + 0.03 };
+          r.circle(eye, 0.035, "#f2c94c");
+          r.circle(toward(eye, head, 0.015), 0.016, "#2a2230");
+        }
         r.rect(HOUSE_X + 1.98, 1.4, HOUSE_X + 2.02, 2.4, "#e9c9a0");
         r.rect(HOUSE_X + 0.4, 3.0, HOUSE_X + 1.3, 3.9, "#bfe3f2");
         if (henderson.found) {

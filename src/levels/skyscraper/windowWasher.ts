@@ -65,9 +65,21 @@ export const windowWasher: Level = {
         const n = spots.filter((s) => s.clean >= 1).length;
         return { done: n === spots.length, label: `Windows clean ${n}/${spots.length}` };
       },
-      drawBack(r) {
+      drawBack(r, game) {
         // Distant skyline far below, the building's glass face, the window grid.
         for (const [x, h] of [[0.4, 1.4], [1.3, 2.2], [2.4, 1.1], [3.5, 2.6], [4.6, 1.6]] as const) r.rect(x - 0.4, 0, x + 0.4, h, "#a9c4d8");
+        // A plane goes over every so often, and a few birds.
+        const px = ((game.time * 0.6) % 18) - 3;
+        r.roundRect(px - 0.4, 8.6, px + 0.4, 8.72, 0.06, "#f4f4f4");
+        r.poly([{ x: px - 0.05, y: 8.66 }, { x: px + 0.15, y: 8.66 }, { x: px - 0.1, y: 8.45 }], "#e6e9ec");
+        r.poly([{ x: px - 0.4, y: 8.7 }, { x: px - 0.32, y: 8.88 }, { x: px - 0.25, y: 8.7 }], "#e85d5d");
+        for (let i = 0; i < 3; i++) {
+          const bx = ((game.time * 0.4 + i * 0.5) % 12) - 2;
+          const by = 6.2 + i * 0.25 + Math.sin(game.time * 2 + i) * 0.1;
+          const flap = Math.sin(game.time * 10 + i) * 0.06;
+          r.line({ x: bx - 0.12, y: by + flap }, { x: bx, y: by }, 0.02, "#5f6670");
+          r.line({ x: bx, y: by }, { x: bx + 0.12, y: by + flap }, 0.02, "#5f6670");
+        }
         r.rect(FACE, 0, 10, 9.5, "#7fa3bf");
         for (let wy = 0.3; wy < 9.5; wy += 1.1) {
           r.rect(FACE, wy, 10, wy + 0.06, "#c9d4dd");

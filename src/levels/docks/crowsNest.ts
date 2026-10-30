@@ -39,10 +39,20 @@ export const crowsNest: Level = {
         }
         return ev;
       },
-      drawBack(r) {
+      drawBack(r, game) {
         // The mast, rigging and a flag.
         r.rect(MAST_X, 0, MAST_X + 0.3, 8.6, "#8a6a4e");
-        r.poly([{ x: MAST_X + 0.3, y: 8.6 }, { x: MAST_X + 1.4, y: 8.3 }, { x: MAST_X + 0.3, y: 8.0 }], "#e85d5d");
+        const flag = [];
+        for (let i = 0; i <= 8; i++) {
+          const fx = MAST_X + 0.3 + i * 0.15;
+          flag.push({ x: fx, y: 8.6 - i * 0.04 + Math.sin(game.time * 5 - i * 0.7) * 0.04 * (i / 8) });
+        }
+        for (let i = 8; i >= 0; i--) {
+          const fx = MAST_X + 0.3 + i * 0.15;
+          flag.push({ x: fx, y: 8.0 + i * 0.04 + Math.sin(game.time * 5 - i * 0.7) * 0.04 * (i / 8) });
+        }
+        r.poly(flag, "#e85d5d");
+        r.text("OJ", { x: MAST_X + 0.75, y: 8.3 + Math.sin(game.time * 5 - 3) * 0.02 }, 0.14, "#fff");
         for (let i = 0; i < 7; i++) {
           r.line({ x: 3 + i * 0.35, y: 0 }, { x: MAST_X, y: 8.2 - i * 0.2 }, 0.015, "rgba(90,70,50,0.45)");
           r.line({ x: 11.6 - i * 0.35, y: 0 }, { x: MAST_X + 0.3, y: 8.2 - i * 0.2 }, 0.015, "rgba(90,70,50,0.45)");

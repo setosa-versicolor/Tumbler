@@ -41,11 +41,21 @@ export const stackIt: Level = {
         if (height >= LINE) return { done: false, label: `Hold it… ${(HOLD - stable).toFixed(1)}` };
         return { done: false, label: `Stack ${height.toFixed(2)} / ${LINE.toFixed(2)} m` };
       },
-      drawBack(r) {
+      drawBack(r, game) {
         // Garage door, pegboard, oil stain.
         r.rect(6.6, 0, 10.4, 3.0, "#b8bcc2");
         for (let y = 0.4; y < 3; y += 0.4) r.rect(6.6, y, 10.4, y + 0.04, "rgba(0,0,0,0.08)");
         r.rect(0.6, 1.4, 2.6, 2.6, "#c8a878");
+        // A radio on the shelf, playing something upbeat.
+        r.rect(0.7, 2.65, 1.55, 2.7, "#8a6e4a");
+        r.roundRect(0.85, 2.7, 1.4, 3.0, 0.04, "#c0504d");
+        r.circle({ x: 1.0, y: 2.85 }, 0.08, "#2a2230");
+        r.rect(1.12, 2.78, 1.33, 2.92, "#f2c94c");
+        r.line({ x: 1.35, y: 3.0 }, { x: 1.5, y: 3.3 }, 0.015, "#5f6670");
+        for (let i = 0; i < 3; i++) {
+          const k = (game.time * 0.4 + i / 3) % 1;
+          r.text(i % 2 ? "♪" : "♫", { x: 1.2 + k * 0.9 + Math.sin(k * 9) * 0.08, y: 3.1 + k * 0.6 }, 0.14, `rgba(90,70,110,${0.7 * (1 - k)})`);
+        }
         for (let px = 0.8; px < 2.6; px += 0.25) for (let py = 1.6; py < 2.6; py += 0.25) r.circle({ x: px, y: py }, 0.025, "#8a6e4a");
         r.rect(4.6, 0, 6.0, 0.02, "rgba(0,0,0,0.25)");
         drawBike(r, bike.found ? bike.age : -1);

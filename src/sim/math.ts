@@ -37,3 +37,11 @@ export function rng(seed: number) {
     return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/** A step of `len` from `from` toward `to` (for eyes that follow things). */
+export function toward(from: Vec, to: Vec, len: number): Vec {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const d = Math.hypot(dx, dy) || 1;
+  return { x: from.x + (dx / d) * len, y: from.y + (dy / d) * len };
+}

@@ -1,5 +1,6 @@
 import { type Level } from "../level";
 import type { Renderer } from "../../render/renderer";
+import { toward } from "../../sim/math";
 import type { Game } from "../../sim/game";
 
 const DESK = { x0: 1.4, x1: 3.4, top: 0.8 };
@@ -77,8 +78,9 @@ function drawOffice(r: Renderer, game: Game) {
     // Eyes: wide, watching.
     r.circle({ x: x - 0.06, y: y + 0.23 }, 0.035, "#fff");
     r.circle({ x: x + 0.06, y: y + 0.23 }, 0.035, "#fff");
-    r.circle({ x: x - 0.06, y: y + 0.23 }, 0.015, "#2a2230");
-    r.circle({ x: x + 0.06, y: y + 0.23 }, 0.015, "#2a2230");
+    const head = game.stanley.rig.head.translation();
+    r.circle(toward({ x: x - 0.06, y: y + 0.23 }, head, 0.015), 0.015, "#2a2230");
+    r.circle(toward({ x: x + 0.06, y: y + 0.23 }, head, 0.015), 0.015, "#2a2230");
     if (cheering) r.circle({ x, y: y + 0.11 }, 0.05, "#2a2230");
   }
   r.rect(4.0, 3.15, 9.0, 3.2, "#c9d4dd");

@@ -509,7 +509,9 @@ export class App {
           : "A/D run · W jump · Mouse points hands · Hold left/right click to grab · R restart"
         : cut
           ? "Tap to speed up"
-          : "";
+          : m.kind === "play" && this.input.touch && window.innerHeight > window.innerWidth
+            ? "↻ Turn your phone sideways for a bigger view"
+            : "";
   }
 
   private drawSticks() {

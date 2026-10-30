@@ -59,8 +59,10 @@ export class Camera {
     const vw = this.w / this.scale;
     const vh = this.h / this.scale;
     const tx = vw >= bw + 1 ? bw / 2 : clamp(target.x, vw / 2 - 0.5, bw - vw / 2 + 0.5);
-    // On tall screens sit the floor low (leaving room below for thumbs).
-    const ty = vh >= bh + 0.8 ? vh / 2 - 1.6 : clamp(target.y + 0.5, vh / 2 - 0.5, bh - vh / 2 + 0.3);
+    // When the whole room fits, sit the floor near the bottom of the screen;
+    // on tall portrait screens leave more space below for thumbs.
+    const floorGap = this.h > this.w ? 1.6 : 0.45;
+    const ty = vh >= bh + floorGap ? vh / 2 - floorGap : clamp(target.y + 0.5, vh / 2 - floorGap, bh - vh / 2 + 0.3);
     const k = snap ? 1 : 1 - Math.exp(-dt * 5);
     this.x += (tx - this.x) * k;
     this.y += (ty - this.y) * k;
@@ -282,7 +284,7 @@ export class Renderer {
   text(str: string, pos: Vec, size: number, color: string, align: CanvasTextAlign = "center", weight = 800) {
     const s = this.camera.toScreen(pos);
     const ctx = this.ctx;
-    ctx.font = `${weight} ${Math.max(8, size * this.camera.scale)}px ${FONT}`;
+    ctx.font = `${weight} ${Math.max(10, size * this.camera.scale)}px ${FONT}`;
     ctx.textAlign = align;
     ctx.textBaseline = "middle";
     ctx.fillStyle = color;
@@ -405,10 +407,16 @@ export class Renderer {
           const x = ((i * 4.7 + this.time * 0.15) % (bw + 6)) - 2;
           this.line({ x, y: 1.6 + (i % 3) * 0.25 }, { x: x + 0.5, y: 1.6 + (i % 3) * 0.25 }, 0.03, "rgba(255,255,255,0.45)");
         }
+        // A gull drifts across the sky now and then.
+        const gx = ((this.time * 0.7) % (bw + 8)) - 4;
+        const gy = 4.6 + Math.sin(this.time * 0.8) * 0.3;
+        const flap = Math.sin(this.time * 7) * 0.08;
+        this.line({ x: gx - 0.18, y: gy + flap }, { x: gx, y: gy }, 0.03, "#f4f4f4");
+        this.line({ x: gx, y: gy }, { x: gx + 0.18, y: gy + flap }, 0.03, "#f4f4f4");
         // A distant ship.
         this.poly([{ x: bw * 0.7, y: 2.4 }, { x: bw * 0.7 + 1.4, y: 2.4 }, { x: bw * 0.7 + 1.2, y: 2.2 }, { x: bw * 0.7 + 0.2, y: 2.2 }], "#3e5a70");
         this.rect(bw * 0.7 + 0.5, 2.4, bw * 0.7 + 0.6, 3.0, "#3e5a70");
-      } else for (let i = 0; i < 6; i++) this.circle({ x: i * 3.2 - 1, y: -1.2 }, 2.6, "#a9d98a");
+      } else if (!theme.city) for (let i = 0; i < 6; i++) this.circle({ x: i * 3.2 - 1, y: -1.2 }, 2.6, "#a9d98a");
     } else {
       const a = cam.toScreen({ x: 0, y: bh });
       ctx.fillRect(a.x, a.y, bw * cam.scale, bh * cam.scale);
@@ -672,15 +680,27 @@ export class Renderer {
           }
         }
         break;
-      case "mug":
-        body(w * 0.3);
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = Math.max(2, w * 0.35);
+      case "mug": {
+        // A white mug: handle (outlined so it reads against a pale wall), a red
+        // band, and a big "#1" — the kind of mug you buy yourself.
+        ctx.lineWidth = Math.max(3, w * 0.4);
+        ctx.strokeStyle = C.ink;
         ctx.beginPath();
-        ctx.arc(w * 1.15, 0, h * 0.45, -Math.PI / 2, Math.PI / 2);
+        ctx.arc(w * 1.05, 0, h * 0.42, -Math.PI / 2, Math.PI / 2);
         ctx.stroke();
-        label("BOSS", "#c0392b", h * 0.45);
+        ctx.lineWidth = Math.max(1.5, w * 0.22);
+        ctx.strokeStyle = p.color;
+        ctx.stroke();
+        body(w * 0.25);
+        ctx.fillStyle = "#c0392b";
+        ctx.fillRect(-w, -h * 0.72, w * 2, h * 0.22);
+        ctx.fillStyle = "#c0392b";
+        ctx.font = `900 ${Math.max(9, h * 1.05)}px ${FONT}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("#1", 0, h * 0.25);
         break;
+      }
       case "pens":
         ctx.strokeStyle = "#f2c94c";
         ctx.lineWidth = Math.max(1.5, w * 0.25);

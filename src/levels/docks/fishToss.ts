@@ -79,7 +79,16 @@ export const fishToss: Level = {
         last = n;
         return ev;
       },
-      drawBack(r) {
+      drawBack(r, game) {
+        // A fish jumps in the gap every few seconds, showing off.
+        const k = (game.time % 4.5) / 0.8;
+        if (k < 1) {
+          const fx = 6.75 + k * 1.0;
+          const fy = 0.75 + Math.sin(k * Math.PI) * 0.7;
+          r.roundRect(fx - 0.12, fy - 0.05, fx + 0.12, fy + 0.05, 0.05, "#8fb3c9");
+          r.poly([{ x: fx - 0.12, y: fy }, { x: fx - 0.22, y: fy + 0.07 }, { x: fx - 0.22, y: fy - 0.07 }], "#8fb3c9");
+          r.circle({ x: fx + 0.07, y: fy + 0.01 }, 0.015, "#2a2230");
+        }
         // Fishmonger's awning.
         for (let i = 0; i < 6; i++) r.rect(0.3 + i * 0.35, 2.9, 0.65 + i * 0.35, 3.2, i % 2 ? "#f4efe6" : "#3b6ea8");
         r.rect(0.35, DOCK_Y, 0.42, 2.9, "#7a6a5a");

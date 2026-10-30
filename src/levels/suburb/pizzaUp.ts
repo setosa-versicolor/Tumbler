@@ -1,5 +1,6 @@
 import { INDOOR, type Level } from "../level";
 import { wrapAngle } from "../../sim/math";
+import { toward } from "../../sim/math";
 import { Curio, inRect } from "../curio";
 
 const LANDING_Y = 2.0;
@@ -55,11 +56,19 @@ export const pizzaUp: Level = {
         if (s.onMat && s.resting && !s.flat) return { done: false, label: "Flat, please!" };
         return { done: false, label: s.onMat ? "Put it down…" : "Pizza to 4B" };
       },
-      drawBack(r) {
+      drawBack(r, game) {
         // Door to 4B, a light, a framed picture on the stairs.
         r.rect(13.1, LANDING_Y, 14, LANDING_Y + 2.2, "#7a4e34");
         r.rect(13.2, LANDING_Y + 1.6, 13.6, LANDING_Y + 1.9, "#f2c94c");
         r.text("4B", { x: 13.4, y: LANDING_Y + 1.68 }, 0.16, "#5b3a2a");
+        // The peephole. Someone in 4B is watching your progress. Closely.
+        const hole = { x: 13.55, y: LANDING_Y + 1.32 };
+        const near = game.stanley.rig.pelvis.translation().x > 8;
+        r.circle(hole, 0.07, "#3a2a20");
+        if (near && Math.sin(game.time * 0.7) > -0.6) {
+          r.circle(hole, 0.05, "#f4f4f4");
+          r.circle(toward(hole, game.stanley.rig.head.translation(), 0.02), 0.022, "#2a2230");
+        }
         r.rect(MAT.x0, LANDING_Y, MAT.x1, LANDING_Y + 0.03, "#5d8a52");
         r.text("WELCOME", { x: (MAT.x0 + MAT.x1) / 2, y: LANDING_Y + 0.08 }, 0.12, "rgba(255,255,255,0.8)");
         r.rect(6.4, 3.0, 7.4, 3.8, "#cfa66a");

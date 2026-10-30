@@ -14,6 +14,8 @@ export interface Theme {
   stripe?: string;
   /** Outdoor scenes by the harbour: draw the sea on the horizon. */
   sea?: boolean;
+  /** Up among the towers: no hills on the horizon. */
+  city?: boolean;
 }
 
 export interface Progress {
@@ -93,6 +95,7 @@ export const OFFICE: Theme = {
 /** Fifty floors up: all sky. */
 export const HIGH_RISE: Theme = {
   outdoor: true,
+  city: true,
   top: "#6fb7e6",
   bottom: "#cfe9f7",
   floor: "#8a9099",

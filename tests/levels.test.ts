@@ -458,3 +458,25 @@ describe("Gerald's jokes", () => {
     expect(heard.at(-1)).toBe(BARKS.cooler[0]);
   });
 });
+
+describe("Picking things up", () => {
+  const reachLow = (level: Level, move: number, seed: number) => {
+    const g = new Game({ ...DEFAULT_TUNING }, level, seed);
+    for (let i = 0; i < 120 * 2.5; i++) {
+      const p = g.stanley.rig.pelvis.translation();
+      g.step({ ...IDLE_INTENT, move, reach: { x: p.x + 0.6, y: level.spawn.y + 0.05 }, grip: { L: true, R: true } });
+    }
+    return g.falls;
+  };
+
+  it("reaching low while standing or walking never knocks Stanley over", () => {
+    for (const level of [laundryDay, fishToss]) for (const move of [0, 0.5]) for (const seed of [1, 2, 3]) expect(reachLow(level, move, seed)).toBe(0);
+  });
+
+  it("charging along bent over only occasionally ends in a trip", () => {
+    const seeds = Array.from({ length: 20 }, (_, i) => i + 1);
+    const fell = seeds.filter((s) => reachLow(laundryDay, 1, s) > 0).length;
+    expect(fell).toBeGreaterThan(0);
+    expect(fell).toBeLessThan(10);
+  });
+});

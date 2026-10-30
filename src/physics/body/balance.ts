@@ -12,6 +12,8 @@ const HOVER_HEIGHT = DIM.standHeight - 0.04;
 const HOVER_RANGE = DIM.standHeight + 0.18;
 const DOWN_TIME = 0.75;
 const RECOVER_TIME = 0.55;
+/** Fraction of run speed lost when fully bent over. */
+const STOOP_SLOWDOWN = 0.35;
 /** Tallest step (m) Stanley walks up without jumping. */
 const MAX_STEP_UP = 0.3;
 
@@ -120,7 +122,9 @@ export class Balance {
     // --- Running -------------------------------------------------------------
     const pv = pelvis.linvel();
     const control = (this.grounded ? 1 : 0.25) * Math.min(1, s * 1.5);
-    const ax = clamp(7 * (move * t.moveSpeed - pv.x), -22, 22) * control;
+    // Bent over (picking something up), Stanley shuffles rather than sprints.
+    const speed = t.moveSpeed * (1 - STOOP_SLOWDOWN * bend);
+    const ax = clamp(7 * (move * speed - pv.x), -22, 22) * control;
     pelvis.applyImpulse({ x: M * ax * dt, y: 0 }, true);
 
     // --- Jump ----------------------------------------------------------------

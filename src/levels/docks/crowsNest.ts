@@ -1,11 +1,13 @@
 import { HARBOUR, type Level } from "../level";
 import { Curio } from "../curio";
 
-const A = { x0: 5.6, x1: 7.2, y: 2.0 };
-const B = { x0: 7.8, x1: 9.4, y: 3.9 };
-const C = { x0: 5.2, x1: 7.4, y: 5.8 };
+// Spars zig-zag up the near side of the mast: A (right), B (left), then the
+// crow's nest C against the mast, where the bell hangs.
+export const A = { x0: 6.4, x1: 8.2, y: 2.0 };
+export const B = { x0: 4.2, x1: 6.1, y: 3.9 };
+export const C = { x0: 6.4, x1: 8.2, y: 5.8 };
 const BELL_Y = C.y + 0.75;
-const MAST_X = 7.55;
+const MAST_X = 8.4;
 
 /** Docks job 4: climb the rigging to the crow's nest and ring the ship's bell. */
 export const crowsNest: Level = {

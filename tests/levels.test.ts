@@ -16,6 +16,7 @@ import { crateExpectations } from "../src/levels/docks/crateExpectations";
 import { fishToss } from "../src/levels/docks/fishToss";
 import { rollOut } from "../src/levels/docks/rollOut";
 import { crowsNest } from "../src/levels/docks/crowsNest";
+import * as CN from "../src/levels/docks/crowsNest";
 import type { GameEvent } from "../src/sim/game";
 import { movingDay } from "../src/levels/downtown/movingDay";
 import { hangThePainting } from "../src/levels/downtown/hangThePainting";
@@ -399,31 +400,32 @@ describe("Roll Out the Barrels", () => {
 });
 
 describe("Crow's Nest", () => {
-  it("Stanley can climb onto the first spar", () => {
-    const g = play(crowsNest);
+  it("Stanley can climb all the way up and ring the bell", { timeout: 30000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, crowsNest);
     g.props.find((p) => p.fragile)!.body.setTranslation({ x: 0.6, y: 0.41 }, true);
-    moveStanley(g, 3.2, 0);
-    run(g, 1);
+    const pel = () => g.stanley.rig.pelvis.translation();
+    const sh = () => g.stanley.shoulder;
     const hold = { L: true, R: true };
-    const s = () => g.stanley.shoulder;
-    run(g, 0.6, (t) => ({ jump: t === 0, reach: { x: 5.75, y: 2.9 }, grip: hold }));
-    expect(g.stanley.grips.L.holdingStatic || g.stanley.grips.R.holdingStatic).toBe(true);
-    run(g, 1, () => ({ reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
-    run(g, 1, () => ({ move: 1, reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
-    run(g, 0.6, { move: 1 });
-    run(g, 0.8);
-    expect(g.stanley.rig.pelvis.translation().y).toBeGreaterThan(2.7);
-  });
-
-  it("from the crow's nest, Stanley can ring the bell", () => {
-    const g = play(crowsNest);
-    moveStanley(g, 6.5 - 1.8, 5.95);
-    run(g, 0.8);
-    for (let i = 0; i < 4 && !g.progress.done; i++) run(g, 1, (t) => ({ move: 0.3, jump: t === 0, reach: { x: 7.9, y: 6.55 } }));
+    // Climb onto a spar whose top corner is at (cx, top); dir is the way to go to get on it.
+    const climb = (cx: number, top: number, dir: 1 | -1) => {
+      const standX = cx - dir * 0.6;
+      run(g, 6, () => ({ move: Math.abs(pel().x - standX) > 0.08 ? Math.sign(standX - pel().x) * 0.4 : 0 }));
+      run(g, 0.5);
+      run(g, 0.7, (t) => ({ jump: t === 0, reach: { x: cx + dir * 0.15, y: top + 0.7 }, grip: hold }));
+      run(g, 1, () => ({ reach: { x: sh().x + dir * 0.1, y: sh().y - 0.7 }, grip: hold }));
+      run(g, 1, () => ({ move: dir, reach: { x: sh().x + dir * 0.1, y: sh().y - 0.7 }, grip: hold }));
+      run(g, 0.35, { move: dir });
+      run(g, 1);
+      expect(pel().y, `on the spar at ${top}`).toBeGreaterThan(top + 0.7);
+    };
+    run(g, 1);
+    climb(CN.A.x0, CN.A.y + 0.1, 1);
+    climb(CN.B.x1, CN.B.y + 0.1, -1);
+    climb(CN.C.x0, CN.C.y + 0.1, 1);
+    for (let i = 0; i < 4 && !g.progress.done; i++) run(g, 1, (t) => ({ move: 0.3, jump: t === 0, reach: { x: 8.7, y: CN.C.y + 0.85 } }));
     expect(g.progress.done).toBe(true);
   });
 });
-
 describe("Surprises", () => {
   it("knocking the gnome over offends him, once", () => {
     const g = play(dingDong);

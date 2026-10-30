@@ -8,8 +8,9 @@ import { Input } from "../input/input";
 import { Cutscene } from "../story/cutscene";
 import { BOSS, office, type OfficeInstance } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
-import { CHAPTERS, chapterOf, MEMOS, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
-import { clearSave, emptySave, loadSave, recordJob, writeSave, type SaveData } from "./save";
+import { CHAPTERS, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
+import { LEVEL_TWISTS, twistFor } from "../levels/twists";
+import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
 import { boardCard, chapterCard, endCard, golfCard, introCard, pressCard, resultsCard } from "../ui/screens";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
 import { sfx } from "../ui/audio";
@@ -64,6 +65,10 @@ export class App {
   private airTime = 0;
   /** True while the job board covers the game. */
   private paused = false;
+  /** Playing with an Overtime twist. */
+  private overtime = false;
+  /** The job board is showing the Overtime list. */
+  private boardOvertime = false;
   /** Closes the job board, if it can be closed. */
   private boardClose: (() => void) | null = null;
 
@@ -100,7 +105,8 @@ export class App {
   // ------------------------------------------------------------ flow ---
 
   private load(level: Level) {
-    this.game = new Game(this.tuning, level);
+    const twist = this.overtime && !level.sandbox ? twistFor(level.id) : null;
+    this.game = new Game(this.tuning, level, 1, twist);
     this.renderer.camera.setLevel(level);
     this.renderer.clearFx();
     this.renderer.camera.follow(this.game.stanley.position, 0, true);
@@ -120,8 +126,9 @@ export class App {
     }, 180);
   }
 
-  startLevel(level: Level) {
+  startLevel(level: Level, overtime = false) {
     this.fadeThen(() => {
+      this.overtime = overtime;
       this.load(level);
       if (level.sandbox) {
         this.mode = { kind: "sandbox" };
@@ -131,11 +138,13 @@ export class App {
       const idx = ch.levels.indexOf(level);
       if (level.target) this.renderer.camera.follow(level.target, 0, true);
       this.mode = { kind: "intro" };
+      const twist = overtime ? twistFor(level.id) : null;
       this.dom.overlay.replaceChildren(
         introCard({
-          kicker: `Job ${idx + 1} of ${ch.levels.length} · ${ch.title}`,
+          kicker: twist ? `🔥 Overtime · ${ch.title}` : `Job ${idx + 1} of ${ch.levels.length} · ${ch.title}`,
           level,
           record: this.save.jobs[level.id],
+          twist: twist ? { name: twist.name, blurb: twist.blurb, bonus: this.save.overtime[level.id]?.bonus ?? 0 } : undefined,
           controls: this.input.touch
             ? "Left thumb: run (flick up to jump) · Right thumb: drag to reach, hold to grab"
             : "A/D run · W jump · Mouse points hands · Hold click to grab · R restart",
@@ -176,7 +185,17 @@ export class App {
     if (time <= level.par[0] * 0.6) tags.push(TAGS.speedy);
     if (this.game.falls >= 3) tags.push(TAGS.clumsy);
     if (this.game.breaks > 0) tags.push(TAGS.collateral);
-    const { newBest } = recordJob(this.save, level.id, stars, time, tags);
+    // Overtime scores bonus stars instead of the regular ones.
+    const overtime = this.overtime;
+    const bonus = overtimeBonus(level, time, this.game.breaks);
+    if (overtime) {
+      tags.length = 0;
+      if (bonus >= 1) tags.push("★4 Beat the clock");
+      if (bonus >= 2) tags.push("★5 Nothing broken");
+      if (bonus === 0) tags.push(`★4 needs under ${level.par[0]}s`);
+      else if (bonus === 1) tags.push("★5: break nothing");
+    }
+    const { newBest } = overtime ? recordOvertime(this.save, level.id, bonus, time) : recordJob(this.save, level.id, stars, time, tags);
     writeSave(this.save);
 
     sfx.complete();
@@ -185,12 +204,12 @@ export class App {
     this.warp = 0.3;
     this.mode = { kind: "celebrate", start: this.mode.start };
 
-    if (level.id === FINALE && !this.save.seen.ending) return this.ending();
+    if (level.id === FINALE && !overtime && !this.save.seen.ending) return this.ending();
     setTimeout(() => {
       this.warp = 1;
       if (this.mode.kind !== "celebrate") return;
       this.mode = { kind: "results" };
-      const memos = MEMOS[level.id] ?? ["MEMO: Great hustle!"];
+      const memos = (overtime ? OVERTIME_MEMOS[LEVEL_TWISTS[level.id]] : MEMOS[level.id]) ?? ["MEMO: Great hustle!"];
       const { next, label } = this.nextAfter(level);
       this.dom.overlay.replaceChildren(
         resultsCard({
@@ -203,15 +222,23 @@ export class App {
             memos[Math.floor(Math.random() * memos.length)] +
             (this.game.breaks > 0 ? ` Breakages: ${this.game.breaks}. ${BREAK_BILLS[Math.floor(Math.random() * BREAK_BILLS.length)]}` : ""),
           nextLabel: label,
-          onRetry: () => this.startLevel(level),
+          onRetry: () => this.startLevel(level, overtime),
           onNext: next,
+          overtime: overtime ? { regular: this.save.jobs[level.id]?.stars ?? 0, bonus } : undefined,
         }),
       );
-      for (let i = 0; i < stars; i++) setTimeout(() => sfx.star(i), 250 + i * 180);
+      const ding = overtime ? (bonus ? 3 + bonus : 0) : stars;
+      for (let i = 0; i < ding; i++) setTimeout(() => sfx.star(i), 250 + i * 180);
     }, 1300);
   }
 
   private nextAfter(level: Level): { next: () => void; label: string } {
+    if (this.overtime) {
+      const all = CHAPTERS.flatMap((c) => c.levels);
+      const following = all[all.indexOf(level) + 1];
+      if (following) return { next: () => this.startLevel(following, true), label: "Next overtime ▸" };
+      return { next: () => this.showBoard(), label: "Job Board ▸" };
+    }
     const ch = chapterOf(level.id)!;
     const following = ch.levels[ch.levels.indexOf(level) + 1];
     if (following) return { next: () => this.startLevel(following), label: "Next job ▸" };
@@ -329,7 +356,17 @@ export class App {
         save: this.save,
         sandbox: SANDBOX,
         rewatch,
-        onPlay: (l) => this.startLevel(l),
+        overtime: overtimeOpen(this.save.seen)
+          ? {
+              on: this.boardOvertime,
+              twistName: (id) => twistFor(id)?.name ?? "",
+              onToggle: (on) => {
+                this.boardOvertime = on;
+                this.showBoard();
+              },
+            }
+          : undefined,
+        onPlay: (l) => this.startLevel(l, this.boardOvertime && overtimeOpen(this.save.seen)),
         onSandbox: () => this.startLevel(SANDBOX),
         onRewatch: (id) => this.playCutscene(id, () => this.showBoard()),
         onReset: () => {
@@ -454,6 +491,17 @@ export class App {
           r.splash(ev.pos, ev.big);
           sfx.splash(ev.big);
           if (ev.big) r.popup("SPLOOSH!", { x: ev.pos.x, y: ev.pos.y + 1 }, "#3b6ea8");
+          break;
+        case "ouch":
+          sfx.bonk();
+          r.popup(ev.text, ev.pos, "#c0392b");
+          r.camera.shake(9);
+          break;
+        case "sfx":
+          if (ev.name === "boom") sfx.boom();
+          else if (ev.name === "rumble") sfx.rumble();
+          else if (ev.name === "poop") sfx.poop();
+          else if (ev.name === "gust") sfx.gust();
           break;
         case "trip":
           sfx.trip();

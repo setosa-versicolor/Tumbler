@@ -19,24 +19,37 @@ export function h(tag: string, attrs: Record<string, string | ((e: Event) => voi
 
 const starRow = (n: number, cls = "stars") => h("div", { class: cls }, ...[0, 1, 2].map((i) => h("span", { class: i < n ? "on" : "" }, "★")));
 
+/** Five stars: three from the job, two more from Overtime (in a different colour). */
+const starRow5 = (regular: number, bonus: number, cls = "stars") =>
+  h(
+    "div",
+    { class: cls },
+    ...[0, 1, 2, 3, 4].map((i) => h("span", { class: `${i < 3 ? (i < regular ? "on" : "") : i - 3 < bonus ? "on bonus" : "bonus-off"}` }, "★")),
+  );
+
 const fmt = (s: number) => `${s.toFixed(1)}s`;
 
 export function introCard(o: {
   kicker: string;
   level: Level;
   record?: JobRecord;
+  /** Overtime: the twist, and any bonus stars already earned. */
+  twist?: { name: string; blurb: string; bonus: number };
   controls: string;
   onStart: () => void;
 }): HTMLElement {
   return h(
     "div",
-    { class: "card intro" },
+    { class: `card intro ${o.twist ? "overtime" : ""}` },
     h("div", { class: "kicker" }, o.kicker),
     h("div", { class: "big-icon" }, o.level.icon),
     h("h1", {}, o.level.title),
     h("p", { class: "goal" }, o.level.goal),
-    o.record && h("div", { class: "best" }, starRow(o.record.stars, "stars small"), `Best ${fmt(o.record.best)}`),
-    !o.level.sandbox && h("div", { class: "par" }, `★★★ under ${o.level.par[0]}s`),
+    o.twist && h("div", { class: "twist" }, h("b", {}, `Twist: ${o.twist.name}. `), o.twist.blurb),
+    o.record && !o.twist && h("div", { class: "best" }, starRow(o.record.stars, "stars small"), `Best ${fmt(o.record.best)}`),
+    o.twist && h("div", { class: "best" }, starRow5(o.record?.stars ?? 0, o.twist.bonus, "stars small")),
+    !o.level.sandbox &&
+      h("div", { class: "par" }, o.twist ? `★4: under ${o.level.par[0]}s with the twist · ★5: and break nothing` : `★★★ under ${o.level.par[0]}s`),
     h("button", { class: "primary", click: o.onStart }, "Clock in"),
     h("p", { class: "controls" }, o.controls),
   );
@@ -52,12 +65,14 @@ export function resultsCard(o: {
   nextLabel: string;
   onRetry: () => void;
   onNext: () => void;
+  /** Overtime: show all five stars (three from the job, bonus from this mode). */
+  overtime?: { regular: number; bonus: number };
 }): HTMLElement {
-  const stars = starRow(o.stars, "stars big");
+  const stars = o.overtime ? starRow5(o.overtime.regular, o.overtime.bonus, "stars big") : starRow(o.stars, "stars big");
   return h(
     "div",
     { class: "card results" },
-    h("div", { class: "kicker stamp" }, "JOB DONE"),
+    h("div", { class: "kicker stamp" }, o.overtime ? "OVERTIME DONE" : "JOB DONE"),
     h("h1", {}, `${o.level.icon} ${o.level.title}`),
     stars,
     h("div", { class: "time" }, fmt(o.time), o.newBest && h("span", { class: "new" }, "New best!")),
@@ -82,8 +97,13 @@ export function boardCard(o: {
   onRewatch: (id: string) => void;
   onReset: () => void;
   onClose?: () => void;
+  /** After the story: switch between the normal jobs and Overtime. */
+  overtime?: { on: boolean; twistName: (levelId: string) => string; onToggle: (on: boolean) => void };
 }): HTMLElement {
-  const total = o.chapters.flatMap((c) => c.levels).reduce((n, l) => n + (o.save.jobs[l.id]?.stars ?? 0), 0);
+  const ot = o.overtime;
+  const total = o.chapters
+    .flatMap((c) => c.levels)
+    .reduce((n, l) => n + (o.save.jobs[l.id]?.stars ?? 0) + (o.save.overtime[l.id]?.bonus ?? 0), 0);
   const chapters = o.chapters.map((c, ci) => {
     if (c.comingSoon) {
       return h("section", { class: "chapter soon" }, h("h2", {}, `${ci + 1}. ${c.title}`), h("p", {}, "Coming soon. Gerald is confident it'll be a better fit."));
@@ -91,6 +111,17 @@ export function boardCard(o: {
     const open = chapterUnlocked(ci, (id) => !!o.save.jobs[id]);
     const jobs = c.levels.map((l, i) => {
       const rec = o.save.jobs[l.id];
+      if (ot?.on) {
+        // Overtime: every job's open, with its twist and five stars to earn.
+        return h(
+          "button",
+          { class: "job overtime", click: () => o.onPlay(l) },
+          h("span", { class: "job-icon" }, l.icon),
+          h("span", { class: "job-title" }, l.title),
+          h("span", { class: "job-new" }, ot.twistName(l.id)),
+          starRow5(rec?.stars ?? 0, o.save.overtime[l.id]?.bonus ?? 0, "stars small"),
+        );
+      }
       const unlocked = open && (i === 0 || !!o.save.jobs[c.levels[i - 1].id]);
       return h(
         "button",
@@ -114,6 +145,14 @@ export function boardCard(o: {
     "div",
     { class: "card board" },
     h("div", { class: "board-head" }, h("div", {}, h("h1", {}, "Job Board"), h("p", { class: "sub" }, `Odd Jobs Ltd. · Employee: Stanley T. · ★ ${total}`)), o.onClose && h("button", { class: "close", click: o.onClose, "aria-label": "Close" }, "✕")),
+    ot &&
+      h(
+        "div",
+        { class: "mode-switch" },
+        h("button", { class: ot.on ? "" : "on", click: () => ot.onToggle(false) }, "Regular"),
+        h("button", { class: ot.on ? "on" : "", click: () => ot.onToggle(true) }, "🔥 Overtime"),
+      ),
+    ot?.on && h("p", { class: "sub" }, "Every job, with a twist. ★4: beat the ★★★ time anyway. ★5: and break nothing."),
     ...chapters,
     h(
       "section",
@@ -194,7 +233,7 @@ export function endCard(o: { onBoard: () => void }): HTMLElement {
     h("div", { class: "big-icon" }, "🏢"),
     h("h1", {}, "Odd Jobs Ltd."),
     h("p", { class: "goal" }, "We're a family. (Legally a company.)"),
-    h("p", { class: "controls" }, "Thanks for playing. Every job is still on the board, for ★★★ and for anything you might have missed."),
+    h("p", { class: "controls" }, "Thanks for playing. Overtime is now open on the Job Board: every job, with a twist, and two more stars to earn."),
     h("button", { class: "primary", click: o.onBoard }, "Job Board"),
   );
 }

@@ -45,6 +45,8 @@ export class Stanley {
   private bend = 0;
   private footContacts = new Set<number>();
   private tripCooldown = 0;
+  /** 0..1: how flattened Stanley currently is (cannonballs). Drawn, not simulated. */
+  squash = 0;
 
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);
@@ -136,6 +138,7 @@ export class Stanley {
 
   step(intent: Intent, t: Tuning, dt: number) {
     const { rig, balance, gait } = this;
+    this.squash = Math.max(0, this.squash - dt * 1.6);
     const pv = rig.pelvis.linvel();
 
     this.updateFacing(intent);

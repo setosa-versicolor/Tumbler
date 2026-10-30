@@ -4,6 +4,7 @@ import { Stanley, type Intent } from "../physics/body/stanley";
 import { Kit, shatter, type Button, type Flight, type Prop, type Solid, type Water } from "../levels/kit";
 import type { Level, LevelInstance, Progress } from "../levels/level";
 import type { Tuning } from "./tuning";
+import type { Twist, TwistInstance } from "../levels/twists";
 import { clamp, rng, wrapAngle, type Vec } from "./math";
 
 export type GameEvent =
@@ -17,6 +18,10 @@ export type GameEvent =
   | { type: "break"; pos: Vec; kind: string }
   /** Someone noticed one of the little surprises in a level. */
   | { type: "surprise"; id: string; text: string; pos: Vec }
+  /** An Overtime twist did something to Stanley (a cannonball, a goblin, a slip). */
+  | { type: "ouch"; text: string; pos: Vec }
+  /** A sound cue with no other effect (a cannon firing, a rumble). */
+  | { type: "sfx"; name: string; pos?: Vec }
   | { type: "complete" };
 
 /** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
@@ -70,7 +75,15 @@ export class Game {
   /** Seeded randomness for the sim (shards, trips, slippery fish). */
   rand = rng(1);
 
-  constructor(public tuning: Tuning, public level: Level, private seed = 1) {
+  /** Overtime: an extra complication layered over the level. */
+  twist: TwistInstance | null = null;
+
+  constructor(
+    public tuning: Tuning,
+    public level: Level,
+    private seed = 1,
+    private twistDef: Twist | null = null,
+  ) {
     this.reset();
   }
 
@@ -95,6 +108,7 @@ export class Game {
     this.doneAt = null;
     this.fragile.clear();
     this.rand = rng(this.seed);
+    this.twist = this.twistDef ? this.twistDef.start(this) : null;
     this.progress = this.inst.progress(this);
     this.lastPosture = "up";
     this.lastVel.clear();
@@ -165,6 +179,7 @@ export class Game {
       events.push({ type: "break", pos, kind: p.kind });
     }
 
+    if (this.twist) events.push(...this.twist.update(this, DT));
     for (const ev of this.inst.update?.(this, DT) ?? []) {
       if (ev.type === "surprise") {
         if (this.surprises.has(ev.id)) continue;

@@ -410,6 +410,8 @@ Grabbing got friendlier along the way: hands catch things within a few centimetr
 
 **Chapter 4 "The Skyscraper", the reveal, and the ending: done.** Window Washer (a moving cradle; scrub by moving a hand over the grime), Mail Room, Shred It (fluttery paper, a fan, a shredder that eats props), Fire Drill, and Performance Review #4 with the reveal: the nameplate stands up, the photo turns round, a close-up panel shows both, "Son…", and the second nameplate from the drawer. Then Chapter 5's single job, Executive Action, with the staff cheering one line at a time, the newspaper, the golf course text and the end card.
 
+**Overtime: done.** After the ending, the job board gains an Overtime list: every job with a twist (cannons, goblin, rabbit, low gravity, wind, earthquake, waxed floor; the finale gets cannons + goblin + rabbit). ★4 = finish inside the ★★★ time with the twist; ★5 = that, and break nothing. Twists live in `src/levels/twists.ts`; each job's twist is in `LEVEL_TWISTS`.
+
 Next: Quick Gig / Shift modes, the Tower, and a balance pass from playtesting.
 
 ## 14. First step (done)

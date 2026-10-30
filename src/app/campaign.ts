@@ -158,3 +158,36 @@ export function chapterUnlocked(index: number, jobsDone: (id: string) => boolean
   const prev = CHAPTERS[index - 1];
   return !prev.comingSoon && prev.levels.every((l) => jobsDone(l.id));
 }
+
+/**
+ * Overtime bonus stars: ★4 for finishing with the twist inside the ★★★
+ * time; ★5 for doing that without breaking anything.
+ */
+export function overtimeBonus(level: Level, seconds: number, breaks: number): number {
+  if (seconds > level.par[0]) return 0;
+  return breaks === 0 ? 2 : 1;
+}
+
+/** Overtime opens once the story's been finished. */
+export const overtimeOpen = (seen: Record<string, boolean>) => !!seen.ending;
+
+/** Gerald's memos for Overtime, by twist. */
+export const OVERTIME_MEMOS: Record<string, string[]> = {
+  cannons: [
+    "MEMO: Re: the cannons. We don't know where they came from. Legal says not to ask.",
+    "MEMO: Being hit by a cannonball is not a valid reason for a sick day. It is a valid reason for a nap.",
+  ],
+  goblin: [
+    "MEMO: The goblin is not on payroll. Please stop asking HR about the goblin.",
+    "MEMO: The goblin has filed a complaint about you. HR is taking it seriously. The goblin has a spear.",
+  ],
+  rabbit: [
+    "MEMO: Reminder that startling the rabbit is a choice. A slippery choice.",
+    "MEMO: Facilities would like a word about the floor. Several words. Mostly 'why.'",
+  ],
+  moon: ["MEMO: Gravity has been restored. Most of the coffee has come down. Some is still up there."],
+  ice: ["MEMO: The floor is very clean. You've cleaned most of it with your back."],
+  wind: ["MEMO: It was windy. You were windier. Somehow."],
+  quake: ["MEMO: The earthquake has been downgraded to 'a Tuesday.'"],
+  everything: ["MEMO: Day one as CEO: cannons, a goblin, a rabbit. Honestly? Better than my day one."],
+};

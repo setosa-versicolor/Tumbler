@@ -17,9 +17,16 @@ export interface SaveData {
   seen: Record<string, boolean>;
   /** How many of Gerald's jokes about each object have been used, so none repeat. */
   barks: Record<string, number>;
+  /** Overtime results: bonus stars (0–2, for ★4 and ★5) and best time with the twist. */
+  overtime: Record<string, OvertimeRecord>;
 }
 
-export const emptySave = (): SaveData => ({ v: 1, jobs: {}, seen: {}, barks: {} });
+export interface OvertimeRecord {
+  bonus: number;
+  best: number;
+}
+
+export const emptySave = (): SaveData => ({ v: 1, jobs: {}, seen: {}, barks: {}, overtime: {} });
 
 export interface Storage {
   getItem(key: string): string | null;
@@ -41,7 +48,7 @@ export function loadSave(store: Storage | null = storage()): SaveData {
     if (!raw) return emptySave();
     const data = JSON.parse(raw);
     if (data?.v !== 1) return emptySave();
-    return { v: 1, jobs: data.jobs ?? {}, seen: data.seen ?? {}, barks: data.barks ?? {} };
+    return { v: 1, jobs: data.jobs ?? {}, seen: data.seen ?? {}, barks: data.barks ?? {}, overtime: data.overtime ?? {} };
   } catch {
     return emptySave();
   }
@@ -73,5 +80,14 @@ export function recordJob(data: SaveData, id: string, stars: number, time: numbe
     tags: [...new Set([...(prev?.tags ?? []), ...tags])],
   };
   data.jobs[id] = record;
+  return { record, newBest };
+}
+
+/** Merge an Overtime finish into the save, keeping the best. */
+export function recordOvertime(data: SaveData, id: string, bonus: number, time: number): { record: OvertimeRecord; newBest: boolean } {
+  const prev = data.overtime[id];
+  const newBest = !prev || time < prev.best;
+  const record = { bonus: Math.max(bonus, prev?.bonus ?? 0), best: Math.min(time, prev?.best ?? Infinity) };
+  data.overtime[id] = record;
   return { record, newBest };
 }

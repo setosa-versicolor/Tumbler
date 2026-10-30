@@ -110,6 +110,17 @@ export const sfx = {
     burst(big ? 0.6 : 0.3, 700, big ? 0.6 : 0.3, 200, 0.5);
     burst(big ? 0.4 : 0.2, 2500, big ? 0.25 : 0.12, 1200, 0.7);
   },
+  boom: () => {
+    burst(0.5, 160, 0.7, 50, 0.6);
+    tone(90, 40, 0.4, "sawtooth", 0.08);
+  },
+  bonk: () => {
+    tone(520, 160, 0.18, "square", 0.08);
+    burst(0.12, 300, 0.4, 120);
+  },
+  rumble: () => burst(0.9, 90, 0.35, 60, 0.4),
+  poop: () => tone(180, 90, 0.12, "sine", 0.12),
+  gust: () => burst(1.6, 500, 0.25, 900, 0.3),
   click: () => tone(1200, 900, 0.04, "square", 0.04),
   /** Gerald's voice: low, confident blips. Asides are a touch higher. */
   blip: (aside: boolean) => tone((aside ? 210 : 150) + Math.random() * 40, 120, 0.06, "square", 0.035),

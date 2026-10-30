@@ -323,8 +323,22 @@ export class Renderer {
     }
     for (const p of game.props) this.drawProp(p);
     game.inst.drawMid?.(this, game);
+    game.twist?.draw?.(this, game);
     this.drawShadow(game);
+    // Flattened (a cannonball): squash him about his feet.
+    const sq = game.stanley.squash;
+    if (sq > 0) {
+      const b = game.stanley.balance;
+      const p = game.stanley.rig.pelvis.translation();
+      const g = this.camera.toScreen({ x: p.x, y: Number.isFinite(b.groundDist) ? p.y - b.groundDist : p.y - 0.9 });
+      const k = Math.min(1, sq * 1.4);
+      this.ctx.save();
+      this.ctx.translate(g.x, g.y);
+      this.ctx.scale(1 + 0.45 * k, 1 - 0.55 * k);
+      this.ctx.translate(-g.x, -g.y);
+    }
     this.drawStanley(game, dt);
+    if (sq > 0) this.ctx.restore();
     this.drawWater(game);
     game.inst.drawFront?.(this, game);
     this.drawFx(dt);

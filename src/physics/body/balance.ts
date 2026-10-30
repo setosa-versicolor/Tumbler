@@ -124,7 +124,8 @@ export class Balance {
     const control = (this.grounded ? 1 : 0.25) * Math.min(1, s * 1.5);
     // Bent over (picking something up), Stanley shuffles rather than sprints.
     const speed = t.moveSpeed * (1 - STOOP_SLOWDOWN * bend);
-    const ax = clamp(7 * (move * speed - pv.x), -22, 22) * control;
+    // On a slippery floor Stanley can barely speed up, slow down or stop.
+    const ax = clamp(7 * (move * speed - pv.x), -22, 22) * control * t.traction;
     pelvis.applyImpulse({ x: M * ax * dt, y: 0 }, true);
 
     // --- Jump ----------------------------------------------------------------

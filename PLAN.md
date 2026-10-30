@@ -243,6 +243,13 @@ tests/
 
 ---
 
-## 12. First step
+## 12. Status
+
+**M0 body toy: built**, needs playtesting. See the README for controls. Changes from the plan:
+- Rendering uses plain Canvas2D for now; PixiJS can come in M2 if we need effects it's better at.
+- Balance and climbing use assisted forces (pelvis hover spring, mantle assist) rather than pure foot physics. This keeps falls and recoveries readable while the arms stay fully physical.
+- Upper arms and forearms don't collide with level geometry, so they don't snag on ledges. Hands still do.
+
+## 13. First step (done)
 
 Start **M0**: scaffold Vite + TypeScript + Rapier + Pixi, build Tumbler's 13-part active ragdoll with balance, gait, IK arm reach and grip, then a test room with boxes, a ball and a button, plus a tuning panel. Play it and tune it until grabbing and throwing are fun on their own.

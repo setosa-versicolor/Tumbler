@@ -156,3 +156,45 @@ export function chapterCard(o: {
     ),
   );
 }
+
+/** The ending, in three cards: the press, the golf course, the end. */
+export function pressCard(o: { onNext: () => void }): HTMLElement {
+  return h(
+    "div",
+    { class: "card press" },
+    h("div", { class: "masthead" }, "THE DAILY LEDGER"),
+    h("div", { class: "kicker" }, "Business · Late edition"),
+    h("h1", {}, "CEO Personally Relocates Document; Shares Up 40%"),
+    h("p", { class: "goal" }, "Staff describe the moment as \"the bravest thing we've ever seen.\" Analysts are calling it \"hands-on.\""),
+    h("p", { class: "memo" }, "★★★★★  \"Finally.\" — Mrs. Henderson, No. 12"),
+    h("button", { class: "primary", click: o.onNext }, "Meanwhile… ▸"),
+  );
+}
+
+export function golfCard(o: { onNext: () => void }): HTMLElement {
+  return h(
+    "div",
+    { class: "card golf" },
+    h("div", { class: "big-icon" }, "⛳"),
+    h("div", { class: "kicker" }, "Meanwhile, at the golf course"),
+    h(
+      "div",
+      { class: "chat" },
+      h("div", { class: "msg them" }, h("span", { class: "who" }, "Office"), "he moved a file"),
+      h("div", { class: "msg me" }, "That's my boy."),
+    ),
+    h("button", { class: "primary", click: o.onNext }, "▸"),
+  );
+}
+
+export function endCard(o: { onBoard: () => void }): HTMLElement {
+  return h(
+    "div",
+    { class: "card intro end" },
+    h("div", { class: "big-icon" }, "🏢"),
+    h("h1", {}, "Odd Jobs Ltd."),
+    h("p", { class: "goal" }, "We're a family. (Legally a company.)"),
+    h("p", { class: "controls" }, "Thanks for playing. Every job is still on the board, for ★★★ and for anything you might have missed."),
+    h("button", { class: "primary", click: o.onBoard }, "Job Board"),
+  );
+}

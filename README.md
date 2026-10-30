@@ -2,11 +2,13 @@
 
 A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body that won't cooperate. See [PLAN.md](PLAN.md) for the full concept and roadmap.
 
-**Current state: Chapters 1–3 are playable.**
+**Current state: the whole game is playable, start to finish.**
 
 - **Chapter 1, The Suburb:** onboarding cutscene, then **Ding Dong**, **Laundry Day**, **Stack It** and **Pizza Up**, then Performance Review #1.
 - **Chapter 2, The Docks:** **Crate Expectations** (crates onto a boat across open water; there's a gangplank if you think of it), **Fish Toss** (slippery fish into an ice bin), **Roll Out the Barrels** (heavy barrels into the hold, past a bollard) and **Crow's Nest** (climb the rigging, ring the ship's bell), then Performance Review #2.
 - **Chapter 3, Downtown:** **Moving Day** (a sofa through a doorway and up a ramp into a van; it won't fit overhead), **Hang the Painting** (onto a hook, level; there's a stool), **Pin Reset** (stand six bowling pins back up; grab one by the end and it dangles straight) and **Coffee Run** (a tray of four coffees across the office without spilling), then Performance Review #3.
+- **Chapter 4, The Skyscraper:** **Window Washer** (ride the cradle up and down the building, scrubbing the grime as it passes), **Mail Room** (parcels into the shelf of their colour, up the wall), **Shred It** (paper flutters; there's a fan) and **Fire Drill** (three training mannequins out of the fire exit), then Performance Review #4.
+- **Chapter 5, The Corner Office:** one last job, and the ending. No spoilers.
 - **Water:** everything floats, and falling in gets you a splash and a trip back to the start.
 - **Reviews** play out in Gerald's office with live physics: Stanley walks in under real physics, so what he knocks over is different every time, and Gerald reacts to each mishap.
 - **Little surprises** hidden around the jobs for anyone who happens to notice. Nothing tracks or counts them, and no spoilers here.

@@ -12,6 +12,11 @@ import { movingDay } from "../levels/downtown/movingDay";
 import { hangThePainting } from "../levels/downtown/hangThePainting";
 import { pinReset } from "../levels/downtown/pinReset";
 import { coffeeRun } from "../levels/downtown/coffeeRun";
+import { windowWasher } from "../levels/skyscraper/windowWasher";
+import { mailRoom } from "../levels/skyscraper/mailRoom";
+import { shredIt } from "../levels/skyscraper/shredIt";
+import { fireDrill } from "../levels/skyscraper/fireDrill";
+import { executiveAction } from "../levels/finale/executiveAction";
 
 export interface Chapter {
   id: string;
@@ -29,7 +34,8 @@ export const CHAPTERS: Chapter[] = [
   { id: "suburb", title: "The Suburb", intro: "onboarding", review: "review-1", levels: [dingDong, laundryDay, stackIt, pizzaUp] },
   { id: "docks", title: "The Docks", review: "review-2", levels: [crateExpectations, fishToss, rollOut, crowsNest] },
   { id: "downtown", title: "Downtown", review: "review-3", levels: [movingDay, hangThePainting, pinReset, coffeeRun] },
-  { id: "skyscraper", title: "The Skyscraper", levels: [], comingSoon: true },
+  { id: "skyscraper", title: "The Skyscraper", review: "review-4", levels: [windowWasher, mailRoom, shredIt, fireDrill] },
+  { id: "corner-office", title: "The Corner Office", levels: [executiveAction] },
 ];
 
 export const SANDBOX = dayOff;
@@ -105,6 +111,31 @@ export const MEMOS: Record<string, string[]> = {
     "MEMO: Coffee delivered. The carpet also had some.",
     "MEMO: Reception would like their coffee 'less acrobatic' next time.",
     "MEMO: You are now on the do-not-hand-a-tray list. It's a short list. You're on it twice.",
+  ],
+  "window-washer": [
+    "MEMO: Windows clean. The client can see out now. They've asked us to un-see some things.",
+    "MEMO: Reminder that the cradle is not a ride. It is, technically, a ride.",
+    "MEMO: The bucket has been reported missing. Last seen: falling.",
+  ],
+  "mail-room": [
+    "MEMO: Parcels sorted. Mail room re-sorted. Mail room staff re-hired.",
+    "MEMO: Throwing parcels is 'not a delivery method.' I've asked them to define 'method.'",
+    "MEMO: Someone in the mail room cried. Happy tears, we've decided.",
+  ],
+  "shred-it": [
+    "MEMO: Documents shredded. Fan also shredded, emotionally.",
+    "MEMO: Legal confirms nothing we shred can be used against us. Including this memo.",
+    "MEMO: Paper is a renewable resource. Our patience is less renewable.",
+  ],
+  "fire-drill": [
+    "MEMO: Fire drill complete. No fire. Several near-fires.",
+    "MEMO: The mannequins have asked to be evacuated from future jobs.",
+    "MEMO: Health & Safety would like to thank you for the material.",
+  ],
+  "executive-action": [
+    "MEMO: The file has been moved. History has been made. Shares are up.",
+    "MEMO: A statue is being commissioned. Of the file.",
+    "MEMO: From the desk of the CEO: …that's you now. Well done.",
   ],
   "pizza-up": [
     "MEMO: Pizza was 'technically' delivered. Great hustle!",

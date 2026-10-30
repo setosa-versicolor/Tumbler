@@ -367,3 +367,27 @@ button.link.danger { color: #b0503c; }
   .stars.big { font-size: 34px; }
   .memo { margin: 8px 0; }
 }
+
+/* ------------------------------------------------------------- ending --- */
+
+.press { font-family: Georgia, "Times New Roman", serif; }
+.press .masthead {
+  font-weight: 900;
+  font-size: 24px;
+  letter-spacing: 0.04em;
+  border-bottom: 3px double var(--ink);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.press h1 { font-size: 24px; line-height: 1.15; }
+.chat { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 18px; text-align: left; }
+.msg {
+  max-width: 80%;
+  padding: 9px 13px;
+  border-radius: 16px;
+  font-size: 16px;
+  animation: pop 0.3s both;
+}
+.msg .who { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }
+.msg.them { background: #ece3d8; align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.me { background: #37a59c; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; animation-delay: 1.2s; }

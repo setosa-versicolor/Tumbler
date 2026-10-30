@@ -2,6 +2,7 @@ import { INDOOR, type Level, type LevelInstance } from "../levels/level";
 import type { Prop } from "../levels/kit";
 import type { Game } from "../sim/game";
 import type { Renderer } from "../render/renderer";
+import type { Vec } from "../sim/math";
 
 export const DESK = { x0: 5.8, x1: 8.2, top: 0.85 };
 export const BOSS = { x: 7.45, headY: 1.78 };
@@ -21,6 +22,12 @@ export interface OfficeInstance extends LevelInstance {
   /** How many things have been knocked over so far. */
   readonly mishaps: number;
   item(tag: Incident): Prop | undefined;
+  /** The nameplate stands up facing us, and the photo turns round. */
+  reveal(): void;
+  /** The new nameplate goes on the desk. */
+  promote(): void;
+  /** Where the camera should look instead of the usual framing (the reveal). */
+  focus: Vec | null;
 }
 
 /** Gerald's office. Every review is played out here with live physics. */
@@ -50,11 +57,33 @@ export const office: Level = {
     const tagged = new Map(kit.props.filter((p) => p.tag).map((p) => [p.tag as Incident, p]));
     const start = new Map([...tagged].map(([t, p]) => [t, { ...p.body.translation() }]));
     const happened = new Set<Incident>();
+    /** Put a desk item back where it started, upright. */
+    const stand = (tag: Incident) => {
+      const p = tagged.get(tag)!;
+      p.body.setTranslation(start.get(tag)!, true);
+      p.body.setRotation(0, true);
+      p.body.setLinvel({ x: 0, y: 0 }, true);
+      p.body.setAngvel(0, true);
+    };
     let lastPosture = "up";
 
     const inst: OfficeInstance = {
       talking: false,
       sipping: false,
+      focus: null,
+      reveal() {
+        for (const tag of ["nameplate", "photo"] as const) {
+          stand(tag);
+          happened.add(tag);
+        }
+        tagged.get("nameplate")!.mood = "GERALD TUMBLER, CEO";
+        tagged.get("photo")!.mood = "front";
+      },
+      promote() {
+        stand("nameplate");
+        happened.add("nameplate");
+        tagged.get("nameplate")!.mood = "STANLEY TUMBLER, CEO";
+      },
       get mishaps() {
         return happened.size;
       },
@@ -82,6 +111,9 @@ export const office: Level = {
         return fresh;
       },
       progress: () => ({ done: false }),
+      drawFront: (r) => {
+        if (inst.focus) drawCloseUp(r, tagged.get("nameplate")!.mood ?? "");
+      },
       drawBack: (r, game) => {
         drawOffice(r);
         // Drawn before the desk so the desk hides his legs.
@@ -147,4 +179,38 @@ function drawBoss(r: Renderer, talking: boolean, t: number, sipping = false) {
   r.line({ x: x - 0.2, y: 1.45 }, cup, 0.11, "#4a5160");
   r.roundRect(cup.x - 0.07, cup.y - 0.02, cup.x + 0.05, cup.y + 0.14, 0.02, "#f4f4f4");
   r.text("#1", { x: cup.x - 0.01, y: cup.y + 0.04 }, 0.06, "#c0392b");
+}
+
+/** The reveal, up close: a comic-style panel above the desk with the nameplate and the photo. */
+function drawCloseUp(r: Renderer, name: string) {
+  const cx = 6.9;
+  const cy = 2.62;
+  r.roundRect(cx - 1.9, cy - 0.68, cx + 1.9, cy + 0.68, 0.12, "#2a2230");
+  r.roundRect(cx - 1.85, cy - 0.63, cx + 1.85, cy + 0.63, 0.1, "#fff8e6");
+  // Nameplate.
+  r.poly(
+    [
+      { x: cx - 1.75, y: cy - 0.45 },
+      { x: cx + 0.15, y: cy - 0.45 },
+      { x: cx + 0.02, y: cy + 0.1 },
+      { x: cx - 1.62, y: cy + 0.1 },
+    ],
+    "#6b4a3a",
+  );
+  r.rect(cx - 1.6, cy - 0.33, cx, cy - 0.02, "#f2c94c");
+  r.text(name, { x: cx - 0.8, y: cy - 0.175 }, 0.13, "#3a2a20", "center", 900);
+  // The family photo.
+  const px = cx + 1.05;
+  r.rect(px - 0.56, cy - 0.56, px + 0.56, cy + 0.56, "#8a6a4e");
+  r.rect(px - 0.5, cy - 0.5, px + 0.5, cy + 0.5, "#cfe9f7");
+  const person = (x: number, top: number, rr: number, skin: string, shirt: string) => {
+    r.rect(x - rr, cy - 0.52, x + rr, top, shirt);
+    r.circle({ x, y: top + rr * 0.9 }, rr * 0.85, skin);
+  };
+  person(px - 0.27, cy + 0.0, 0.17, "#eebd92", "#4a5160");
+  r.roundRect(px - 0.44, cy + 0.28, px - 0.1, cy + 0.34, 0.02, "#9aa0a8");
+  person(px + 0.27, cy - 0.03, 0.16, "#f2c79b", "#c58be8");
+  person(px, cy - 0.3, 0.1, "#f2c79b", "#37a59c");
+  r.rect(px - 0.09, cy - 0.12, px + 0.09, cy - 0.08, "#f08a3c");
+  r.text("♥", { x: px + 0.27, y: cy + 0.38 }, 0.1, "#e85d5d");
 }

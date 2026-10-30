@@ -11,7 +11,7 @@ import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
 import { dayOff } from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
-import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, SIGN_OFF } from "../src/story/scripts";
+import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, REVIEW_4, SIGN_OFF } from "../src/story/scripts";
 import { crateExpectations } from "../src/levels/docks/crateExpectations";
 import { fishToss } from "../src/levels/docks/fishToss";
 import { rollOut } from "../src/levels/docks/rollOut";
@@ -22,6 +22,11 @@ import { hangThePainting } from "../src/levels/downtown/hangThePainting";
 import { pinReset } from "../src/levels/downtown/pinReset";
 import { coffeeRun } from "../src/levels/downtown/coffeeRun";
 import { wrapAngle } from "../src/sim/math";
+import { windowWasher } from "../src/levels/skyscraper/windowWasher";
+import { mailRoom } from "../src/levels/skyscraper/mailRoom";
+import { shredIt } from "../src/levels/skyscraper/shredIt";
+import { fireDrill } from "../src/levels/skyscraper/fireDrill";
+import { executiveAction } from "../src/levels/finale/executiveAction";
 import type { Level } from "../src/levels/level";
 
 beforeAll(() => initPhysics());
@@ -39,8 +44,10 @@ describe("every level", () => {
       run(g, 3);
       expect(g.stanley.balance.posture).toBe("up");
       const p = g.stanley.rig.pelvis.translation();
-      expect(p.y - level.spawn.y).toBeGreaterThan(0.75);
-      expect(p.y - level.spawn.y).toBeLessThan(1.1);
+      // Standing height above whatever's underfoot (which may be moving).
+      expect(g.stanley.balance.groundDist).toBeGreaterThan(0.75);
+      expect(g.stanley.balance.groundDist).toBeLessThan(1.1);
+      void p;
       expect(g.progress.done).toBe(false);
       expect(g.doneAt).toBeNull();
     });
@@ -164,7 +171,7 @@ describe("Pizza Up", () => {
 });
 
 describe("Cutscenes", () => {
-  for (const script of [ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3]) {
+  for (const script of [ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, REVIEW_4]) {
     it(`${script.id} plays through to the end with Stanley back at the door`, () => {
       const g = play(office);
       const scene = new Cutscene(script, g);
@@ -432,13 +439,13 @@ describe("Surprises", () => {
 describe("Gerald's jokes", () => {
   it("no line is used twice anywhere in the cutscenes, except the sign-off", () => {
     const lines = [
-      ...[ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3].flatMap((s) => s.steps.flatMap((st) => ("text" in st ? [st.text] : []))),
+      ...[ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, REVIEW_4].flatMap((s) => s.steps.flatMap((st) => ("text" in st ? [st.text] : []))),
       ...Object.values(BARKS).flat(),
     ];
     // The sign-off is the one line that's meant to repeat.
     const dupes = lines.filter((l, i) => lines.indexOf(l) !== i && l !== SIGN_OFF);
     expect(dupes).toEqual([]);
-    for (const script of [ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3]) {
+    for (const script of [ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, REVIEW_4]) {
       expect(script.steps.some((st) => st.do === "say" && st.text === SIGN_OFF), script.id).toBe(true);
     }
   });
@@ -587,5 +594,100 @@ describe("Coffee Run", () => {
     run(g, 1, () => ({ reach: { x: sh().x + 0.6, y: 0.95 }, grip: hold }));
     run(g, 2, () => ({ reach: { x: sh().x + 0.6, y: 0.95 } }));
     expect(g.progress.done).toBe(true);
+  });
+});
+
+describe("Window Washer", () => {
+  it("Stanley rides the cradle and can scrub every window over a trip up and down", { timeout: 30000 }, () => {
+    const g = play(windowWasher);
+    g.props.find((p) => p.kind === "bucket")!.body.setTranslation({ x: 2.9, y: 0.6 }, true);
+    run(g, 4);
+    expect(g.stanley.rig.pelvis.translation().y).toBeGreaterThan(windowWasher.spawn.y + 2);
+    expect(g.stanley.balance.posture).toBe("up");
+    // Scrub up and down at shoulder height against the glass the whole way.
+    run(g, 32, (t) => ({ move: 0.4, reach: { x: 6.1, y: g.stanley.shoulder.y + Math.sin(t * 10) * 0.35 } }));
+    expect(g.progress.done).toBe(true);
+  });
+});
+
+describe("Mail Room", () => {
+  it("counts parcels only in the shelf of their own colour", () => {
+    const g = play(mailRoom);
+    const parcels = g.props.filter((p) => p.kind === "parcel");
+    const red = parcels.find((p) => p.color === "#e85d5d")!;
+    const blue = parcels.find((p) => p.color === "#5d9de8")!;
+    const yellow = parcels.find((p) => p.color === "#f2c94c")!;
+    red.body.setTranslation({ x: 8.35, y: 1.8 }, true); // the blue shelf
+    run(g, 1);
+    expect(g.progress.label).toBe("Parcels sorted 0/3");
+    red.body.setTranslation({ x: 7.25, y: 1.1 }, true);
+    blue.body.setTranslation({ x: 8.35, y: 1.8 }, true);
+    yellow.body.setTranslation({ x: 9.45, y: 2.5 }, true);
+    run(g, 1.5);
+    expect(g.progress.done).toBe(true);
+  });
+});
+
+describe("Shred It", () => {
+  it("paper dropped in the shredder is shredded", () => {
+    const g = play(shredIt);
+    const papers = g.props.filter((p) => p.kind === "paper");
+    papers.slice(0, 5).forEach((p, i) => p.body.setTranslation({ x: 9.05, y: 1.6 + i * 0.4 }, true));
+    run(g, 4);
+    expect(g.props.filter((p) => p.kind === "paper")).toHaveLength(1);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("the fan blows paper back", () => {
+    const g = play(shredIt);
+    const paper = g.props.find((p) => p.kind === "paper")!.body;
+    paper.setTranslation({ x: 6.5, y: 1.5 }, true);
+    run(g, 1);
+    expect(paper.translation().x).toBeLessThan(6.2);
+  });
+});
+
+describe("Fire Drill", () => {
+  it("is done with every mannequin outside", () => {
+    const g = play(fireDrill);
+    g.props.filter((p) => p.kind === "dummy").forEach((d, i) => {
+      d.body.setTranslation({ x: 13.3 + i * 0.5, y: 0.51 }, true);
+      d.body.setRotation(0, true);
+    });
+    run(g, 1);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("a mannequin fits through the fire exit", () => {
+    const g = play(fireDrill);
+    const d = g.props.find((p) => p.kind === "dummy")!.body;
+    d.setTranslation({ x: 11.8, y: 0.52 }, true);
+    d.setLinvel({ x: 5.5, y: 0 }, true);
+    run(g, 1.5);
+    expect(d.translation().x).toBeGreaterThan(12.8);
+  });
+});
+
+describe("Executive Action", () => {
+  it("is done when the file is in the cabinet", () => {
+    const g = play(executiveAction);
+    g.props.find((p) => p.kind === "file")!.body.setTranslation({ x: 9.9, y: 1.4 }, true);
+    run(g, 1);
+    expect(g.progress.done).toBe(true);
+  });
+});
+
+describe("The reveal", () => {
+  it("Review #4 ends with the photo turned round and Stanley's name on the desk", () => {
+    const g = play(office);
+    const scene = new Cutscene(REVIEW_4, g);
+    for (let t = 0; t < 120 && !scene.done; t += 1 / 60) {
+      const intent = scene.update(1 / 60);
+      g.step(intent);
+      g.step(intent);
+    }
+    expect(scene.done).toBe(true);
+    expect(g.props.find((p) => p.kind === "nameplate")!.mood).toBe("STANLEY TUMBLER, CEO");
+    expect(g.props.find((p) => p.kind === "photo")!.mood).toBe("front");
   });
 });

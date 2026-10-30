@@ -408,7 +408,9 @@ Changes from the plan:
 
 Grabbing got friendlier along the way: hands catch things within a few centimetres; fixed geometry is only grabbed above chest height (so counters and desk edges don't latch on); when touching several things the hand takes the most substantial; and the elbow no longer snaps to the other side when Stanley turns round.
 
-Next: Chapter 4 "The Skyscraper" (window washing at height, Review #4 and the reveal), then the final job and ending, then Quick Gig / Shift modes.
+**Chapter 4 "The Skyscraper", the reveal, and the ending: done.** Window Washer (a moving cradle; scrub by moving a hand over the grime), Mail Room, Shred It (fluttery paper, a fan, a shredder that eats props), Fire Drill, and Performance Review #4 with the reveal: the nameplate stands up, the photo turns round, a close-up panel shows both, "Son…", and the second nameplate from the drawer. Then Chapter 5's single job, Executive Action, with the staff cheering one line at a time, the newspaper, the golf course text and the end card.
+
+Next: Quick Gig / Shift modes, the Tower, and a balance pass from playtesting.
 
 ## 14. First step (done)
 

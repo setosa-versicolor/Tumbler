@@ -6,14 +6,17 @@ import type { Level } from "../levels/level";
 import { Renderer } from "../render/renderer";
 import { Input } from "../input/input";
 import { Cutscene } from "../story/cutscene";
-import { BOSS, office } from "../story/office";
+import { BOSS, office, type OfficeInstance } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
 import { CHAPTERS, chapterOf, MEMOS, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { clearSave, emptySave, loadSave, recordJob, writeSave, type SaveData } from "./save";
-import { boardCard, chapterCard, introCard, resultsCard } from "../ui/screens";
+import { boardCard, chapterCard, endCard, golfCard, introCard, pressCard, resultsCard } from "../ui/screens";
+import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
 import { sfx } from "../ui/audio";
 
 const MAX_STEPS_PER_FRAME = 8;
+/** The last job; finishing it the first time plays the ending. */
+const FINALE = "executive-action";
 const TRIP_WORDS = ["Whoa!", "Wha—", "Oof!", "Hup—no!", "Yikes!"];
 const BREAK_WORDS = ["CRASH!", "Oops.", "Whoops!", "…Sorry.", "SMASH!", "Uh-oh."];
 const BREAK_BILLS = [
@@ -30,6 +33,7 @@ type Mode =
   | { kind: "results" }
   | { kind: "sandbox" }
   | { kind: "cutscene"; scene: Cutscene; then: () => void; ending: boolean }
+  | { kind: "ending" }
   | { kind: "card" };
 
 export interface Dom {
@@ -181,6 +185,7 @@ export class App {
     this.warp = 0.3;
     this.mode = { kind: "celebrate", start: this.mode.start };
 
+    if (level.id === FINALE && !this.save.seen.ending) return this.ending();
     setTimeout(() => {
       this.warp = 1;
       if (this.mode.kind !== "celebrate") return;
@@ -232,6 +237,45 @@ export class App {
         onSandbox: () => this.startLevel(SANDBOX),
       }),
     );
+  }
+
+  /**
+   * The end of the game: the staff go wild, one line at a time, then the
+   * newspaper, the golf course, and the end card.
+   */
+  private ending() {
+    setTimeout(() => {
+      this.warp = 1;
+      if (this.mode.kind !== "celebrate") return;
+      this.mode = { kind: "ending" };
+      STAFF_CHEERS.forEach((line, i) =>
+        setTimeout(() => {
+          if (this.mode.kind !== "ending") return;
+          const at = STAFF_SPOTS[i];
+          this.renderer.note(line, { x: at.x, y: at.y + 0.9 });
+          this.renderer.confetti({ x: at.x, y: at.y + 0.5 });
+          sfx.score();
+        }, 400 + i * 1900),
+      );
+      setTimeout(() => {
+        if (this.mode.kind !== "ending") return;
+        sfx.complete();
+        this.dom.overlay.replaceChildren(
+          pressCard({
+            onNext: () =>
+              this.dom.overlay.replaceChildren(
+                golfCard({
+                  onNext: () => {
+                    this.save.seen.ending = true;
+                    writeSave(this.save);
+                    this.dom.overlay.replaceChildren(endCard({ onBoard: () => this.showBoard() }));
+                  },
+                }),
+              ),
+          }),
+        );
+      }, 400 + STAFF_CHEERS.length * 1900 + 600);
+    }, 1300);
   }
 
   playCutscene(id: string, then: () => void) {
@@ -338,6 +382,8 @@ export class App {
     }
     if (m.kind === "cutscene") {
       intent = m.scene.update(dt);
+      // Push in on the desk for the reveal.
+      if ((g.inst as OfficeInstance).focus) this.renderer.camera.punch = 0.35;
       this.renderer.bubble = m.scene.bubble();
       if (m.scene.done && !m.ending) {
         m.ending = true;
@@ -362,7 +408,7 @@ export class App {
     // During the intro card the camera shows the goal, then pans to Stanley on clock-in.
     const focus =
       m.kind === "cutscene"
-        ? { x: (g.stanley.position.x + BOSS.x) / 2, y: 1.6 }
+        ? ((g.inst as OfficeInstance).focus ?? { x: (g.stanley.position.x + BOSS.x) / 2, y: 1.6 })
         : m.kind === "intro" && g.level.target
           ? g.level.target
           : g.stanley.position;

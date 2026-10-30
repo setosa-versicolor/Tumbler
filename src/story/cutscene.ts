@@ -63,6 +63,8 @@ export class Cutscene {
       return;
     }
     if (s.do === "say") this.line = { text: s.text, aside: !!s.aside, shown: 0, held: 0 };
+    // Any close-up ends when Stanley heads for the door.
+    if (s.do === "walk") this.office.focus = null;
     if (s.do === "ifCalm") {
       if (this.office.mishaps > 0) return this.next();
       this.line = { text: s.text, aside: true, shown: 0, held: 0 };
@@ -131,6 +133,31 @@ export class Cutscene {
       case "wait":
         if (this.stepTime > s.time) this.next();
         break;
+      case "reveal":
+        this.office.reveal();
+        this.office.focus = { x: 7.0, y: 1.75 };
+        this.next();
+        break;
+      case "promote":
+        this.office.promote();
+        this.office.focus = { x: 7.0, y: 1.75 };
+        this.next();
+        break;
+      case "celebrate": {
+        // Jumping, arms windmilling, hitting everything on the desk.
+        const t = this.stepTime;
+        const p = this.game.stanley.rig.pelvis.translation();
+        intent = {
+          ...IDLE_INTENT,
+          jump: Math.floor(t / 0.7) !== Math.floor((t - dt) / 0.7),
+          reach: { x: p.x + 0.6 + Math.sin(t * 11) * 0.5, y: p.y + 0.9 + Math.cos(t * 9) * 0.5 },
+        };
+        if (t > s.time) {
+          this.office.focus = null;
+          this.next();
+        }
+        break;
+      }
       case "say":
       case "ifCalm":
         // Lines wait while Gerald handles an interruption.
@@ -150,6 +177,6 @@ export class Cutscene {
   bubble(): Bubble | null {
     const l = this.bark ?? this.line;
     if (!l) return null;
-    return { anchor: { x: BOSS.x - 0.15, y: BOSS.headY + 0.2 }, text: l.text, shown: l.shown, aside: l.aside };
+    return { anchor: { x: BOSS.x - 0.15, y: BOSS.headY + 0.2 }, text: l.text, shown: l.shown, aside: l.aside, below: !!this.office.focus };
   }
 }

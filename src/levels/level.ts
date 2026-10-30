@@ -89,3 +89,12 @@ export const OFFICE: Theme = {
   floorTop: "#7a828c",
   stripe: "rgba(255,255,255,0.12)",
 };
+
+/** Fifty floors up: all sky. */
+export const HIGH_RISE: Theme = {
+  outdoor: true,
+  top: "#6fb7e6",
+  bottom: "#cfe9f7",
+  floor: "#8a9099",
+  floorTop: "#a3a9b1",
+};

@@ -10,7 +10,13 @@ export type Step =
   | { do: "fidget"; at: Incident; time: number }
   | { do: "wait"; time: number }
   /** Only if nothing has been broken yet. */
-  | { do: "ifCalm"; text: string };
+  | { do: "ifCalm"; text: string }
+  /** The nameplate and photo, finally facing us. */
+  | { do: "reveal" }
+  /** The new nameplate. */
+  | { do: "promote" }
+  /** Stanley celebrates, at length, with his whole body. */
+  | { do: "celebrate"; time: number };
 
 export interface Script {
   id: string;
@@ -246,9 +252,38 @@ export const REVIEW_3: Script = {
   ],
 };
 
+export const REVIEW_4: Script = {
+  id: "review-4",
+  title: "Performance Review #4",
+  steps: [
+    { do: "walk", to: VISIT },
+    { do: "say", text: "Stanley. Sit down. Or— no, stand. Stand there. That's where you stand." },
+    { do: "say", text: "All six windows: clean. The client also wants me to pass on that they're 'open.' All of them. On a windy day. Their entire Q3 strategy is now in the river." },
+    { do: "fidget", at: "mug", time: 0.9 },
+    { do: "say", text: "The mail room says the parcels are sorted. They've asked who sorted the mail room." },
+    { do: "say", text: "The shredder has asked for a lawyer." },
+    { do: "say", text: "And the fire drill. Everyone got out in record time. Mostly to get away from you." },
+    { do: "say", text: "I've now placed you in every department, every neighbourhood and every job category we offer. I invented three new ones. 'Senior Associate Doorbell Consultant' was a real stretch for HR." },
+    { do: "say", text: "*Leans back. Steeples his fingers. A long pause.*", aside: true },
+    { do: "reveal" },
+    { do: "wait", time: 1.2 },
+    { do: "say", text: "Son…" },
+    { do: "say", text: "…since it doesn't seem that you're actually capable of working, I'm just going to give you my company instead." },
+    { do: "say", text: "It's what your grandfather did for me." },
+    { do: "celebrate", time: 2.6 },
+    { do: "say", text: "*Calmly opens a drawer and takes out a second nameplate. It looks like it's been in there for years.*", aside: true },
+    { do: "promote" },
+    { do: "wait", time: 1.0 },
+    { do: "say", text: "Congratulations. Your first day is Monday. We'll start you on something small." },
+    { do: "say", text: SIGN_OFF },
+    { do: "walk", to: DOOR },
+  ],
+};
+
 export const SCRIPTS: Record<string, Script> = {
   [ONBOARDING.id]: ONBOARDING,
   [REVIEW_1.id]: REVIEW_1,
   [REVIEW_2.id]: REVIEW_2,
   [REVIEW_3.id]: REVIEW_3,
+  [REVIEW_4.id]: REVIEW_4,
 };

@@ -27,7 +27,11 @@ export type SolidKind =
   | "van"
   | "vanramp"
   | "partition"
-  | "lane";
+  | "lane"
+  | "facade"
+  | "cabinet"
+  | "shredder"
+  | "glasswall";
 
 export interface Solid {
   x: number;
@@ -70,7 +74,12 @@ export type PropKind =
   | "bowlingball"
   | "tray"
   | "cup"
-  | "trophy";
+  | "trophy"
+  | "bucket"
+  | "parcel"
+  | "paper"
+  | "dummy"
+  | "file";
 
 export interface Prop {
   kind: PropKind;
@@ -346,6 +355,23 @@ export class Kit {
     this.solid(cx, cy - 0.02, len / 2 + 0.05, 0.02, "ramp", { angle, hidden: true, collides: "body", friction: 0.4 });
   }
 
+  /**
+   * A platform the level moves itself (a window cleaner's cradle). Stanley
+   * and props ride it. Move it with `body.setNextKinematicTranslation`.
+   */
+  platform(x: number, y: number, hw: number, hh: number, railHeight = 0) {
+    const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x, y));
+    this.world.createCollider(RAPIER.ColliderDesc.cuboid(hw, hh).setFriction(0.9).setCollisionGroups(WORLD_GROUPS), body);
+    // An optional rail at the left end.
+    if (railHeight > 0) {
+      this.world.createCollider(
+        RAPIER.ColliderDesc.cuboid(0.04, railHeight / 2).setTranslation(-hw + 0.04, hh + railHeight / 2).setCollisionGroups(WORLD_GROUPS),
+        body,
+      );
+    }
+    return body;
+  }
+
   water(x0: number, x1: number, surface: number) {
     this.waters.push({ x0, x1, y: surface });
   }
@@ -354,7 +380,7 @@ export class Kit {
    * Something tall and breakable in the way: too tall to hop over cleanly,
    * and it breaks however you deal with it.
    */
-  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp" | "bottles" | "cup" | "trophy"): Prop {
+  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp" | "bottles" | "cup" | "trophy" | "bucket"): Prop {
     const dims = {
       vase: [0.2, 0.42, "#e9eef6"],
       planter: [0.26, 0.44, "#c4704a"],
@@ -362,6 +388,7 @@ export class Kit {
       bottles: [0.3, 0.4, "#b9895a"],
       cup: [0.06, 0.06, "#f4f4f4"],
       trophy: [0.16, 0.34, "#e2b13c"],
+      bucket: [0.17, 0.17, "#5d9de8"],
     } as const;
     const [hw, hh, color] = dims[kind];
     const p = this.box(x, groundY + hh + 0.005, hw, hh, { kind, density: 8, friction: 0.6, color });
@@ -382,6 +409,7 @@ export class Kit {
 }
 
 const SHARD_COLORS: Record<string, string[]> = {
+  bucket: ["#5d9de8", "#9fc4dd", "#ffffff", "#c9e4f2"],
   cup: ["#f4f4f4", "#e9e2d6", "#6b4a3a"],
   trophy: ["#e2b13c", "#c9962a", "#5b4b3a"],
   bottles: ["#5d8a52", "#7bb36a", "#b9895a", "#8fc7d9"],

@@ -109,6 +109,8 @@ export interface Bubble {
   shown: number;
   /** Smaller, italic, for asides. */
   aside?: boolean;
+  /** Put the bubble below the speaker (when something above needs to be seen). */
+  below?: boolean;
 }
 
 export class Renderer {
@@ -522,6 +524,22 @@ export class Renderer {
         this.rect(x0 - 0.04, y1 - 0.06, x1 + 0.04, y1, "#5f6670");
         for (let x = x0 + 0.4; x < x1; x += 0.8) this.rect(x - 0.01, y0 + 0.1, x + 0.01, y1 - 0.15, "rgba(0,0,0,0.15)");
         return;
+      case "facade":
+        this.rect(x0, y0, x1, y1, "#7fa3bf");
+        this.rect(x0, y0, x0 + 0.05, y1, "#c9d4dd");
+        return;
+      case "cabinet":
+        this.rect(x0, y0, x1, y1, "#7a828c");
+        for (let y = y0 + 0.3; y < y1; y += 0.35) {
+          this.rect(x0 + 0.06, y - 0.01, x1 - 0.06, y + 0.01, "rgba(0,0,0,0.25)");
+          this.rect(s.x - 0.12, y + 0.12, s.x + 0.12, y + 0.15, "#c9ccd1");
+        }
+        return;
+      case "shredder":
+        this.rect(x0, y0, x1, y1, "#3a3f47");
+        this.rect(x0 + 0.05, y1 - 0.06, x1 - 0.05, y1, "#15181c");
+        this.circle({ x: x1 - 0.15, y: y1 - 0.2 }, 0.04, "#7bc96f");
+        return;
       case "porch":
         this.rect(x0, y0, x1, y1, "#c9b49a");
         this.rect(x0, y1 - 0.04, x1, y1, "#ddcbb2");
@@ -684,14 +702,41 @@ export class Renderer {
         ctx.lineTo(-w * 0.8, -h);
         ctx.fill();
         outline();
-        ctx.fillStyle = "rgba(242,201,76,0.6)";
-        ctx.fillRect(-w * 0.6, -h * 0.15, w * 1.2, h * 0.3);
+        if (p.mood) {
+          // The reveal: for once, it's facing us.
+          ctx.fillStyle = "#f2c94c";
+          ctx.fillRect(-w * 0.75, -h * 0.55, w * 1.5, h * 1.1);
+          label(p.mood, "#3a2a20", h * 0.62);
+        } else {
+          ctx.fillStyle = "rgba(242,201,76,0.6)";
+          ctx.fillRect(-w * 0.6, -h * 0.15, w * 1.2, h * 0.3);
+        }
         break;
       case "photo":
-        // Turned away from the camera; we only ever see the stand.
-        body(2);
-        ctx.fillStyle = "rgba(0,0,0,0.25)";
-        ctx.fillRect(-w * 0.15, -h * 0.6, w * 0.3, h * 1.2);
+        if (p.mood === "front") {
+          // The family: Gerald, Mum, and a very small Stanley in a very small cap, mid-flail.
+          body(2);
+          ctx.fillStyle = "#cfe9f7";
+          ctx.fillRect(-w * 0.8, -h * 0.82, w * 1.6, h * 1.64);
+          const fig = (x: number, y: number, r: number, skin: string, top: string) => {
+            ctx.fillStyle = top;
+            ctx.fillRect(x - r * 0.9, y, r * 1.8, h * 0.82 - y);
+            ctx.fillStyle = skin;
+            ctx.beginPath();
+            ctx.arc(x, y - r * 0.6, r * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          };
+          fig(-w * 0.45, -h * 0.25, w * 0.28, "#eebd92", "#4a5160");
+          fig(w * 0.45, -h * 0.2, w * 0.26, "#f2c79b", "#c58be8");
+          fig(0, h * 0.25, w * 0.18, "#f2c79b", "#37a59c");
+          ctx.fillStyle = "#f08a3c";
+          ctx.fillRect(-w * 0.15, h * 0.02, w * 0.3, h * 0.07);
+        } else {
+          // Turned away from the camera; we only ever see the stand.
+          body(2);
+          ctx.fillStyle = "rgba(0,0,0,0.25)";
+          ctx.fillRect(-w * 0.15, -h * 0.6, w * 0.3, h * 1.2);
+        }
         break;
       case "files":
         body(2);
@@ -949,6 +994,62 @@ export class Renderer {
         ctx.fill();
         outline();
         break;
+      case "bucket":
+        // A bucket of soapy water.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w, -h);
+        ctx.lineTo(w, -h);
+        ctx.lineTo(w * 0.8, h);
+        ctx.lineTo(-w * 0.8, h);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#ffffff";
+        for (const dx of [-0.5, 0, 0.45]) {
+          ctx.beginPath();
+          ctx.arc(dx * w, -h, w * 0.28, Math.PI, 0);
+          ctx.fill();
+        }
+        break;
+      case "parcel":
+        body(2);
+        ctx.fillStyle = "rgba(255,255,255,0.75)";
+        ctx.fillRect(-w * 0.55, -h * 0.25, w * 1.1, h * 0.5);
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        ctx.fillRect(-w * 0.45, -h * 0.08, w * 0.9, h * 0.06);
+        break;
+      case "paper":
+        body(0);
+        ctx.fillStyle = "rgba(42,34,48,0.2)";
+        ctx.fillRect(-w * 0.7, -h * 0.3, w * 1.4, Math.max(1, h * 0.3));
+        break;
+      case "dummy":
+        // A training mannequin: blank head, dotted joints, deeply unbothered.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.roundRect(-w, -h * 0.62, w * 2, h * 1.62, w * 0.5);
+        ctx.fill();
+        outline();
+        ctx.beginPath();
+        ctx.arc(0, -h * 0.8, w * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        for (const dy of [-0.3, 0.2, 0.6]) {
+          ctx.beginPath();
+          ctx.arc(0, dy * h, w * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "#c0392b";
+        ctx.fillRect(-w, -h * 0.05, w * 2, h * 0.08);
+        break;
+      case "file":
+        body(2);
+        ctx.fillStyle = "#d4b062";
+        ctx.fillRect(-w * 0.9, -h * 1.5, w * 0.5, h * 0.6);
+        label("FILE", "rgba(90,60,30,0.7)", h * 1.4);
+        break;
       case "cooler":
         body(w * 0.2);
         ctx.fillStyle = "rgba(120,180,230,0.85)";
@@ -1202,7 +1303,10 @@ export class Renderer {
     const h = lines.length * lh + 20;
     const a = cam.toScreen(b.anchor);
     const x = clamp(a.x - w + 40, 16, cam.w - w - 16);
-    const y = clamp(a.y - h - 26, 56, cam.h - h - 16);
+    const y = b.below ? clamp(a.y + 46, 56, cam.h - h - 16) : clamp(a.y - h - 26, 56, cam.h - h - 16);
+    // The tail runs from the bubble's near edge to the speaker.
+    const edge = b.below ? y + 1 : y + h - 1;
+    const tip = b.below ? Math.max(a.y + 8, y - 22) : Math.min(a.y - 8, y + h + 22);
     ctx.fillStyle = b.aside ? "#fff8e6" : "#ffffff";
     ctx.strokeStyle = C.ink;
     ctx.lineWidth = 2.5;
@@ -1213,14 +1317,14 @@ export class Renderer {
     // Tail.
     const tx = clamp(a.x - 10, x + 20, x + w - 20);
     ctx.beginPath();
-    ctx.moveTo(tx - 10, y + h - 1);
-    ctx.lineTo(a.x - 4, Math.min(a.y - 8, y + h + 22));
-    ctx.lineTo(tx + 10, y + h - 1);
+    ctx.moveTo(tx - 10, edge);
+    ctx.lineTo(a.x - 4, tip);
+    ctx.lineTo(tx + 10, edge);
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(tx - 10, y + h);
-    ctx.lineTo(a.x - 4, Math.min(a.y - 8, y + h + 22));
-    ctx.lineTo(tx + 10, y + h);
+    ctx.moveTo(tx - 10, edge + (b.below ? -1 : 1));
+    ctx.lineTo(a.x - 4, tip);
+    ctx.lineTo(tx + 10, edge + (b.below ? -1 : 1));
     ctx.stroke();
     // Text, revealed character by character.
     ctx.fillStyle = C.ink;

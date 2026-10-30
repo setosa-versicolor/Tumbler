@@ -158,10 +158,7 @@ export class Game {
     }
     for (const p of broken) {
       const pos = { ...p.body.translation() };
-      this.stanley.letGo(p.body);
-      this.lastVel.delete(p.body);
-      this.lastHeld.delete(p.body);
-      this.fragile.delete(p.body);
+      this.forget(p);
       const shards = shatter(this.world, p, this.rand);
       this.props = this.props.filter((q) => q !== p).concat(shards);
       this.breaks++;
@@ -260,5 +257,20 @@ export class Game {
     const b = p.body;
     const torque = clamp(-25 * wrapAngle(b.rotation()) - 1.5 * b.angvel(), -15, 15);
     b.applyTorqueImpulse(torque * DT, true);
+  }
+
+  /** Stop tracking a prop that's about to leave the world (dropping it if held). */
+  private forget(p: Prop) {
+    this.stanley.letGo(p.body);
+    this.lastVel.delete(p.body);
+    this.lastHeld.delete(p.body);
+    this.fragile.delete(p.body);
+  }
+
+  /** Take a prop out of the level entirely (fed into a shredder, say). */
+  removeProp(p: Prop) {
+    this.forget(p);
+    this.world.removeRigidBody(p.body);
+    this.props = this.props.filter((q) => q !== p);
   }
 }

@@ -9,6 +9,7 @@ import { laundryDay } from "../src/levels/suburb/laundryDay";
 import { stackIt } from "../src/levels/suburb/stackIt";
 import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
+import { dayOff } from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
 import { ONBOARDING, REVIEW_1 } from "../src/story/scripts";
 import type { Level } from "../src/levels/level";
@@ -170,5 +171,49 @@ describe("Cutscenes", () => {
       scene.advance();
     }
     expect(scene.done).toBe(true);
+  });
+});
+
+describe("Breakables", () => {
+  const fragiles = (g: Game) => g.props.filter((p) => p.fragile);
+
+  it("every job has something breakable in the way", () => {
+    for (const level of ALL_LEVELS) expect(fragiles(play(level)).length, level.id).toBeGreaterThan(0);
+  });
+
+  it("running into one knocks it over and smashes it", () => {
+    const g = play(dingDong);
+    run(g, 3.5, { move: 1 });
+    expect(g.breaks).toBe(1);
+    expect(fragiles(g)).toHaveLength(0);
+    expect(g.props.filter((p) => p.kind === "shard").length).toBeGreaterThan(3);
+  });
+
+  it("standing on one breaks it", () => {
+    const g = play(dayOff);
+    const vase = fragiles(g)[0].body;
+    const top = vase.translation().y + 0.42;
+    for (const b of g.stanley.rig.bodies) {
+      const p = b.translation();
+      b.setTranslation({ x: p.x - 2.5 + vase.translation().x, y: p.y + top + 0.05 }, true);
+    }
+    run(g, 1);
+    expect(g.breaks).toBe(1);
+  });
+
+  it("picking one up and putting it down breaks it anyway", () => {
+    const g = play(dayOff);
+    const vase = fragiles(g)[0].body;
+    run(g, 0.6);
+    const p = g.stanley.rig.pelvis.translation();
+    vase.setTranslation({ x: p.x + 0.55, y: 0.43 }, true);
+    run(g, 1.5, () => ({ reach: vase.translation(), grip: { L: true, R: true } }));
+    expect(g.held.has(vase)).toBe(true);
+    expect(g.breaks).toBe(0);
+    run(g, 1, () => ({ reach: { x: g.stanley.shoulder.x + 0.6, y: 0.5 }, grip: { L: true, R: true } }));
+    run(g, 1.5);
+    expect(g.breaks).toBe(1);
+    expect(g.stanley.grips.L.held).toBeNull();
+    expect(g.stanley.grips.R.held).toBeNull();
   });
 });

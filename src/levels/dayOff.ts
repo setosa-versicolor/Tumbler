@@ -29,6 +29,7 @@ export const dayOff: Level = {
       kit.box(x, s + (i % 2) * 0.9 + 0.01, s, s * (0.85 + kit.rand() * 0.2));
       x += s * 2 + 0.15 + kit.rand() * 0.2;
     });
+    kit.fragile(3.4, 0, "vase");
     kit.ball(8.6, 0.25, 0.18, { color: "#e85d5d" });
     kit.ball(9.3, 0.25, 0.14, { color: "#5d9de8" });
     kit.ball(2.6, 0.25, 0.16, { color: "#7bc96f" });

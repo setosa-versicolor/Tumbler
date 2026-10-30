@@ -1,4 +1,4 @@
-import type { World } from "@dimforge/rapier2d-deterministic-compat";
+import type { RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../world";
 import { ENV_QUERY } from "../groups";
 import { DIM, type Rig } from "./rig";
@@ -23,6 +23,8 @@ export class Balance {
   posture: Posture = "up";
   stability = 1;
   grounded = false;
+  /** The loose thing Stanley is standing on, if any. */
+  standingOn: RigidBody | null = null;
   /** Height of the pelvis above whatever is under it. */
   groundDist = Infinity;
   private timer = 0;
@@ -73,6 +75,8 @@ export class Balance {
     const ray = new RAPIER.Ray({ x: p.x, y: p.y }, { x: 0, y: -1 });
     const rh = world.castRay(ray, HOVER_RANGE, true, undefined, ENV_QUERY);
     this.groundDist = rh ? rh.timeOfImpact : Infinity;
+    const under = rh?.collider.parent();
+    this.standingOn = rh && rh.timeOfImpact < HOVER_RANGE && under?.isDynamic() ? under : null;
     this.grounded = this.groundDist < HOVER_RANGE;
 
     // --- Hover spring under the pelvis --------------------------------------

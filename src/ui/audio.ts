@@ -77,6 +77,15 @@ export const sfx = {
     tone(300, 70, 0.35, "sawtooth", 0.06);
   },
   hup: () => tone(240, 420, 0.12, "triangle", 0.1),
+  /** Something fragile meets its end: a crunch and a few tinkles. */
+  crash: () => {
+    burst(0.3, 2400, 0.5, 900, 0.6);
+    burst(0.15, 300, 0.4, 120);
+    for (let i = 0; i < 4; i++) {
+      const f = 2200 + Math.random() * 2400;
+      tone(f, f * 0.9, 0.12, "sine", 0.05, 0.05 + i * 0.07 + Math.random() * 0.05);
+    }
+  },
   /** A bump scaled 0..1. Rate-limited so piles don't machine-gun. */
   thud: (strength: number) => {
     if (!ctx) return;

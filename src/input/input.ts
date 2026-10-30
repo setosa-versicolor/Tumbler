@@ -120,7 +120,12 @@ export class Input {
   }
 
   /** Build this frame's intent. Jump is consumed by the first call. */
-  read(camera: Camera, shoulder: Vec, facing: 1 | -1): Intent {
+  /**
+   * `floorY` is the height of the ground under Stanley: dragging downward can
+   * reach all the way to it, so the touch controls can pick things up off the
+   * floor (the mouse can point anywhere already).
+   */
+  read(camera: Camera, shoulder: Vec, facing: 1 | -1, floorY = shoulder.y - 1.4): Intent {
     let move = 0;
     if (this.keys.has("a") || this.keys.has("arrowleft")) move -= 1;
     if (this.keys.has("d") || this.keys.has("arrowright")) move += 1;
@@ -140,8 +145,13 @@ export class Input {
         // Just a tap: hands out in front, ready to grab.
         reach = { x: shoulder.x + facing * 0.45, y: shoulder.y - 0.25 };
       } else {
-        const d = Math.min(len / REACH_RANGE, 1) * ARM_REACH * 1.1;
-        reach = { x: shoulder.x + (dx / len) * d, y: shoulder.y + (dy / len) * d };
+        // Up and sideways: arm's length. Down: stretch toward the floor, since
+        // reaching low makes Stanley bend over and squat.
+        const down = Math.max(0, -dy / len);
+        const toFloor = Math.max(ARM_REACH * 1.1, (shoulder.y - floorY + 0.05) / Math.max(down, 0.3));
+        const maxD = ARM_REACH * 1.1 + (Math.min(toFloor, 1.8) - ARM_REACH * 1.1) * down;
+        const d = Math.min(len / REACH_RANGE, 1) * maxD;
+        reach = { x: shoulder.x + (dx / len) * d, y: Math.max(floorY + 0.03, shoulder.y + (dy / len) * d) };
       }
       grip = { L: true, R: true };
     } else if (this.mouse && !this.touch) {

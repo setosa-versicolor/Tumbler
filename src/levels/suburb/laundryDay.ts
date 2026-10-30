@@ -21,6 +21,8 @@ export const laundryDay: Level = {
     kit.solid(5.4, 0.3, 1.2, 0.3, "bed");
     kit.solid(10.2, 0.5, 0.8, 0.5, "dresser");
     kit.basket(BASKET.x0, BASKET.x1, BASKET.y, BASKET.depth);
+    // A vase between the bed and the dresser. It won't survive the day.
+    kit.fragile(7.0, 0, "vase");
     const socks: Prop[] = [];
     [1.1, 3.1, 4.7, 6.0, 7.5, 8.3].forEach((x, i) => {
       const y = x > 4.2 && x < 6.6 ? 0.7 : 0.06;

@@ -1,7 +1,7 @@
 import type { Collider, PrismaticImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../physics/world";
 import { FLOOR_GROUPS, G_BODY, G_PROP, groups, PROP_GROUPS, WORLD_GROUPS } from "../physics/groups";
-import { rng } from "../sim/math";
+import { rng, type Vec } from "../sim/math";
 
 // Building blocks for levels: static solids, loose props and buttons.
 
@@ -47,7 +47,11 @@ export type PropKind =
   | "photo"
   | "plant"
   | "files"
-  | "cooler";
+  | "cooler"
+  | "vase"
+  | "planter"
+  | "lamp"
+  | "shard";
 
 export interface Prop {
   kind: PropKind;
@@ -58,6 +62,10 @@ export interface Prop {
   color: string;
   /** Optional name a level uses to find it again. */
   tag?: string;
+  /** Breaks if knocked over, bumped, stood on, or picked up and put down. */
+  fragile?: boolean;
+  /** Shard outline (local coordinates), for broken bits. */
+  shape?: Vec[];
 }
 
 export interface BoxOptions {
@@ -273,8 +281,67 @@ export class Kit {
     this.solid(cx, cy - 0.02, len / 2 + 0.05, 0.02, "ramp", { angle, hidden: true, collides: "body", friction: 0.4 });
   }
 
+  /**
+   * Something tall and breakable in the way: too tall to hop over cleanly,
+   * and it breaks however you deal with it.
+   */
+  fragile(x: number, groundY: number, kind: "vase" | "planter" | "lamp"): Prop {
+    const dims = { vase: [0.2, 0.42, "#e9eef6"], planter: [0.26, 0.44, "#c4704a"], lamp: [0.2, 0.5, "#f2d58a"] } as const;
+    const [hw, hh, color] = dims[kind];
+    const p = this.box(x, groundY + hh + 0.005, hw, hh, { kind, density: 8, friction: 0.6, color });
+    p.fragile = true;
+    return p;
+  }
+
   private boxColor() {
     const palette = ["#e8a35c", "#d9824a", "#c9b26b", "#e0c08a", "#b9895a"];
     return palette[Math.floor(this.rand() * palette.length)];
   }
+}
+
+const SHARD_COLORS: Record<string, string[]> = {
+  vase: ["#e9eef6", "#3d6fb6", "#e9eef6", "#c9d6ea"],
+  planter: ["#c4704a", "#a95a38", "#5f9440", "#6aa34a"],
+  lamp: ["#f2d58a", "#d9b860", "#6b5a4a", "#fff3c4"],
+};
+
+/** Smash a fragile prop into a handful of flying shards. Returns the shards. */
+export function shatter(world: World, prop: Prop, rand: () => number): Prop[] {
+  const p = prop.body.translation();
+  const v = prop.body.linvel();
+  const a = prop.body.rotation();
+  const colors = SHARD_COLORS[prop.kind] ?? [prop.color];
+  const shards: Prop[] = [];
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    // Spread shards over the object's footprint.
+    const lx = (rand() - 0.5) * prop.hw * 1.6;
+    const ly = ((i + 0.5) / n - 0.5) * prop.hh * 1.8;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const x = p.x + lx * c - ly * s;
+    const y = p.y + lx * s + ly * c;
+    const r = 0.05 + rand() * 0.05;
+    const pts: Vec[] = [];
+    const k = 3 + Math.floor(rand() * 2);
+    for (let j = 0; j < k; j++) {
+      const t = (j / k) * Math.PI * 2 + rand() * 0.8;
+      const rr = r * (0.6 + rand() * 0.5);
+      pts.push({ x: Math.cos(t) * rr, y: Math.sin(t) * rr });
+    }
+    const desc = RAPIER.ColliderDesc.convexHull(new Float32Array(pts.flatMap((q) => [q.x, q.y])));
+    if (!desc) continue;
+    const body = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(x, y)
+        .setRotation(rand() * 6.28)
+        .setLinvel(v.x + (lx / prop.hw) * 2.5 + (rand() - 0.5) * 2, v.y + 1 + rand() * 2.5)
+        .setAngvel((rand() - 0.5) * 20)
+        .setCcdEnabled(true),
+    );
+    world.createCollider(desc.setDensity(6).setFriction(0.8).setRestitution(0.2).setCollisionGroups(PROP_GROUPS), body);
+    shards.push({ kind: "shard", body, hw: r, hh: r, color: colors[i % colors.length], shape: pts });
+  }
+  world.removeRigidBody(prop.body);
+  return shards;
 }

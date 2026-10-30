@@ -22,6 +22,8 @@ export const pizzaUp: Level = {
     const pizza = kit.box(3.0, 0.8, 0.3, 0.045, { kind: "pizza", density: 10, color: "#f1e3c6", friction: 0.9 });
     kit.stairs(5, 0, 8, 0.5, 0.25);
     kit.solid(11.25, LANDING_Y / 2, 2.75, LANDING_Y / 2, "landing");
+    // The neighbours' lamp, at the top of the stairs, exactly where you'll be.
+    kit.fragile(10.2, LANDING_Y, "lamp");
     let settled = 0;
 
     const state = () => {

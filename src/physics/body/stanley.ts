@@ -1,4 +1,4 @@
-import type { World } from "@dimforge/rapier2d-deterministic-compat";
+import type { RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { buildRig, chestPoint, DIM, setKneeFacing, type Rig, type Side } from "./rig";
 import { ARM_REACH, reachTargets, relaxedTargets } from "./armController";
 import { Balance } from "./balance";
@@ -43,6 +43,14 @@ export class Stanley {
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);
     this.grips = { L: new Grip(this.rig.arms.L.hand), R: new Grip(this.rig.arms.R.hand) };
+  }
+
+  /** Drop whatever we're holding of `body` (e.g. it just broke). */
+  letGo(body: RigidBody) {
+    for (const side of SIDES) {
+      const g = this.grips[side];
+      if (g.held === body) g.release(this.world, 1, this.grips[side === "L" ? "R" : "L"]);
+    }
   }
 
   get position(): Vec {

@@ -69,4 +69,5 @@ export const TAGS = {
   noFalls: "No Falls",
   speedy: "Speed Demon",
   clumsy: "Clumsy Professional",
+  collateral: "Collateral Damage",
 } as const;

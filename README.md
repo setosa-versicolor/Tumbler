@@ -6,7 +6,8 @@ A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body
 
 - **Onboarding cutscene** in Gerald's office, then four jobs: **Ding Dong** (ring a doorbell that's just too high), **Laundry Day** (socks into a basket on the dresser), **Stack It** (boxes up to a line, and keep them there) and **Pizza Up** (carry a pizza up the stairs and set it down flat).
 - **Performance Review #1** after the last job. Stanley walks in under real physics, so what he knocks over is different every time, and Gerald reacts to each mishap.
-- **Stars** for speed, bonus tags (No Falls, Speed Demon, Clumsy Professional) and a memo from the boss on every score card.
+- **Something breakable in the way** in every job (a planter, a vase, a lamp). Knock it over, stand on it, or carefully carry it aside: it breaks regardless, and Gerald bills it to your mother.
+- **Stars** for speed, bonus tags (No Falls, Speed Demon, Clumsy Professional, Collateral Damage) and a memo from the boss on every score card.
 - **Job board** (☰) with your stars, unlocked jobs, cutscene rewatch and the **Day Off** sandbox (the original test room).
 - **Restart** (↺ or R) puts you straight back into the job.
 - **Progress saves in your browser** (stars, best times, cutscenes watched), and the game reopens on your next job.

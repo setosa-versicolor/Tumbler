@@ -14,6 +14,13 @@ import { boardCard, chapterCard, introCard, resultsCard } from "../ui/screens";
 import { sfx } from "../ui/audio";
 
 const MAX_STEPS_PER_FRAME = 8;
+const BREAK_WORDS = ["CRASH!", "Oops.", "Whoops!", "…Sorry.", "SMASH!", "Uh-oh."];
+const BREAK_BILLS = [
+  "Billed to your mother.",
+  "Deducted from your pay, which is now negative.",
+  "The client says it was 'irreplaceable.' We've replaced it with an apology.",
+  "Gerald has 'taken care of it.'",
+];
 
 type Mode =
   | { kind: "intro" }
@@ -161,6 +168,7 @@ export class App {
     if (this.game.falls === 0) tags.push(TAGS.noFalls);
     if (time <= level.par[0] * 0.6) tags.push(TAGS.speedy);
     if (this.game.falls >= 3) tags.push(TAGS.clumsy);
+    if (this.game.breaks > 0) tags.push(TAGS.collateral);
     const { newBest } = recordJob(this.save, level.id, stars, time, tags);
     writeSave(this.save);
 
@@ -183,7 +191,9 @@ export class App {
           time,
           newBest,
           tags,
-          memo: memos[Math.floor(Math.random() * memos.length)],
+          memo:
+            memos[Math.floor(Math.random() * memos.length)] +
+            (this.game.breaks > 0 ? ` Breakages: ${this.game.breaks}. ${BREAK_BILLS[Math.floor(Math.random() * BREAK_BILLS.length)]}` : ""),
           nextLabel: label,
           onRetry: () => this.startLevel(level),
           onNext: next,
@@ -316,7 +326,8 @@ export class App {
     let intent: Intent = IDLE_INTENT;
     if (m.kind === "play" || m.kind === "sandbox") {
       const st = g.stanley;
-      intent = this.input.read(this.renderer.camera, st.shoulder, st.facing);
+      const floor = Number.isFinite(st.balance.groundDist) ? st.rig.pelvis.translation().y - st.balance.groundDist : undefined;
+      intent = this.input.read(this.renderer.camera, st.shoulder, st.facing, floor);
     } else {
       this.input.read(this.renderer.camera, g.stanley.shoulder, g.stanley.facing);
     }
@@ -384,6 +395,12 @@ export class App {
           break;
         case "throw":
           sfx.whoosh(ev.speed);
+          break;
+        case "break":
+          sfx.crash();
+          r.popup(BREAK_WORDS[Math.floor(Math.random() * BREAK_WORDS.length)], { x: ev.pos.x, y: ev.pos.y + 0.6 }, "#c0392b");
+          r.camera.shake(7);
+          r.dust(ev.pos, 1.2);
           break;
         case "complete":
           this.complete();

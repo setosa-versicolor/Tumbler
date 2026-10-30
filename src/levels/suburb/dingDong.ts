@@ -22,6 +22,8 @@ export const dingDong: Level = {
     kit.box(6.2, 0.3, 0.3, 0.3, { kind: "crate", density: 10, color: "#b9895a" });
     kit.box(8.4, 0.23, 0.13, 0.22, { kind: "gnome", density: 20, color: "#d9453c" });
     kit.ball(4.6, 0.16, 0.16, { color: "#f2f2f2" });
+    // Mrs. Henderson's prize planter, right in the path.
+    kit.fragile(7.3, 0, "planter");
 
     let rung = 0;
     return {

@@ -585,6 +585,85 @@ export class Renderer {
         }
         body(w * 0.2);
         break;
+      case "vase": {
+        // Tall blue-and-white vase: bulb, neck, lip.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.55, h);
+        ctx.bezierCurveTo(-w * 1.15, h * 0.2, -w * 1.1, -h * 0.35, -w * 0.4, -h * 0.6);
+        ctx.lineTo(-w * 0.45, -h * 0.92);
+        ctx.lineTo(-w * 0.7, -h);
+        ctx.lineTo(w * 0.7, -h);
+        ctx.lineTo(w * 0.45, -h * 0.92);
+        ctx.lineTo(w * 0.4, -h * 0.6);
+        ctx.bezierCurveTo(w * 1.1, -h * 0.35, w * 1.15, h * 0.2, w * 0.55, h);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        ctx.strokeStyle = "#3d6fb6";
+        ctx.lineWidth = Math.max(1.5, w * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.85, h * 0.05);
+        ctx.bezierCurveTo(-w * 0.3, -h * 0.25, w * 0.3, h * 0.35, w * 0.85, h * 0.05);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, h * 0.45, w * 0.22, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      case "planter":
+        // Terracotta pot (bottom half) with a big shrub and flowers on top.
+        ctx.fillStyle = "#5f9440";
+        for (const [dx, dy, r] of [[0, -0.45, 0.95], [-0.55, -0.15, 0.6], [0.55, -0.2, 0.62], [0, -0.85, 0.6]] as const) {
+          ctx.beginPath();
+          ctx.arc(dx * w, dy * h, r * w, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        for (const [dx, dy] of [[-0.4, -0.6], [0.35, -0.35], [0.1, -0.95], [-0.6, -0.1]] as const) {
+          ctx.fillStyle = "#f2c94c";
+          ctx.beginPath();
+          ctx.arc(dx * w, dy * h, w * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w, h * 0.05);
+        ctx.lineTo(w, h * 0.05);
+        ctx.lineTo(w * 0.75, h);
+        ctx.lineTo(-w * 0.75, h);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "rgba(0,0,0,0.12)";
+        ctx.fillRect(-w, h * 0.05, w * 2, h * 0.12);
+        break;
+      case "lamp":
+        // Floor lamp: base, pole, shade.
+        ctx.fillStyle = "#6b5a4a";
+        ctx.beginPath();
+        ctx.ellipse(0, h * 0.94, w * 0.8, h * 0.06, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(-w * 0.08, -h * 0.5, w * 0.16, h * 1.45);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.55, -h);
+        ctx.lineTo(w * 0.55, -h);
+        ctx.lineTo(w, -h * 0.45);
+        ctx.lineTo(-w, -h * 0.45);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        break;
+      case "shard":
+        if (p.shape) {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          for (const q of p.shape) ctx.lineTo(q.x * sc, -q.y * sc);
+          ctx.closePath();
+          ctx.fill();
+          outline();
+        }
+        break;
       case "cooler":
         body(w * 0.2);
         ctx.fillStyle = "rgba(120,180,230,0.85)";

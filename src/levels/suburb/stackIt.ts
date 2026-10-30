@@ -12,13 +12,14 @@ export const stackIt: Level = {
   icon: "📦",
   par: [30, 60],
   bounds: { w: 11, h: 6 },
-  spawn: { x: 1.8, y: 0 },
+  spawn: { x: 1.3, y: 0 },
   target: { x: 7, y: LINE },
   theme: { ...INDOOR, top: "#d9dcdf", bottom: "#c4c8cc", floor: "#7a7f86", floorTop: "#9aa0a8", stripe: undefined },
   build(kit) {
     kit.enclosure(11, 6);
     const sizes = [0.3, 0.28, 0.27, 0.25, 0.23];
-    let x = 3.6;
+    kit.fragile(2.6, 0, "planter");
+    let x = 3.9;
     for (const s of sizes) {
       kit.box(x, s + 0.01, s, s * (0.92 + kit.rand() * 0.12));
       x += s * 2 + 0.35 + kit.rand() * 0.25;

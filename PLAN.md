@@ -6,7 +6,7 @@
 
 ## 1. The pitch
 
-**Tumbler** works for *Odd Jobs Ltd.*, a temp agency that sends them on short, simple gigs: *deliver this pizza, ring that doorbell, stack these boxes, throw the newspaper onto the porch, hang this painting.* A toddler could do any of them. Tumbler can't, because Tumbler is an **active ragdoll**: their legs run on their own, their arms flail toward wherever you point them, and their hands grab whatever they touch.
+**Tumbler** works for *Odd Jobs Ltd.*, a temp agency that sends him on short, simple gigs: *deliver this pizza, ring that doorbell, stack these boxes, throw the newspaper onto the porch, hang this painting.* A toddler could do any of them. Tumbler can't, because Tumbler is an **active ragdoll**: his legs run on their own, his arms flail toward wherever you point them, and his hands grab whatever they touch.
 
 Every job is obvious. Doing it is a fight with physics, and that's the joke and the game:
 
@@ -17,7 +17,7 @@ Every job is obvious. Doing it is a fight with physics, and that's the joke and 
 **Why it's fun in 30 seconds:** one job, one obvious goal, a funny failure, retry in a tap.
 **Why it's fun for 2 hours:** the controls have a real skill ceiling (momentum throws, climbing, two-handed carries, using props as tools), and jobs can be solved many ways. Speedruns and silly solutions both count.
 
-Tone: slapstick, warm, no gore. Tumbler is clumsy and determined, never hurt, and gets back up with a little "hup!"
+Tone: slapstick, warm, no gore. Tumbler is clumsy and determined, never hurt, and gets back up with a little "hup!" Between chapters, Performance Review cutscenes with his relentlessly upbeat boss poke fun at work culture (see §7).
 
 ---
 
@@ -96,7 +96,7 @@ Launch target: **~24 gigs**, each with 3 variants (layout, objects, hazards), so
 |---|---|---|
 | **30 seconds** | **Quick Gig** (default) | App opens straight into a random gig. Finish it, tap, next gig. No menus. |
 | **2–3 minutes** | **Shift** | 5 gigs back to back with a shared clock, then a pay slip with your total. Each day's Daily Shift is seeded the same for everyone, with ghost replays. |
-| **15+ minutes** | **Career** | Work your way through the town's neighbourhoods (Suburb → Docks → Downtown → Skyscraper). Earnings unlock new gigs, harder variants and "boss jobs" (e.g. *move a piano down a hill*). |
+| **15+ minutes** | **Career** | Work your way through the town's neighbourhoods (Suburb → Docks → Downtown → Skyscraper). Earnings unlock new gigs, harder variants and "boss jobs" (e.g. *move a piano down a hill*). Each chapter ends with a Performance Review cutscene (§7). |
 | **Open-ended** | **Tower** | Endless stacking. Random junk arrives on a conveyor; build as high as you can before it falls. Global leaderboard. Easy to start and hard to put down. |
 | **Open-ended** | **Day Off** | Sandbox: a town street full of props. Mess around, set up stunts, record clips. |
 
@@ -127,14 +127,151 @@ Currency is **wages** from gigs. No ads, no energy, no timers that stop a short 
 
 ---
 
-## 7. The physics
+## 7. Story: Performance Reviews
 
-### 7.1 Engine & view
+Between Career chapters, Tumbler is called into the boss's office for a **Performance Review**: a short, skippable cutscene that is mostly a joke about work culture. The jobs always technically got done. The clients are never happy. Nobody ever says why.
+
+### 7.1 The cast
+
+- **Tumbler.** Never speaks. Communicates entirely through flailing, the occasional "hup!", and a hopeful face. Completely sincere about wanting to do a good job.
+- **The Boss (Gerald).** Sits behind an enormous desk and never stands up. Unflappable, endlessly upbeat, fluent in corporate euphemism. Treats every disaster as a "learning" and every review ends with total confidence that the *next* job will be a better fit. Physically he's an active ragdoll too, but with very strong motors, so he barely reacts as things crash around him. He just sips his coffee.
+
+### 7.2 How a review plays
+
+Each review follows the same five beats, so it lands in about 30–40 seconds:
+
+1. **The walk-in.** Tumbler walks from the door to the chair. This is the **real ragdoll on a scripted path**, so what gets knocked over is different every time. The office is full of physics props: a pen cup, a desk plant, a stack of mugs, a Newton's cradle, a water cooler, the nameplate, a framed photo, an "Employee of the Month" board.
+2. **The good news.** The boss opens with the stats: every job on the sheet is marked *complete*.
+3. **The client feedback.** He reads it out, picking the most positive possible phrasing. The feedback is clearly about the chaos, but nobody says so.
+4. **The pivot.** The problem was never Tumbler. It was the *fit*. The next neighbourhood will suit his talents perfectly.
+5. **The walk-out.** More collateral damage. The boss doesn't look up.
+
+**Reactive one-liners ("barks"):** the boss has short lines for whatever the physics actually did during the walk-in and walk-out, chosen from what got hit:
+
+| What happened | Boss |
+|---|---|
+| Mug knocked off the desk | "That's fine. I have a mug for every day of the year." |
+| Pen cup scattered | "Those were the good pens. Were." |
+| Nameplate knocked flat | "Leave it. It's a nameplate. Everyone knows who I am." |
+| Plant knocked over | "It's fake." *(beat)* "It was real." |
+| Newton's cradle set off | "That's actually how it's meant to work. Rare win." |
+| Tumbler falls over | "Take a seat. Or, yes, the floor is fine." |
+| Water cooler toppled | "Great news, everyone. We're hydrated." |
+| Tumbler grabs the boss | "Let's keep this professional. Hugs are a calendar invite." |
+| Employee of the Month board falls | It has Tumbler's photo for every month. "Unanimous, every month. The committee is very… the committee is me." |
+| Nothing breaks at all | *Long pause.* "Huh." *(writes something down)* |
+
+**Hidden clues for the ending:** they're in every review but easy to miss on the first playthrough.
+- The **nameplate** is always turned away, half-hidden behind a mug, or knocked flat before the camera can read it.
+- The **framed family photo** on the desk always faces away from the camera.
+- Every review ends with the boss saying, as polite office small talk, *"Say hi to your mother."*
+- Tumbler's pay slips have a line item: *"Family discount (applied to you)."*
+- The Employee of the Month board, above.
+
+### 7.3 The script (draft)
+
+**Onboarding (before the first job)**
+> "Welcome to Odd Jobs Ltd! We're not a company, we're a family." *(beat)* "Legally, we're a company."
+>
+> "Here we believe there's no such thing as a bad worker. Only bad fits. And unlimited second chances. I've taken the liberty of pre-approving all of them."
+>
+> "Your first assignment is ringing a doorbell. I'm told it's entry level. I'm told it's *the* entry level."
+
+**Review 1: after the Suburb**
+> "Good news! Every job on your sheet is marked *complete*."
+>
+> "Client feedback. Mrs. Henderson confirms her newspaper was 'definitely delivered.' Also the porch. And the window. She says it's all 'inside now.'"
+>
+> "Mr. Patel has asked us not to send 'the energetic one' again. I've chosen to read that as a compliment about your energy."
+>
+> "Mrs. Okafor's feedback form just says 'why' forty times. That's what we call engagement."
+>
+> "Honestly? The suburbs were never a good fit for you. Too many… surfaces. The Docks are wide open. You're going to *thrive*."
+>
+> "Say hi to your mother."
+
+**Review 2: after the Docks**
+> "Every crate reached its destination. Several of them reached several destinations."
+>
+> "The harbourmaster used the word 'unprecedented' in an email. I've asked HR to frame it."
+>
+> "Our lawyers confirm the ship was still technically *in* the water when you left, which counts."
+>
+> "We received more feedback this quarter than every previous quarter combined. That's what we in the business call growth."
+>
+> "The Docks were just too nautical for someone with your gifts. Downtown is where the professionals are. Wear a tie." *(watches Tumbler flail)* "No tie. Ties are a grabbing hazard."
+>
+> "Say hi to your mother."
+
+**Review 3: after Downtown**
+> "The office move: complete. Everything arrived. The client says the sofa is now 'load-bearing.'"
+>
+> "They've rated us one star. That's up from zero, because they *added* a zero option. Specifically for us."
+>
+> "Their CFO says she's never seen anyone hang a painting like that. I believe her."
+>
+> "People throw around words like 'erratic.' I prefer 'agile.'"
+>
+> "Downtown was, in hindsight, too *down*. What you need is altitude. A skyscraper. Fifty floors. Washing windows. I genuinely can't think of a single way that goes wrong."
+>
+> "Say hi to your mother."
+
+**Review 4 / the reveal: after the Skyscraper**
+> "All twelve hundred windows: clean. The client also wants me to pass on that they're 'open.' All of them. On a windy day. Their entire Q3 strategy is now in the river."
+>
+> "I've now placed you in every department, every neighbourhood and every job category we offer. I invented three new ones. 'Senior Associate Doorbell Consultant' was a real stretch for HR."
+>
+> *(He leans back and steeples his fingers. Long pause. For the first time the nameplate is standing upright and in focus: **GERALD TUMBLER, CEO**. The family photo slowly swivels round: Gerald, Mum, and a tiny Tumbler in a tiny cap, mid-flail.)*
+>
+> "Son…"
+>
+> "…since it doesn't seem that you're actually capable of working, I'm just going to give you my company instead."
+>
+> "It's what your grandfather did for me."
+>
+> *(Tumbler celebrates by flailing, which knocks the nameplate off the desk. Gerald calmly reveals an identical nameplate in his drawer: **T. TUMBLER JR., CEO**. He has clearly had it ready for years.)*
+
+### 7.4 The final job: "Executive Action"
+
+The last gig in the game. Tumbler, now CEO, has one task: **move a file from one place to another.** A single manila folder is on the desk; the filing cabinet is across the corner office.
+
+- The whole staff (and every client from the campaign) is pressed against the glass wall watching.
+- There's no timer and no fail state. Whatever chaos happens on the way (and the office gets destroyed), the job completes the moment the file is in the cabinet.
+- **The staff go wild:**
+  > "He did a task. Himself!"
+  >
+  > "Twenty-two years here and I've never seen a CEO touch paper."
+  >
+  > "Is that… is that what initiative looks like?"
+  >
+  > "Somebody get his signature on that file. That file's going in a museum."
+- Confetti. A press release scrolls by: *"CEO Personally Relocates Document; Shares Up 40%."* Mrs. Henderson submits her first five-star review.
+- **Post-credits:** Gerald on a golf course gets a text: *"he moved a file."* He looks out at the horizon. *"That's my boy."*
+- End card: *Odd Jobs Ltd. We're a family. (Legally a company.)*
+
+### 7.5 Keeping it out of the way of short sessions
+
+- Reviews only play **at the end of a Career chapter**, never in Quick Gig, Shift or Tower.
+- **Hold to skip** at any point. Every review can be rewatched from a *Personnel File* menu, with clues you've spotted ticked off.
+- Quick Gig and Shift get a one-line **memo from the boss** on the score card instead, to keep the joke going without stopping play, e.g. *"MEMO: Client says the pizza was 'technically' delivered. Great hustle!"*, *"MEMO: Reminder that the stairs are not a shortcut."*, *"MEMO: Your enthusiasm has been noted. By the fire department."*
+
+### 7.6 How it's built
+
+- **Office scene** is a normal physics room. The walk-in and walk-out are a scripted `Intent` timeline fed to the real Tumbler controller, so the chaos is always live physics, never canned animation.
+- **Barks** fire off physics events (prop tipped past 60°, prop hit the floor, Tumbler posture `down`, hand grip on the boss). One bark at a time, with a short cooldown.
+- **Dialogue** runs from per-review script files (`src/story/*.json`): speech bubbles with typewriter text, tap to advance, hold to skip.
+- **Reveal camera**: a small scripted camera (pan, zoom, hold) for the nameplate and photo reveal.
+
+---
+
+## 8. The physics
+
+### 8.1 Engine & view
 - **2D side-on.** Stacking and throwing read clearly from the side, it plays well on a phone, and the scope stays manageable.
 - **Rapier 2D, deterministic build (WASM).** It has good joint motors, CCD for fast throws, and gives identical results on every device. That makes Daily Shift ghosts and replays tiny input logs instead of video.
 - Fixed **120 Hz** step, interpolated rendering, seeded RNG only inside the simulation.
 
-### 7.2 Tumbler's rig
+### 8.2 Tumbler's rig
 
 ```
              (head)
@@ -152,28 +289,28 @@ Currency is **wages** from gigs. No ads, no energy, no timers that stop a short 
 - **13 bodies**: head, chest, pelvis, 2× upper arm, 2× forearm, 2× hand, 2× thigh, 2× shin.
 - Joints have angle limits and **PD motors with capped torque**.
 - **Arm controller:** two-bone IK computes target shoulder/elbow angles toward the reach point; motors chase them with limited strength. That limit is where the flail comes from, so tuning it is the most important part of the game feel.
-- **Balance controller:** torque on chest and pelvis toward upright, scaled by "stability", which drops when hit hard, when carrying a lot, or when falling. Below a threshold Tumbler falls over, then a recovery routine stands them back up.
+- **Balance controller:** torque on chest and pelvis toward upright, scaled by "stability", which drops when hit hard, when carrying a lot, or when falling. Below a threshold Tumbler falls over, then a recovery routine stands him back up.
 - **Gait:** procedural stepping (target foot positions from velocity, leg motors chase them). It looks a bit drunk, on purpose.
 - **Grip:** on contact while grip is held, create a weld/revolute joint between hand and object, with a break force so very heavy loads or sharp yanks rip free.
 
-### 7.3 Objects
+### 8.3 Objects
 - Each prop has mass, friction, restitution, a "grabbable" flag, and an optional **breakable** threshold.
 - Goal triggers are physical checks: *object inside zone and resting for 0.5s*, *button impulse > X*, *tower top > height line for 3s*.
 
 ---
 
-## 8. Game feel ("juice") checklist
+## 9. Game feel ("juice") checklist
 
 - **Hit-stop** (40ms) on big impacts and on clean throws landing in a target.
 - **Slo-mo** on trick shots and on the final moment of a gig ("will it land?").
 - **Camera** frames Tumbler plus the current goal, zooms out for long throws.
 - **Audio**: effort grunts that scale with load, a "hup!" on recovery, satisfying thunks per material, a jingle and cash-register sound on job completion.
-- **Faces**: Tumbler's eyes track the held object and widen when they're about to fall.
+- **Faces**: Tumbler's eyes track the held object and widen when he's about to fall.
 - **Instant replay** of the last 4 seconds on every completion and every great failure. One tap to share as a GIF.
 
 ---
 
-## 9. Tech stack
+## 10. Tech stack
 
 | Concern | Choice |
 |---|---|
@@ -204,6 +341,7 @@ src/
     gig.ts                gig interface: setup, goal check, scoring tags
     paperRoute.ts … tower.ts
   modes/                  quickGig, shift, career, tower, dayOff
+  story/                  office scene, review scripts (JSON), barks, dialogue UI, memos
   input/                  touch sticks, mouse/keyboard, tick-stamped log
   replay/                 record/playback
   render/                 Pixi scene, camera, faces, particles
@@ -214,7 +352,7 @@ tests/
 
 ---
 
-## 10. Milestones
+## 11. Milestones
 
 **M0 is a go/no-go check:** if walking around an empty room grabbing and throwing boxes isn't fun on its own, no job built on top will fix it. We tune until it is.
 
@@ -224,13 +362,13 @@ tests/
 | **M1** | **First gigs** | Gig framework (goal triggers, timer, stars), 4 gigs: Basket Case, Doorbell, Stack It, Pizza Up. Quick Gig mode with instant next/retry. | A new player completes a gig in < 60s and immediately wants the next one. |
 | **M2** | **Juice** | Faces, audio, hit-stop, slo-mo, camera framing, instant replay. | Playtesters laugh during their first minute. |
 | **M3** | **Content & depth** | 12 gigs with variants, bonus tags, climbing/swinging/tool use, Shift mode. | Experienced players finish gigs 3× faster than new ones. |
-| **M4** | **Meta** | Career map, wages, body unlocks, tools, Daily Shift with ghosts. | A reason to come back tomorrow. |
+| **M4** | **Meta & story** | Career map, wages, body unlocks, tools, Daily Shift with ghosts. Office scene, onboarding and Reviews 1–3, barks, score-card memos. | A reason to come back tomorrow, and playtesters quote the boss. |
 | **M5** | **Tower & Day Off** | Endless Tower with leaderboard, sandbox street. | Sessions over 20 minutes in Tower. |
-| **M6** | **Ship polish** | 24 gigs, PWA offline, GIF sharing, performance pass on low-end phones. | Runs at 60fps on a 4-year-old phone. |
+| **M6** | **Ship polish** | The reveal, the "Executive Action" final job and the ending. 24 gigs, PWA offline, GIF sharing, performance pass on low-end phones. | Runs at 60fps on a 4-year-old phone. |
 
 ---
 
-## 11. Risks & mitigations
+## 12. Risks & mitigations
 
 | Risk | Mitigation |
 |---|---|
@@ -243,13 +381,13 @@ tests/
 
 ---
 
-## 12. Status
+## 13. Status
 
 **M0 body toy: built**, needs playtesting. See the README for controls. Changes from the plan:
 - Rendering uses plain Canvas2D for now; PixiJS can come in M2 if we need effects it's better at.
 - Balance and climbing use assisted forces (pelvis hover spring, mantle assist) rather than pure foot physics. This keeps falls and recoveries readable while the arms stay fully physical.
 - Upper arms and forearms don't collide with level geometry, so they don't snag on ledges. Hands still do.
 
-## 13. First step (done)
+## 14. First step (done)
 
 Start **M0**: scaffold Vite + TypeScript + Rapier + Pixi, build Tumbler's 13-part active ragdoll with balance, gait, IK arm reach and grip, then a test room with boxes, a ball and a button, plus a tuning panel. Play it and tune it until grabbing and throwing are fun on their own.

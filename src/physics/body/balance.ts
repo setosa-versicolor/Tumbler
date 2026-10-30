@@ -17,7 +17,7 @@ const RECOVER_TIME = 0.55;
  * Keeps Tumbler standing. Rather than balancing on real feet (hard, and not
  * the fun part), a spring under the pelvis holds the body at standing height
  * and torques keep the torso upright. All of it is scaled by `stability`, so
- * a hard hit or a big lean drops Tumbler in a heap until they pick themselves up.
+ * a hard hit or a big lean drops Tumbler in a heap until he picks himself up.
  */
 export class Balance {
   posture: Posture = "up";

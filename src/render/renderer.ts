@@ -1,17 +1,11 @@
 import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 import type { Game } from "../sim/game";
-import { BASKET, BUTTON, LEDGE, ROOM, type Prop } from "../props/room";
+import type { Prop, Solid } from "../levels/kit";
+import type { Level } from "../levels/level";
 import { DIM, type Side } from "../physics/body/rig";
 import { clamp, rotate, type Vec } from "../sim/math";
 
 const C = {
-  wallTop: "#f6e7cf",
-  wallBottom: "#efd6b4",
-  floor: "#8a6a4e",
-  floorTop: "#a5825f",
-  ledge: "#7c8a99",
-  ledgeTop: "#98a6b4",
-  basket: "#b98a4f",
   skin: "#f2c79b",
   skinBack: "#d9a97c",
   shirt: "#37a59c",
@@ -22,29 +16,62 @@ const C = {
   ink: "#2a2230",
 };
 
+const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+
 export class Camera {
-  x = ROOM.w / 2;
-  y = ROOM.h / 2;
+  x = 0;
+  y = 0;
   scale = 60;
   w = 1;
   h = 1;
+  /** Room size and framing come from the level. */
+  bounds = { w: 16, h: 8 };
+  viewHeight = 5.6;
+  /** Brief extra zoom (e.g. on completing a job). */
+  punch = 0;
+  private shakeT = 0;
+  private shakeMag = 0;
+
+  setLevel(level: Level) {
+    this.bounds = level.bounds;
+    this.viewHeight = level.viewHeight ?? 5.6;
+    this.resize(this.w, this.h);
+  }
 
   resize(w: number, h: number) {
     this.w = w;
     this.h = h;
-    // Frame about 5.6m of height so Stanley is big enough to read on a phone.
-    this.scale = Math.min(h / 5.6, w / (w < h ? 5 : 8));
+    // Frame a fixed height so Stanley reads well on a phone; never show
+    // more than the room is wide.
+    const base = Math.min(h / this.viewHeight, w / (w < h ? 5 : 8));
+    this.scale = Math.max(base, w / (this.bounds.w + 1)) * (1 + this.punch);
+  }
+
+  shake(mag: number) {
+    this.shakeMag = Math.max(this.shakeMag, mag);
+    this.shakeT = 0.25;
   }
 
   follow(target: Vec, dt: number, snap = false) {
+    this.punch = Math.max(0, this.punch - dt * 0.4);
+    this.resize(this.w, this.h);
+    const { w: bw, h: bh } = this.bounds;
     const vw = this.w / this.scale;
     const vh = this.h / this.scale;
-    const tx = vw >= ROOM.w + 1 ? ROOM.w / 2 : clamp(target.x, vw / 2 - 0.5, ROOM.w - vw / 2 + 0.5);
-    // On tall screens, sit the floor low (leaving room below for thumbs) rather than centring the room.
-    const ty = vh >= ROOM.h + 0.8 ? vh / 2 - 1.6 : clamp(target.y + 0.5, vh / 2 - 0.5, ROOM.h - vh / 2 + 0.3);
+    const tx = vw >= bw + 1 ? bw / 2 : clamp(target.x, vw / 2 - 0.5, bw - vw / 2 + 0.5);
+    // On tall screens sit the floor low (leaving room below for thumbs).
+    const ty = vh >= bh + 0.8 ? vh / 2 - 1.6 : clamp(target.y + 0.5, vh / 2 - 0.5, bh - vh / 2 + 0.3);
     const k = snap ? 1 : 1 - Math.exp(-dt * 5);
     this.x += (tx - this.x) * k;
     this.y += (ty - this.y) * k;
+    this.shakeT = Math.max(0, this.shakeT - dt);
+    if (this.shakeT === 0) this.shakeMag = 0;
+  }
+
+  get offset(): Vec {
+    if (!this.shakeT) return { x: 0, y: 0 };
+    const m = this.shakeMag * (this.shakeT / 0.25);
+    return { x: (Math.random() - 0.5) * m, y: (Math.random() - 0.5) * m };
   }
 
   toScreen(p: Vec): Vec {
@@ -63,21 +90,40 @@ interface Popup {
   color: string;
 }
 
-interface Star {
+interface Particle {
   pos: Vec;
   vel: Vec;
   age: number;
+  life: number;
+  size: number;
+  color: string;
+  spin: number;
+  shape: "star" | "confetti" | "dust";
+}
+
+export interface Bubble {
+  /** World point the tail points at. */
+  anchor: Vec;
+  text: string;
+  /** Characters revealed so far. */
+  shown: number;
+  /** Smaller, italic, for asides. */
+  aside?: boolean;
 }
 
 export class Renderer {
   readonly camera = new Camera();
-  private ctx: CanvasRenderingContext2D;
+  readonly ctx: CanvasRenderingContext2D;
   private popups: Popup[] = [];
-  private stars: Star[] = [];
+  private particles: Particle[] = [];
   private blink = 0;
   private dpr = 1;
+  private time = 0;
   /** Shown as a crosshair when the reach point comes from a mouse. */
   cursor: Vec | null = null;
+  bubble: Bubble | null = null;
+  /** Off-screen goal indicator. */
+  goal: { pos: Vec; icon: string } | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -92,6 +138,8 @@ export class Renderer {
     this.camera.resize(w, h);
   }
 
+  // ------------------------------------------------------------ effects ---
+
   popup(text: string, pos: Vec, color = C.ink) {
     this.popups.push({ text, pos: { ...pos }, age: 0, color });
   }
@@ -99,16 +147,160 @@ export class Renderer {
   dizzy(pos: Vec) {
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      this.stars.push({ pos: { ...pos }, vel: { x: Math.cos(a) * 1.6, y: Math.sin(a) * 1.6 + 1.2 }, age: 0 });
+      this.particles.push({
+        pos: { ...pos },
+        vel: { x: Math.cos(a) * 1.6, y: Math.sin(a) * 1.6 + 1.2 },
+        age: 0,
+        life: 0.9,
+        size: 0.09,
+        color: "#ffd84a",
+        spin: 0,
+        shape: "star",
+      });
     }
   }
 
+  dust(pos: Vec, amount = 1) {
+    for (let i = 0; i < 5 * amount; i++) {
+      this.particles.push({
+        pos: { x: pos.x + (Math.random() - 0.5) * 0.3, y: pos.y + 0.05 },
+        vel: { x: (Math.random() - 0.5) * 1.6, y: Math.random() * 0.8 },
+        age: 0,
+        life: 0.5 + Math.random() * 0.3,
+        size: 0.06 + Math.random() * 0.06,
+        color: "rgba(140,120,100,0.45)",
+        spin: 0,
+        shape: "dust",
+      });
+    }
+  }
+
+  confetti(pos: Vec) {
+    const colors = ["#f08a3c", "#37a59c", "#ffd84a", "#e85d5d", "#5d9de8", "#c58be8"];
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI - Math.PI;
+      const sp = 3 + Math.random() * 5;
+      this.particles.push({
+        pos: { ...pos },
+        vel: { x: Math.cos(a) * sp * 0.7, y: -Math.sin(a) * sp },
+        age: 0,
+        life: 1.6 + Math.random(),
+        size: 0.05 + Math.random() * 0.04,
+        color: colors[i % colors.length],
+        spin: (Math.random() - 0.5) * 20,
+        shape: "confetti",
+      });
+    }
+  }
+
+  clearFx() {
+    this.popups = [];
+    this.particles = [];
+    this.bubble = null;
+  }
+
+  // --------------------------------------------- world-space primitives ---
+
+  rect(x0: number, y0: number, x1: number, y1: number, color: string) {
+    const a = this.camera.toScreen({ x: x0, y: y1 });
+    const s = this.camera.scale;
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(a.x, a.y, (x1 - x0) * s, (y1 - y0) * s);
+  }
+
+  roundRect(x0: number, y0: number, x1: number, y1: number, r: number, color: string) {
+    const a = this.camera.toScreen({ x: x0, y: y1 });
+    const s = this.camera.scale;
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+    this.ctx.roundRect(a.x, a.y, (x1 - x0) * s, (y1 - y0) * s, r * s);
+    this.ctx.fill();
+  }
+
+  circle(c: Vec, r: number, color: string) {
+    const s = this.camera.toScreen(c);
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+    this.ctx.arc(s.x, s.y, r * this.camera.scale, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  ring(c: Vec, r: number, color: string, width: number) {
+    const s = this.camera.toScreen(c);
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = width * this.camera.scale;
+    this.ctx.beginPath();
+    this.ctx.arc(s.x, s.y, r * this.camera.scale, 0, Math.PI * 2);
+    this.ctx.stroke();
+  }
+
+  line(a: Vec, b: Vec, width: number, color: string) {
+    const sa = this.camera.toScreen(a);
+    const sb = this.camera.toScreen(b);
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = width * this.camera.scale;
+    this.ctx.lineCap = "round";
+    this.ctx.beginPath();
+    this.ctx.moveTo(sa.x, sa.y);
+    this.ctx.lineTo(sb.x, sb.y);
+    this.ctx.stroke();
+  }
+
+  dashed(a: Vec, b: Vec, color: string) {
+    const sa = this.camera.toScreen(a);
+    const sb = this.camera.toScreen(b);
+    const ctx = this.ctx;
+    ctx.setLineDash([10, 7]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(sa.x, sa.y);
+    ctx.lineTo(sb.x, sb.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  poly(pts: Vec[], color: string) {
+    this.ctx.fillStyle = color;
+    this.ctx.beginPath();
+    for (const p of pts) {
+      const s = this.camera.toScreen(p);
+      this.ctx.lineTo(s.x, s.y);
+    }
+    this.ctx.fill();
+  }
+
+  text(str: string, pos: Vec, size: number, color: string, align: CanvasTextAlign = "center", weight = 800) {
+    const s = this.camera.toScreen(pos);
+    const ctx = this.ctx;
+    ctx.font = `${weight} ${Math.max(8, size * this.camera.scale)}px ${FONT}`;
+    ctx.textAlign = align;
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = color;
+    ctx.fillText(str, s.x, s.y);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+  }
+
+  // --------------------------------------------------------------- frame ---
+
   draw(game: Game, dt: number) {
     const { ctx, camera: cam } = this;
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.drawRoom(game);
+    this.time += dt;
+    const sh = cam.offset;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, sh.x * this.dpr, sh.y * this.dpr);
+    this.drawBackground(game);
+    game.inst.drawBack?.(this, game);
+    for (const s of game.solids) if (!s.hidden) this.drawSolid(s, game);
+    for (const b of game.buttons) {
+      const p = b.cap.translation();
+      this.roundRect(p.x - b.hw, p.y - b.hh, p.x + b.hw, p.y + b.hh, 0.03, b.lit > 0 ? "#ff5a4f" : "#d6453c");
+    }
     for (const p of game.props) this.drawProp(p);
+    game.inst.drawMid?.(this, game);
+    this.drawShadow(game);
     this.drawStanley(game, dt);
+    game.inst.drawFront?.(this, game);
     this.drawFx(dt);
     if (this.cursor) {
       const s = cam.toScreen(this.cursor);
@@ -118,134 +310,144 @@ export class Renderer {
       ctx.arc(s.x, s.y, 9, 0, Math.PI * 2);
       ctx.stroke();
     }
+    if (this.goal) this.drawGoalMarker(this.goal.pos, this.goal.icon);
+    if (this.bubble) this.drawBubble(this.bubble);
   }
 
-  // ---------------------------------------------------------------- room ---
-
-  private drawRoom(game: Game) {
+  /** When the goal is off-screen, a badge on the screen edge points the way. */
+  private drawGoalMarker(target: Vec, icon: string) {
     const { ctx, camera: cam } = this;
-    const sc = cam.scale;
-    const g = ctx.createLinearGradient(0, 0, 0, cam.h);
-    g.addColorStop(0, C.wallTop);
-    g.addColorStop(1, C.wallBottom);
-    ctx.fillStyle = "#3a3040";
-    ctx.fillRect(0, 0, cam.w, cam.h);
-    const tl = cam.toScreen({ x: 0, y: ROOM.h });
-    ctx.fillStyle = g;
-    ctx.fillRect(tl.x, tl.y, ROOM.w * sc, ROOM.h * sc);
-
-    // Wallpaper stripes and height marks.
-    ctx.fillStyle = "rgba(255,255,255,0.18)";
-    for (let x = 0.5; x < ROOM.w; x += 1) {
-      const a = cam.toScreen({ x, y: ROOM.h });
-      ctx.fillRect(a.x, a.y, 0.35 * sc, ROOM.h * sc);
-    }
-    ctx.fillStyle = "rgba(42,34,48,0.35)";
-    ctx.font = `${Math.max(10, sc * 0.16)}px system-ui, sans-serif`;
-    for (let y = 1; y < ROOM.h; y++) {
-      const a = cam.toScreen({ x: 1.6, y });
-      ctx.fillRect(a.x, a.y, 0.18 * sc, 2);
-      ctx.fillText(`${y}m`, a.x + 0.24 * sc, a.y + 4);
-    }
-
-    // Best stack line.
-    if (game.stats.bestStack > 0.3) {
-      const a = cam.toScreen({ x: 2, y: game.stats.bestStack });
-      const b = cam.toScreen({ x: 9.6, y: game.stats.bestStack });
-      ctx.setLineDash([8, 6]);
-      ctx.strokeStyle = "rgba(240,138,60,0.7)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = "rgba(240,138,60,0.9)";
-      ctx.fillText(`best stack ${game.stats.bestStack.toFixed(2)}m`, b.x - 1.5 * sc, a.y - 6);
-    }
-
-    // Floor.
-    const f = cam.toScreen({ x: -1, y: 0 });
-    ctx.fillStyle = C.floor;
-    ctx.fillRect(f.x, f.y, (ROOM.w + 2) * sc, 2 * sc);
-    ctx.fillStyle = C.floorTop;
-    ctx.fillRect(f.x, f.y, (ROOM.w + 2) * sc, 0.08 * sc);
-    // Side walls & ceiling trim.
-    ctx.fillStyle = "#5b4b5e";
-    const lw = cam.toScreen({ x: -1, y: ROOM.h + 1 });
-    ctx.fillRect(lw.x, lw.y, sc, (ROOM.h + 2) * sc);
-    const rw = cam.toScreen({ x: ROOM.w, y: ROOM.h + 1 });
-    ctx.fillRect(rw.x, rw.y, sc, (ROOM.h + 2) * sc);
-    ctx.fillRect(lw.x, lw.y, (ROOM.w + 2) * sc, sc);
-
-    // Ledge.
-    const l = cam.toScreen({ x: LEDGE.x0, y: LEDGE.y + LEDGE.thick / 2 });
-    ctx.fillStyle = C.ledge;
-    ctx.fillRect(l.x, l.y, (LEDGE.x1 - LEDGE.x0) * sc, LEDGE.thick * sc);
-    ctx.fillStyle = C.ledgeTop;
-    ctx.fillRect(l.x, l.y, (LEDGE.x1 - LEDGE.x0) * sc, 0.05 * sc);
-    // Ledge bracket.
-    ctx.strokeStyle = C.ledge;
-    ctx.lineWidth = 0.06 * sc;
-    const br = cam.toScreen({ x: LEDGE.x1 - 0.4, y: LEDGE.y - 0.1 });
-    const br2 = cam.toScreen({ x: LEDGE.x1 - 0.4, y: 0 });
-    ctx.beginPath();
-    ctx.moveTo(br.x, br.y);
-    ctx.lineTo(br2.x, br2.y);
-    ctx.stroke();
-
-    // Basket.
-    const bk = cam.toScreen({ x: BASKET.x0, y: BASKET.y + BASKET.lip });
-    ctx.fillStyle = C.basket;
-    ctx.fillRect(bk.x, bk.y, (BASKET.x1 - BASKET.x0) * sc, (BASKET.lip + 0.05) * sc);
-    ctx.strokeStyle = "rgba(0,0,0,0.18)";
-    ctx.lineWidth = 2;
-    for (let i = 1; i < 4; i++) {
-      ctx.beginPath();
-      ctx.moveTo(bk.x, bk.y + (i * BASKET.lip * sc) / 4);
-      ctx.lineTo(bk.x + (BASKET.x1 - BASKET.x0) * sc, bk.y + (i * BASKET.lip * sc) / 4);
-      ctx.stroke();
-    }
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = `bold ${Math.max(11, sc * 0.17)}px system-ui, sans-serif`;
-    ctx.fillText(`BASKET ${game.stats.inBasket}`, bk.x + 0.12 * sc, bk.y + BASKET.lip * sc * 0.62);
-
-    // Button: backplate, cap, light.
-    const btn = game.button;
-    const plate = cam.toScreen({ x: ROOM.w - 0.03, y: BUTTON.y + BUTTON.hh + 0.12 });
-    ctx.fillStyle = "#6c6070";
-    ctx.fillRect(plate.x, plate.y, 0.03 * sc, (BUTTON.hh * 2 + 0.24) * sc);
-    this.drawBox(btn.cap, BUTTON.hw, BUTTON.hh, btn.lit > 0 ? "#ff5a4f" : "#d6453c", 0.04);
-    const light = cam.toScreen({ x: ROOM.w - 0.25, y: BUTTON.y + BUTTON.hh + 0.35 });
-    ctx.fillStyle = btn.lit > 0 ? "#ffd84a" : "#7d6f5a";
-    ctx.beginPath();
-    ctx.arc(light.x, light.y, 0.11 * sc, 0, Math.PI * 2);
-    ctx.fill();
-    if (btn.lit > 0) {
-      ctx.fillStyle = `rgba(255,216,74,${0.35 * btn.lit})`;
-      ctx.beginPath();
-      ctx.arc(light.x, light.y, 0.35 * sc, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = C.ink;
-    ctx.font = `bold ${Math.max(11, sc * 0.17)}px system-ui, sans-serif`;
-    ctx.textAlign = "right";
-    ctx.fillText(`${btn.presses}`, light.x - 0.2 * sc, light.y + 5);
-    ctx.textAlign = "left";
-  }
-
-  private drawBox(body: RigidBody, hw: number, hh: number, color: string, radius = 0.03) {
-    const { ctx, camera: cam } = this;
-    const p = cam.toScreen(body.translation());
-    const sc = cam.scale;
+    const s = cam.toScreen(target);
+    const m = 34;
+    if (s.x > m && s.x < cam.w - m && s.y > m + 50 && s.y < cam.h - m) return;
+    const x = clamp(s.x, m, cam.w - m);
+    const y = clamp(s.y, m + 56, cam.h - m - 30);
+    const a = Math.atan2(s.y - y, s.x - x);
+    const pulse = 1 + Math.sin(this.time * 6) * 0.06;
     ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(-body.rotation());
-    ctx.fillStyle = color;
+    ctx.translate(x, y);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.strokeStyle = "rgba(42,34,48,0.5)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(-hw * sc, -hh * sc, hw * 2 * sc, hh * 2 * sc, radius * sc);
+    ctx.arc(0, 0, 20, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    ctx.rotate(a);
+    ctx.fillStyle = "#f08a3c";
+    ctx.beginPath();
+    ctx.moveTo(30, 0);
+    ctx.lineTo(20, -8);
+    ctx.lineTo(20, 8);
+    ctx.fill();
+    ctx.rotate(-a);
+    ctx.font = `20px ${FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(icon, 0, 1);
     ctx.restore();
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+  }
+
+  private drawBackground(game: Game) {
+    const { ctx, camera: cam } = this;
+    const theme = game.level.theme;
+    const { w: bw, h: bh } = cam.bounds;
+    ctx.fillStyle = theme.outdoor ? theme.bottom : "#3a3040";
+    ctx.fillRect(-20, -20, cam.w + 40, cam.h + 40);
+    const top = cam.toScreen({ x: 0, y: theme.outdoor ? bh + 6 : bh }).y;
+    const bottom = cam.toScreen({ x: 0, y: 0 }).y;
+    const g = ctx.createLinearGradient(0, top, 0, bottom);
+    g.addColorStop(0, theme.top);
+    g.addColorStop(1, theme.bottom);
+    ctx.fillStyle = g;
+    if (theme.outdoor) {
+      ctx.fillRect(-20, -20, cam.w + 40, bottom + 20);
+      // Sun, clouds, hills.
+      this.circle({ x: bw * 0.18, y: bh - 1.2 }, 0.55, "#fff1a8");
+      for (const [cx, cy, s] of [[3.5, 5.6, 1], [8.5, 6.2, 0.8], [12, 5.3, 1.1]] as const) {
+        const drift = (this.time * 0.08 * s) % 2;
+        const x = cx + drift;
+        this.circle({ x, y: cy }, 0.35 * s, "rgba(255,255,255,0.9)");
+        this.circle({ x: x + 0.4 * s, y: cy + 0.15 }, 0.45 * s, "rgba(255,255,255,0.9)");
+        this.circle({ x: x + 0.85 * s, y: cy }, 0.32 * s, "rgba(255,255,255,0.9)");
+      }
+      for (let i = 0; i < 6; i++) this.circle({ x: i * 3.2 - 1, y: -1.2 }, 2.6, "#a9d98a");
+    } else {
+      const a = cam.toScreen({ x: 0, y: bh });
+      ctx.fillRect(a.x, a.y, bw * cam.scale, bh * cam.scale);
+      if (theme.stripe) for (let x = 0.5; x < bw; x += 1) this.rect(x, 0, x + 0.35, bh, theme.stripe);
+      // Skirting board.
+      this.rect(0, 0, bw, 0.12, "rgba(255,255,255,0.35)");
+    }
+    // Ground band.
+    this.rect(-10, -5, bw + 10, 0, theme.floor);
+    this.rect(-10, -0.08, bw + 10, 0, theme.floorTop);
+    if (!theme.outdoor) {
+      // Walls and ceiling beyond the room.
+      this.rect(-10, -5, 0, bh + 10, "#5b4b5e");
+      this.rect(bw, -5, bw + 10, bh + 10, "#5b4b5e");
+      this.rect(-10, bh, bw + 10, bh + 10, "#5b4b5e");
+    }
+  }
+
+  private drawSolid(s: Solid, game: Game) {
+    const x0 = s.x - s.hw;
+    const x1 = s.x + s.hw;
+    const y0 = s.y - s.hh;
+    const y1 = s.y + s.hh;
+    switch (s.kind) {
+      case "floor":
+      case "ground":
+      case "wall":
+        return;
+      case "ledge":
+        this.rect(x0, y0, x1, y1, "#7c8a99");
+        this.rect(x0, y1 - 0.05, x1, y1, "#98a6b4");
+        return;
+      case "basket":
+        this.rect(x0, y0, x1, y1, "#b98a4f");
+        return;
+      case "step":
+      case "landing":
+        this.rect(x0, y0, x1, y1, "#a77a52");
+        this.rect(x0, y1 - 0.05, x1, y1, "#c39468");
+        this.rect(x0, y0, x0 + 0.02, y1, "rgba(0,0,0,0.12)");
+        return;
+      case "desk":
+        this.rect(x0, y0, x1, y1, "#6b4a3a");
+        this.rect(x0 - 0.06, y1 - 0.07, x1 + 0.06, y1, "#82604c");
+        this.rect(x0 + 0.15, y0 + 0.15, x0 + 0.8, y1 - 0.2, "#5d3f31");
+        return;
+      case "dresser":
+        this.rect(x0, y0, x1, y1, "#9a6b4a");
+        for (let i = 1; i < 3; i++) {
+          const y = y0 + ((y1 - y0) * i) / 3;
+          this.rect(x0 + 0.06, y - 0.01, x1 - 0.06, y + 0.01, "rgba(0,0,0,0.2)");
+          this.circle({ x: s.x, y: y + (y1 - y0) / 6 }, 0.035, "#e8c77a");
+        }
+        return;
+      case "porch":
+        this.rect(x0, y0, x1, y1, "#c9b49a");
+        this.rect(x0, y1 - 0.04, x1, y1, "#ddcbb2");
+        return;
+      case "table":
+        this.rect(x0, y1 - 0.08, x1, y1, "#a0704a");
+        this.rect(x0 + 0.06, y0, x0 + 0.12, y1, "#8a5e3c");
+        this.rect(x1 - 0.12, y0, x1 - 0.06, y1, "#8a5e3c");
+        return;
+      case "bed":
+        this.rect(x0, y0, x1, y1, "#6b5a8a");
+        this.roundRect(x0 + 0.05, y1 - 0.18, x1 - 0.05, y1 + 0.04, 0.06, "#f4f1ea");
+        this.roundRect(x1 - 0.55, y1 - 0.02, x1 - 0.08, y1 + 0.14, 0.06, "#ffffff");
+        this.rect(x0 - 0.06, y0, x0, y1 + 0.35, "#5a4a78");
+        return;
+      default:
+        void game;
+        this.rect(x0, y0, x1, y1, "#8a7a6a");
+    }
   }
 
   private drawProp(p: Prop) {
@@ -257,106 +459,192 @@ export class Renderer {
     ctx.rotate(-p.body.rotation());
     const w = p.hw * sc;
     const h = p.hh * sc;
-    ctx.lineWidth = Math.max(1.5, sc * 0.025);
-    ctx.strokeStyle = "rgba(42,34,48,0.55)";
-    if (p.kind === "ball") {
+    const outline = () => {
+      ctx.lineWidth = Math.max(1.5, sc * 0.022);
+      ctx.strokeStyle = "rgba(42,34,48,0.55)";
+      ctx.stroke();
+    };
+    const body = (r = Math.min(w, h) * 0.18) => {
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(0, 0, w, 0, Math.PI * 2);
+      ctx.roundRect(-w, -h, w * 2, h * 2, r);
       ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,0.7)";
-      ctx.beginPath();
-      ctx.arc(0, 0, w * 0.62, -0.6, 0.9);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.roundRect(-w, -h, w * 2, h * 2, Math.min(w, h) * 0.18);
-      ctx.fill();
-      ctx.stroke();
-      if (p.kind === "box") {
-        // Packing tape.
+      outline();
+    };
+    const label = (text: string, color: string, size = h * 1.2) => {
+      ctx.fillStyle = color;
+      ctx.font = `900 ${Math.max(6, size)}px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, 0, 1);
+    };
+    switch (p.kind) {
+      case "ball":
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        ctx.fill();
+        outline();
+        ctx.strokeStyle = "rgba(42,34,48,0.25)";
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 0.62, -0.6, 0.9);
+        ctx.stroke();
+        break;
+      case "box":
+        body();
         ctx.fillStyle = "rgba(255,240,200,0.55)";
         ctx.fillRect(-w * 0.18, -h, w * 0.36, h * 2);
-      } else if (p.kind === "pizza") {
-        ctx.fillStyle = "#d9453c";
-        ctx.font = `bold ${Math.max(8, h * 1.4)}px system-ui, sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("PIZZA", 0, 1);
-      } else if (p.kind === "plank") {
-        ctx.strokeStyle = "rgba(0,0,0,0.15)";
+        break;
+      case "crate":
+        body(2);
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        for (const f of [-0.5, 0.5]) ctx.fillRect(-w, f * h - h * 0.06, w * 2, h * 0.12);
+        break;
+      case "plank":
+        body();
+        break;
+      case "pizza":
+        body(3);
+        label("PIZZA", "#d9453c", h * 1.5);
+        break;
+      case "sock":
+        body(h);
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fillRect(-w, -h, w * 0.3, h * 2);
+        break;
+      case "gnome":
+        ctx.fillStyle = "#3b6ea8";
         ctx.beginPath();
-        ctx.moveTo(-w * 0.9, 0);
-        ctx.lineTo(w * 0.9, 0);
+        ctx.roundRect(-w, -h * 0.1, w * 2, h * 1.1, w * 0.4);
+        ctx.fill();
+        ctx.fillStyle = "#f2c79b";
+        ctx.beginPath();
+        ctx.arc(0, -h * 0.25, w * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(0, -h * 0.05, w * 0.55, 0, Math.PI);
+        ctx.fill();
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.8, -h * 0.45);
+        ctx.lineTo(w * 0.8, -h * 0.45);
+        ctx.lineTo(w * 0.1, -h * 1.05);
+        ctx.fill();
+        break;
+      case "mug":
+        body(w * 0.3);
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(2, w * 0.35);
+        ctx.beginPath();
+        ctx.arc(w * 1.15, 0, h * 0.45, -Math.PI / 2, Math.PI / 2);
         ctx.stroke();
-      }
+        label("BOSS", "#c0392b", h * 0.45);
+        break;
+      case "pens":
+        ctx.strokeStyle = "#f2c94c";
+        ctx.lineWidth = Math.max(1.5, w * 0.25);
+        for (const dx of [-0.5, 0, 0.5]) {
+          ctx.beginPath();
+          ctx.moveTo(dx * w, -h);
+          ctx.lineTo(dx * w * 1.6, -h * 1.9);
+          ctx.stroke();
+        }
+        body(w * 0.2);
+        break;
+      case "nameplate":
+        // Always seen from behind: the name faces Gerald, not us.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w, h);
+        ctx.lineTo(w, h);
+        ctx.lineTo(w * 0.8, -h);
+        ctx.lineTo(-w * 0.8, -h);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "rgba(242,201,76,0.6)";
+        ctx.fillRect(-w * 0.6, -h * 0.15, w * 1.2, h * 0.3);
+        break;
+      case "photo":
+        // Turned away from the camera; we only ever see the stand.
+        body(2);
+        ctx.fillStyle = "rgba(0,0,0,0.25)";
+        ctx.fillRect(-w * 0.15, -h * 0.6, w * 0.3, h * 1.2);
+        break;
+      case "files":
+        body(2);
+        ctx.fillStyle = "rgba(0,0,0,0.12)";
+        for (const f of [-0.35, 0.35]) ctx.fillRect(-w, f * h, w * 2, Math.max(1, h * 0.12));
+        break;
+      case "plant":
+        ctx.fillStyle = "#4f8a3a";
+        for (const [dx, dy, r] of [[0, -1.9, 0.9], [-0.7, -1.5, 0.7], [0.7, -1.6, 0.75], [0, -2.5, 0.6]] as const) {
+          ctx.beginPath();
+          ctx.ellipse(dx * w, dy * h, r * w, r * w * 1.3, dx * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        body(w * 0.2);
+        break;
+      case "cooler":
+        body(w * 0.2);
+        ctx.fillStyle = "rgba(120,180,230,0.85)";
+        ctx.beginPath();
+        ctx.roundRect(-w * 0.7, -h * 1.55, w * 1.4, h * 0.6, w * 0.3);
+        ctx.fill();
+        ctx.fillStyle = "#5d9de8";
+        ctx.fillRect(-w * 0.35, -h * 0.5, w * 0.25, h * 0.15);
+        ctx.fillStyle = "#e85d5d";
+        ctx.fillRect(w * 0.1, -h * 0.5, w * 0.25, h * 0.15);
+        break;
     }
     ctx.restore();
   }
 
   // ------------------------------------------------------------- stanley ---
 
+  private drawShadow(game: Game) {
+    const b = game.stanley.balance;
+    if (!Number.isFinite(b.groundDist)) return;
+    const p = game.stanley.rig.pelvis.translation();
+    const ground = { x: p.x, y: p.y - b.groundDist };
+    const s = this.camera.toScreen(ground);
+    const k = clamp(1 - (b.groundDist - 0.9) / 1.5, 0.3, 1);
+    this.ctx.fillStyle = `rgba(0,0,0,${0.18 * k})`;
+    this.ctx.beginPath();
+    this.ctx.ellipse(s.x, s.y, 0.35 * this.camera.scale * k, 0.06 * this.camera.scale, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
   private limb(body: RigidBody, len: number, r: number, color: string) {
-    const { ctx, camera: cam } = this;
     const p = body.translation();
     const a = body.rotation();
     const top = rotate({ x: 0, y: len / 2 }, a);
     const bot = rotate({ x: 0, y: -len / 2 }, a);
-    const s1 = cam.toScreen({ x: p.x + top.x, y: p.y + top.y });
-    const s2 = cam.toScreen({ x: p.x + bot.x, y: p.y + bot.y });
-    ctx.strokeStyle = color;
-    ctx.lineCap = "round";
-    ctx.lineWidth = r * 2 * cam.scale;
-    ctx.beginPath();
-    ctx.moveTo(s1.x, s1.y);
-    ctx.lineTo(s2.x, s2.y);
-    ctx.stroke();
-  }
-
-  private circle(c: Vec, r: number, color: string) {
-    const { ctx, camera: cam } = this;
-    const s = cam.toScreen(c);
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, r * cam.scale, 0, Math.PI * 2);
-    ctx.fill();
+    this.line({ x: p.x + top.x, y: p.y + top.y }, { x: p.x + bot.x, y: p.y + bot.y }, r * 2, color);
   }
 
   private drawArm(game: Game, side: Side, back: boolean) {
     const arm = game.stanley.rig.arms[side];
     this.limb(arm.upper, DIM.upperArm.len, DIM.upperArm.r + 0.01, back ? C.shirtBack : C.shirt);
     this.limb(arm.fore, DIM.foreArm.len, DIM.foreArm.r, back ? C.skinBack : C.skin);
-    const gripping = !!game.stanley.grips[side].held;
     this.circle(arm.hand.translation(), DIM.hand.r, back ? C.skinBack : C.skin);
-    if (gripping) {
-      const s = this.camera.toScreen(arm.hand.translation());
-      this.ctx.strokeStyle = C.ink;
-      this.ctx.lineWidth = 2;
-      this.ctx.beginPath();
-      this.ctx.arc(s.x, s.y, DIM.hand.r * this.camera.scale, 0, Math.PI * 2);
-      this.ctx.stroke();
-    }
+    if (game.stanley.grips[side].held) this.ring(arm.hand.translation(), DIM.hand.r, C.ink, 0.02);
   }
 
   private drawLeg(game: Game, side: Side, back: boolean) {
     const leg = game.stanley.rig.legs[side];
     this.limb(leg.thigh, DIM.thigh.len, DIM.thigh.r, back ? C.pantsBack : C.pants);
     this.limb(leg.shin, DIM.shin.len, DIM.shin.r, back ? C.pantsBack : C.pants);
-    // Shoe.
     const p = leg.shin.translation();
-    const a = leg.shin.rotation();
-    const f = game.stanley.facing;
-    const toe = rotate({ x: f * 0.09, y: -DIM.shin.len / 2 - 0.02 }, a);
+    const toe = rotate({ x: game.stanley.facing * 0.09, y: -DIM.shin.len / 2 - 0.02 }, leg.shin.rotation());
     this.circle({ x: p.x + toe.x, y: p.y + toe.y }, 0.08, back ? "#3a2a26" : "#4c3730");
   }
 
   private drawStanley(game: Game, dt: number) {
     const { ctx, camera: cam } = this;
-    const tb = game.stanley;
-    const rig = tb.rig;
-    const f = tb.facing;
+    const st = game.stanley;
+    const rig = st.rig;
+    const f = st.facing;
     const back: Side = f > 0 ? "L" : "R";
     const front: Side = f > 0 ? "R" : "L";
     const sc = cam.scale;
@@ -365,29 +653,20 @@ export class Renderer {
     this.drawLeg(game, back, true);
     this.drawLeg(game, front, false);
 
-    // Torso.
     this.limb(rig.pelvis, DIM.pelvis.hh * 2, DIM.pelvis.r, C.pants);
     this.limb(rig.chest, DIM.chest.hh * 2, DIM.chest.r, C.shirt);
-    // Pocket logo.
+    // Name badge: just "STANLEY T." — the surname stays a secret.
     const cp = rig.chest.translation();
-    const logo = rotate({ x: f * 0.06, y: 0.02 }, rig.chest.rotation());
-    const ls = cam.toScreen({ x: cp.x + logo.x, y: cp.y + logo.y });
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = `bold ${Math.max(8, sc * 0.11)}px system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("OJ", ls.x, ls.y);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
+    const badge = rotate({ x: f * 0.07, y: 0.05 }, rig.chest.rotation());
+    this.text("OJ", { x: cp.x + badge.x, y: cp.y + badge.y }, 0.1, "rgba(255,255,255,0.85)");
 
     // Head.
     const hp = rig.head.translation();
-    const ha = rig.head.rotation();
     const hs = cam.toScreen(hp);
     const hr = DIM.head.r * sc;
     ctx.save();
     ctx.translate(hs.x, hs.y);
-    ctx.rotate(-ha);
+    ctx.rotate(-rig.head.rotation());
     ctx.fillStyle = C.skin;
     ctx.beginPath();
     ctx.arc(0, 0, hr, 0, Math.PI * 2);
@@ -400,10 +679,10 @@ export class Renderer {
     ctx.fillRect(f > 0 ? 0 : -hr * 1.55, -hr * 0.28, hr * 1.55, hr * 0.2);
 
     // Eyes look at the reach point (or the way we're running).
-    const down = tb.balance.posture === "down";
+    const down = st.balance.posture === "down";
     this.blink -= dt;
     if (this.blink < -3.2) this.blink = 0.12;
-    const look = tb.lookAt ? { x: tb.lookAt.x - hp.x, y: tb.lookAt.y - hp.y } : { x: f, y: -0.1 };
+    const look = st.lookAt ? { x: st.lookAt.x - hp.x, y: st.lookAt.y - hp.y } : { x: f, y: -0.1 };
     const ll = Math.hypot(look.x, look.y) || 1;
     const lx = (look.x / ll) * hr * 0.12;
     const ly = (-look.y / ll) * hr * 0.12;
@@ -433,18 +712,18 @@ export class Renderer {
         }
       }
     }
-    // Mouth: a worried "o" when airborne or down, a little smile otherwise.
+    // Mouth: a worried "o" when airborne or down, a grimace when lifting, a smile otherwise.
     ctx.strokeStyle = C.ink;
     ctx.fillStyle = C.ink;
     ctx.lineWidth = Math.max(1.5, hr * 0.08);
     const mx = f * hr * 0.42;
     const my = hr * 0.55;
-    if (down || !tb.balance.grounded) {
+    if (down || !st.balance.grounded) {
       ctx.beginPath();
       ctx.ellipse(mx, my, hr * 0.09, hr * 0.12, 0, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      const strain = !!(tb.grips.L.held?.isDynamic() || tb.grips.R.held?.isDynamic());
+      const strain = !!(st.grips.L.held?.isDynamic() || st.grips.R.held?.isDynamic());
       ctx.beginPath();
       if (strain) {
         ctx.moveTo(mx - hr * 0.14, my);
@@ -462,22 +741,45 @@ export class Renderer {
   private drawFx(dt: number) {
     const { ctx, camera: cam } = this;
     const sc = cam.scale;
-    this.stars = this.stars.filter((s) => (s.age += dt) < 0.9);
-    ctx.fillStyle = "#ffd84a";
-    for (const s of this.stars) {
-      s.pos.x += s.vel.x * dt;
-      s.pos.y += s.vel.y * dt;
-      s.vel.y -= 4 * dt;
-      const p = cam.toScreen(s.pos);
-      this.starShape(p.x, p.y, 0.09 * sc * (1 - s.age));
+    this.particles = this.particles.filter((p) => (p.age += dt) < p.life);
+    for (const p of this.particles) {
+      p.pos.x += p.vel.x * dt;
+      p.pos.y += p.vel.y * dt;
+      const t = p.age / p.life;
+      const s = cam.toScreen(p.pos);
+      if (p.shape === "confetti") {
+        p.vel.y -= 6 * dt;
+        p.vel.x *= 1 - dt * 1.5;
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(p.age * p.spin);
+        ctx.globalAlpha = Math.min(1, (1 - t) * 3);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size * sc, -p.size * sc * 0.4, p.size * sc * 2, p.size * sc * 0.8);
+        ctx.restore();
+      } else if (p.shape === "star") {
+        p.vel.y -= 4 * dt;
+        ctx.fillStyle = p.color;
+        this.starShape(s.x, s.y, p.size * sc * (1 - t));
+      } else {
+        p.vel.y *= 1 - dt * 3;
+        ctx.globalAlpha = 1 - t;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, p.size * sc * (0.6 + t), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
     this.popups = this.popups.filter((p) => (p.age += dt) < 1.1);
     ctx.textAlign = "center";
     for (const p of this.popups) {
       const s = cam.toScreen({ x: p.pos.x, y: p.pos.y + p.age * 0.8 });
-      ctx.globalAlpha = 1 - p.age / 1.1;
-      ctx.font = `900 ${Math.max(14, sc * 0.3)}px system-ui, sans-serif`;
-      ctx.lineWidth = 4;
+      const pop = p.age < 0.12 ? 0.6 + (p.age / 0.12) * 0.6 : 1.2 - Math.min(0.2, (p.age - 0.12) * 2);
+      ctx.globalAlpha = 1 - Math.max(0, p.age - 0.6) / 0.5;
+      ctx.font = `900 ${Math.max(14, sc * 0.3 * pop)}px ${FONT}`;
+      ctx.lineWidth = 5;
+      ctx.lineJoin = "round";
       ctx.strokeStyle = "#fff";
       ctx.strokeText(p.text, s.x, s.y);
       ctx.fillStyle = p.color;
@@ -497,4 +799,63 @@ export class Renderer {
     }
     ctx.fill();
   }
+
+  /** A comic speech bubble whose tail points at `anchor`, kept on screen. */
+  private drawBubble(b: Bubble) {
+    const { ctx, camera: cam } = this;
+    const size = clamp(cam.scale * 0.17, 15, 24) * (b.aside ? 0.9 : 1);
+    ctx.font = `${b.aside ? "italic 600" : "650"} ${size}px ${FONT}`;
+    const maxW = Math.min(cam.w - 32, Math.max(260, cam.w * 0.42));
+    const lines = wrap(ctx, b.text, maxW - 28);
+    const lh = size * 1.3;
+    const w = Math.min(maxW, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 28);
+    const h = lines.length * lh + 20;
+    const a = cam.toScreen(b.anchor);
+    const x = clamp(a.x - w + 40, 16, cam.w - w - 16);
+    const y = clamp(a.y - h - 26, 56, cam.h - h - 16);
+    ctx.fillStyle = b.aside ? "#fff8e6" : "#ffffff";
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 14);
+    ctx.fill();
+    ctx.stroke();
+    // Tail.
+    const tx = clamp(a.x - 10, x + 20, x + w - 20);
+    ctx.beginPath();
+    ctx.moveTo(tx - 10, y + h - 1);
+    ctx.lineTo(a.x - 4, Math.min(a.y - 8, y + h + 22));
+    ctx.lineTo(tx + 10, y + h - 1);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(tx - 10, y + h);
+    ctx.lineTo(a.x - 4, Math.min(a.y - 8, y + h + 22));
+    ctx.lineTo(tx + 10, y + h);
+    ctx.stroke();
+    // Text, revealed character by character.
+    ctx.fillStyle = C.ink;
+    ctx.textBaseline = "top";
+    let left = b.shown;
+    lines.forEach((l, i) => {
+      const part = l.slice(0, Math.max(0, left));
+      left -= l.length + 1;
+      ctx.fillText(part, x + 14, y + 10 + i * lh);
+    });
+    ctx.textBaseline = "alphabetic";
+  }
+}
+
+function wrap(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(next).width > width && cur) {
+      lines.push(cur);
+      cur = w;
+    } else cur = next;
+  }
+  if (cur) lines.push(cur);
+  return lines;
 }

@@ -384,10 +384,23 @@ tests/
 
 ## 13. Status
 
-**M0 body toy: built**, needs playtesting. See the README for controls. Changes from the plan:
-- Rendering uses plain Canvas2D for now; PixiJS can come in M2 if we need effects it's better at.
-- Balance and climbing use assisted forces (pelvis hover spring, mantle assist) rather than pure foot physics. This keeps falls and recoveries readable while the arms stay fully physical.
-- Upper arms and forearms don't collide with level geometry, so they don't snag on ledges. Hands still do.
+**M0 body toy: done.**
+
+**M1 first gigs: done**, plus some M2 polish and the start of M4's story work:
+- Chapter 1 "The Suburb": Ding Dong, Laundry Day, Stack It, Pizza Up.
+- Onboarding and Performance Review #1 cutscenes, with live physics and Gerald's reactions to whatever breaks.
+- Stars, bonus tags, boss memos, job board, saved progress, instant restart.
+- Polish: intro cards with an establishing shot of the goal, an off-screen goal marker, confetti and slow-mo on completion, camera shake, landing dust, synthesized sound for impacts, throws, the doorbell and Gerald's voice.
+
+Changes from the plan:
+- Rendering uses plain Canvas2D; PixiJS isn't needed yet.
+- Balance and climbing use assisted forces (pelvis hover spring, mantle assist). The arms stay fully physical.
+- Upper arms and forearms don't collide with level geometry, so they don't snag. Hands do.
+- Stairs look like steps but Stanley walks on a hidden ramp; props still tumble down the real steps.
+- Buttons count a hard smack from any side, not just a push straight in.
+- Grabs near a ledge corner slide the hand onto the corner over a few frames.
+
+Next: Chapter 2 "The Docks" (jobs + Review #2), then Quick Gig / Shift modes.
 
 ## 14. First step (done)
 

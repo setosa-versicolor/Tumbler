@@ -28,13 +28,15 @@ export class Input {
   private mouseButtons = { L: false, R: false };
   private moveStick: Stick | null = null;
   private reachStick: Stick | null = null;
-  /** Last input was touch; used to pick which hints to show. */
-  touch = false;
+  /** Last input was touch (or this is a touch-first device); picks which hints to show. */
+  touch = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   onKey: (key: string) => void = () => {};
+  /** Any press on the play area (used to advance dialogue and dismiss cards). */
+  onTap: () => void = () => {};
 
   constructor(private el: HTMLElement) {
     window.addEventListener("keydown", (e) => {
-      if (e.target instanceof HTMLInputElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
       const k = e.key.toLowerCase();
       if (!e.repeat && (k === "w" || k === " " || k === "arrowup")) this.jumpQueued = true;
       if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
@@ -63,6 +65,7 @@ export class Input {
   }
 
   private down(e: PointerEvent) {
+    this.onTap();
     const p = this.local(e);
     if (e.pointerType === "mouse") {
       this.touch = false;
@@ -105,6 +108,15 @@ export class Input {
     }
     if (this.moveStick?.id === e.pointerId) this.moveStick = null;
     if (this.reachStick?.id === e.pointerId) this.reachStick = null;
+  }
+
+  /** Forget held keys and buttons (e.g. when a menu opens mid-press). */
+  release() {
+    this.keys.clear();
+    this.mouseButtons = { L: false, R: false };
+    this.moveStick = null;
+    this.reachStick = null;
+    this.jumpQueued = false;
   }
 
   /** Build this frame's intent. Jump is consumed by the first call. */

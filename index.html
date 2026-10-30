@@ -4,13 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#3a3040" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Tumbler</title>
   </head>
   <body>
     <canvas id="game"></canvas>
-    <div id="hud"></div>
+    <header id="topbar">
+      <button id="menu-btn" class="round" aria-label="Job board">☰</button>
+      <div id="job">
+        <span id="job-icon"></span>
+        <div>
+          <div id="job-title"></div>
+          <div id="job-status"></div>
+        </div>
+      </div>
+      <div id="timer"></div>
+      <button id="reset-btn" class="round" aria-label="Restart job" title="Restart (R)">↺</button>
+    </header>
     <div id="hint"></div>
+    <div id="overlay"></div>
+    <button id="skip-btn" hidden>Skip ▸▸</button>
     <div id="ui"></div>
+    <div id="fade"></div>
+    <div id="loading">Clocking in…</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

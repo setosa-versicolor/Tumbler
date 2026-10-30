@@ -1,44 +1,67 @@
-import type { World } from "@dimforge/rapier2d-deterministic-compat";
+import type { RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { createWorld, DT } from "../physics/world";
 import { Stanley, type Intent } from "../physics/body/stanley";
-import { BASKET, buildRoom, LEDGE, type Button, type Prop, type Solid } from "../props/room";
+import { Kit, type Button, type Prop, type Solid } from "../levels/kit";
+import type { Level, LevelInstance, Progress } from "../levels/level";
 import type { Tuning } from "./tuning";
+import type { Vec } from "./math";
 
-export interface Stats {
-  presses: number;
-  inBasket: number;
-  /** Top of the tallest resting pile on the floor, metres. */
-  stack: number;
-  bestStack: number;
-}
+export type GameEvent =
+  | { type: "press" }
+  | { type: "score"; text: string; pos: Vec }
+  | { type: "fall"; pos: Vec }
+  | { type: "impact"; pos: Vec; strength: number }
+  | { type: "throw"; speed: number }
+  | { type: "complete" };
 
-export type GameEvent = { type: "press" } | { type: "basket" } | { type: "fall" };
+/** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
+const IMPACT_DV = 2.2;
 
-/** Everything inside the simulation. No DOM in here, so tests can run it headless. */
+/** Everything inside the simulation for one level. No DOM, so tests can run it headless. */
 export class Game {
   world!: World;
   stanley!: Stanley;
   props: Prop[] = [];
   solids: Solid[] = [];
-  button!: Button;
-  stats: Stats = { presses: 0, inBasket: 0, stack: 0, bestStack: 0 };
+  buttons: Button[] = [];
+  inst!: LevelInstance;
+  /** Seconds since the level started. */
   time = 0;
+  /** Times Stanley fell over this attempt. */
+  falls = 0;
+  progress: Progress = { done: false };
+  /** Time the goal was reached, or null. */
+  doneAt: number | null = null;
   private lastPosture = "up";
+  private lastVel = new Map<RigidBody, Vec>();
+  private lastHeld = new Set<RigidBody>();
 
-  constructor(public tuning: Tuning, private seed = 1) {
+  constructor(public tuning: Tuning, public level: Level, private seed = 1) {
     this.reset();
   }
 
   reset() {
     this.world?.free();
     this.world = createWorld(this.tuning.gravity);
-    const room = buildRoom(this.world, this.seed);
-    this.props = room.props;
-    this.solids = room.solids;
-    this.button = room.button;
-    this.stanley = new Stanley(this.world, { x: 2.5, y: 0 });
-    this.stats = { presses: 0, inBasket: 0, stack: 0, bestStack: this.stats.bestStack };
+    const kit = new Kit(this.world, this.seed);
+    this.inst = this.level.build(kit);
+    this.props = kit.props;
+    this.solids = kit.solids;
+    this.buttons = kit.buttons;
+    this.stanley = new Stanley(this.world, this.level.spawn);
     this.time = 0;
+    this.falls = 0;
+    this.doneAt = null;
+    this.progress = this.inst.progress(this);
+    this.lastPosture = "up";
+    this.lastVel.clear();
+    this.lastHeld.clear();
+  }
+
+  get held(): Set<RigidBody> {
+    const s = new Set<RigidBody>();
+    for (const g of Object.values(this.stanley.grips)) if (g.held?.isDynamic()) s.add(g.held);
+    return s;
   }
 
   step(intent: Intent): GameEvent[] {
@@ -48,70 +71,42 @@ export class Game {
     this.world.step();
     this.time += DT;
 
-    if (this.button.update(DT)) {
-      this.stats.presses++;
-      events.push({ type: "press" });
-    }
+    for (const b of this.buttons) if (b.update(DT)) events.push({ type: "press" });
+
     const posture = this.stanley.balance.posture;
-    if (posture === "down" && this.lastPosture !== "down") events.push({ type: "fall" });
+    if (posture === "down" && this.lastPosture !== "down") {
+      this.falls++;
+      events.push({ type: "fall", pos: this.stanley.rig.head.translation() });
+    }
     this.lastPosture = posture;
 
-    const inBasket = this.props.filter((p) => {
-      const q = p.body.translation();
-      return q.x > BASKET.x0 && q.x < BASKET.x1 && q.y > BASKET.y && q.y < BASKET.y + BASKET.lip + 0.3;
-    }).length;
-    if (inBasket > this.stats.inBasket) events.push({ type: "basket" });
-    this.stats.inBasket = inBasket;
-
-    this.stats.stack = this.measureStack();
-    this.stats.bestStack = Math.max(this.stats.bestStack, this.stats.stack);
-    return events;
-  }
-
-  /**
-   * Height of the tallest pile (two or more) of resting boxes standing on the floor. A box
-   * counts only once it has settled and nobody is holding it, and only if
-   * it's part of a chain of touching boxes down to the floor.
-   */
-  private measureStack(): number {
-    const held = new Set([this.stanley.grips.L.held, this.stanley.grips.R.held]);
-    const boxes = this.props.filter((p) => {
-      if (p.kind !== "box" || held.has(p.body)) return false;
-      const v = p.body.linvel();
-      const x = p.body.translation().x;
-      return Math.hypot(v.x, v.y) < 0.12 && !(x > LEDGE.x0 - 0.3 && x < LEDGE.x1 + 0.3 && p.body.translation().y > LEDGE.y);
-    });
-    const extent = (p: Prop) => {
-      const a = p.body.rotation();
-      const c = Math.abs(Math.cos(a));
-      const s = Math.abs(Math.sin(a));
-      return { hx: p.hw * c + p.hh * s, hy: p.hw * s + p.hh * c };
-    };
-    const supported = new Set<Prop>();
-    let best = 0;
-    // Grow piles upward from the floor.
-    for (let changed = true; changed; ) {
-      changed = false;
-      for (const b of boxes) {
-        if (supported.has(b)) continue;
-        const pb = b.body.translation();
-        const eb = extent(b);
-        const bottom = pb.y - eb.hy;
-        // Anything low (a plank lying on the floor) still counts as the floor.
-        const onFloor = bottom < 0.15;
-        const onOther = [...supported].some((o) => {
-          const po = o.body.translation();
-          const eo = extent(o);
-          return Math.abs(bottom - (po.y + eo.hy)) < 0.08 && Math.abs(pb.x - po.x) < eb.hx + eo.hx;
-        });
-        if (onFloor || onOther) {
-          supported.add(b);
-          // A lone box on the floor isn't a stack.
-          if (onOther) best = Math.max(best, pb.y + eb.hy);
-          changed = true;
-        }
-      }
+    // Throws: something we were holding just left the hand, fast.
+    const held = this.held;
+    for (const b of this.lastHeld) {
+      if (held.has(b)) continue;
+      const v = b.linvel();
+      const speed = Math.hypot(v.x, v.y);
+      if (speed > 4.5) events.push({ type: "throw", speed });
     }
-    return best;
+    this.lastHeld = held;
+
+    // Bumps and crashes, for sound.
+    for (const p of this.props) {
+      const v = p.body.linvel();
+      const last = this.lastVel.get(p.body);
+      if (last && !held.has(p.body)) {
+        const dv = Math.hypot(v.x - last.x, v.y - last.y);
+        if (dv > IMPACT_DV) events.push({ type: "impact", pos: p.body.translation(), strength: dv });
+      }
+      this.lastVel.set(p.body, { x: v.x, y: v.y });
+    }
+
+    if (this.inst.update) events.push(...this.inst.update(this, DT));
+    this.progress = this.inst.progress(this);
+    if (this.progress.done && this.doneAt === null && !this.level.sandbox) {
+      this.doneAt = this.time;
+      events.push({ type: "complete" });
+    }
+    return events;
   }
 }

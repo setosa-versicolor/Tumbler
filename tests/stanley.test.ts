@@ -4,7 +4,7 @@ import { Game } from "../src/sim/game";
 import { DEFAULT_TUNING } from "../src/sim/tuning";
 import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
 import { wrapAngle } from "../src/sim/math";
-import { LEDGE } from "../src/props/room";
+import { dayOff, LEDGE } from "../src/levels/dayOff";
 
 beforeAll(() => initPhysics());
 
@@ -21,7 +21,7 @@ const tilt = (g: Game) => Math.abs(wrapAngle(g.stanley.rig.chest.rotation()));
 
 describe("Stanley's body", () => {
   it("stands upright on its own", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     run(g, 4);
     expect(tilt(g)).toBeLessThan(0.25);
     expect(pelvis(g).y).toBeGreaterThan(0.75);
@@ -30,7 +30,7 @@ describe("Stanley's body", () => {
   });
 
   it("runs right and left", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     run(g, 1);
     const x0 = pelvis(g).x;
     run(g, 1.5, { move: 1 });
@@ -43,7 +43,7 @@ describe("Stanley's body", () => {
   });
 
   it("jumps", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     run(g, 1);
     const y0 = pelvis(g).y;
     g.step({ ...IDLE_INTENT, jump: true });
@@ -58,7 +58,7 @@ describe("Stanley's body", () => {
   });
 
   it("reaches toward a target with the hands", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     run(g, 1);
     const s = g.stanley.shoulder;
     const target = { x: s.x + 0.5, y: s.y + 0.3 };
@@ -68,7 +68,7 @@ describe("Stanley's body", () => {
   });
 
   it("grabs, lifts and throws a box", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     run(g, 1);
     // First box in the pile is at x≈4.2. Walk up to it, reach down and grab.
     run(g, 2, (t) => ({ move: pelvis(g).x < 3.5 && t < 1.5 ? 1 : 0 }));
@@ -83,7 +83,7 @@ describe("Stanley's body", () => {
   });
 
   it("gets back up after being knocked down", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     run(g, 1);
     for (const b of g.stanley.rig.bodies) b.applyImpulse({ x: b.mass() * 7, y: 0 }, true);
     run(g, 0.3);
@@ -94,7 +94,7 @@ describe("Stanley's body", () => {
   });
 
   it("never explodes under random mashing", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     let seed = 7;
     const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     let intent: Intent = IDLE_INTENT;
@@ -117,43 +117,8 @@ describe("Stanley's body", () => {
     const p = g.stanley.position;
     expect(p.x > 0 && p.x < 16 && p.y > 0 && p.y < 8).toBe(true);
   });
-});
-
-describe("Room", () => {
-  it("counts a button press when something hits it hard", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
-    const ball = g.props.find((p) => p.kind === "ball")!.body;
-    ball.setTranslation({ x: 14.5, y: 1.95 }, true);
-    ball.setLinvel({ x: 9, y: 0 }, true);
-    run(g, 1);
-    expect(g.stats.presses).toBe(1);
-    // The spring pushes it back out, ready for the next press.
-    expect(g.button.depth).toBeLessThan(0.02);
-  });
-
-  it("counts things that land in the basket", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
-    const ball = g.props.find((p) => p.kind === "ball")!.body;
-    ball.setTranslation({ x: 0.7, y: 4 }, true);
-    run(g, 2);
-    expect(g.stats.inBasket).toBe(1);
-  });
-
-  it("measures a stack of boxes", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
-    run(g, 0.5);
-    expect(g.stats.stack).toBe(0);
-    const [a, b] = g.props.filter((p) => p.kind === "box");
-    a.body.setTranslation({ x: 14.4, y: a.hh + 0.01 }, true);
-    a.body.setRotation(0, true);
-    b.body.setTranslation({ x: 14.4, y: a.hh * 2 + b.hh + 0.03 }, true);
-    b.body.setRotation(0, true);
-    run(g, 2);
-    expect(g.stats.stack).toBeGreaterThan(a.hh * 2 + b.hh * 2 - 0.05);
-  });
-
   it("can climb onto the ledge", () => {
-    const g = new Game({ ...DEFAULT_TUNING });
+    const g = new Game({ ...DEFAULT_TUNING }, dayOff);
     // Stand just left of the ledge.
     for (const body of g.stanley.rig.bodies) {
       const p = body.translation();
@@ -168,7 +133,8 @@ describe("Room", () => {
     // Push down on it to haul up, swing over, let go.
     run(g, 1, () => ({ reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
     run(g, 1, () => ({ move: 1, reach: { x: s().x + 0.1, y: s().y - 0.7 }, grip: hold }));
-    run(g, 1.5, { move: 1 });
+    run(g, 0.8, { move: 1 });
+    run(g, 0.7);
     const p = g.stanley.rig.pelvis.translation();
     expect(p.x).toBeGreaterThan(LEDGE.x0 + 0.3);
     expect(p.y).toBeGreaterThan(LEDGE.y + 0.7);

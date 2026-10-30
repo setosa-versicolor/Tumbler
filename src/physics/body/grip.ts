@@ -19,6 +19,12 @@ export class Grip {
   held: RigidBody | null = null;
   /** Where on `held` we grabbed, in its local frame. */
   private anchor: Vec = { x: 0, y: 0 };
+  /**
+   * When a grab snaps to a ledge corner, the hand-side anchor starts where the
+   * hand actually is and slides onto the corner over a few steps, instead of
+   * yanking the arm there in one step.
+   */
+  private slide: Vec | null = null;
   private shape = new RAPIER.Ball(DIM.hand.r + 0.025);
 
   constructor(private hand: RigidBody) {}
@@ -40,6 +46,12 @@ export class Grip {
   update(world: World, wantGrip: boolean, other: Grip, throwAssist: number) {
     if (!wantGrip) {
       if (this.joint) this.release(world, throwAssist, other);
+      return;
+    }
+    if (this.joint && this.slide) {
+      this.slide = { x: this.slide.x * 0.8, y: this.slide.y * 0.8 };
+      if (Math.hypot(this.slide.x, this.slide.y) < 0.005) this.slide = null;
+      this.joint.setAnchor1(this.slide ?? { x: 0, y: 0 });
       return;
     }
     if (this.joint) {
@@ -75,7 +87,13 @@ export class Grip {
   }
 
   private attach(world: World, col: Collider, target: RigidBody, other: Grip) {
-    const h = (!target.isDynamic() && this.ledgeCorner(col, this.hand.translation())) || this.hand.translation();
+    const hand = this.hand.translation();
+    const h = (!target.isDynamic() && this.ledgeCorner(col, hand)) || hand;
+    // Offset from the hand to the grab point, in the hand's frame.
+    const ha = this.hand.rotation();
+    const ox = h.x - hand.x;
+    const oy = h.y - hand.y;
+    this.slide = Math.hypot(ox, oy) > 0.005 ? { x: ox * Math.cos(-ha) - oy * Math.sin(-ha), y: ox * Math.sin(-ha) + oy * Math.cos(-ha) } : null;
     const tp = target.translation();
     const ta = target.rotation();
     const c = Math.cos(-ta);
@@ -85,8 +103,8 @@ export class Grip {
     this.anchor = { x: dx * c - dy * s, y: dx * s + dy * c };
     const pivot = !target.isDynamic() || other.held === target;
     const data = pivot
-      ? RAPIER.JointData.revolute({ x: 0, y: 0 }, this.anchor)
-      : RAPIER.JointData.fixed({ x: 0, y: 0 }, 0, this.anchor, this.hand.rotation() - ta);
+      ? RAPIER.JointData.revolute(this.slide ?? { x: 0, y: 0 }, this.anchor)
+      : RAPIER.JointData.fixed(this.slide ?? { x: 0, y: 0 }, 0, this.anchor, this.hand.rotation() - ta);
     this.joint = world.createImpulseJoint(data, this.hand, target, true);
     this.joint.setContactsEnabled(false);
     this.held = target;
@@ -95,6 +113,7 @@ export class Grip {
   release(world: World, throwAssist: number, other: Grip) {
     if (!this.joint) return;
     world.removeImpulseJoint(this.joint, true);
+    this.slide = null;
     const obj = this.held!;
     this.joint = null;
     this.held = null;

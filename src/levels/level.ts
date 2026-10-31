@@ -1,3 +1,4 @@
+import type { Prop } from "./kit";
 import type { Kit } from "./kit";
 import type { Game, GameEvent } from "../sim/game";
 import type { Renderer } from "../render/renderer";
@@ -35,6 +36,8 @@ export interface LevelInstance {
   drawMid?(r: Renderer, game: Game): void;
   /** Things in front of Stanley. */
   drawFront?(r: Renderer, game: Game): void;
+  /** A safe spot for a fragile thing (it won't break while it's here). */
+  safe?(p: Prop): boolean;
 }
 
 export interface Level {

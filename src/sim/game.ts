@@ -194,7 +194,7 @@ export class Game {
       const dv = last ? Math.hypot(v.x - last.x, v.y - last.y) : 0;
       if (last && !held.has(p.body) && dv > IMPACT_DV) events.push({ type: "impact", pos: p.body.translation(), strength: dv });
       this.lastVel.set(p.body, { x: v.x, y: v.y });
-      if (p.fragile && this.time > 0.5 && this.shouldBreak(p, dv, held.has(p.body))) broken.push(p);
+      if (p.fragile && this.time > 0.5 && !this.inst.safe?.(p) && this.shouldBreak(p, dv, held.has(p.body))) broken.push(p);
     }
     for (const p of broken) {
       const pos = { ...p.body.translation() };

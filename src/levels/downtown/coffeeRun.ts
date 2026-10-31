@@ -96,6 +96,13 @@ export const coffeeRun: Level = {
         }
         return copier.update(game, dt);
       },
+      // Reception's desk is a safe place for a coffee: set one down there (from
+      // the tray or by hand) and it stays in one piece. Anywhere else, it's fair game.
+      safe: (p) => {
+        if (p.kind !== "cup") return false;
+        const q = p.body.translation();
+        return q.x > DESK.x0 - 0.1 && q.x < DESK.x1 + 0.1 && q.y > DESK.top - 0.05 && q.y < DESK.top + 0.7;
+      },
       progress: (game) => {
         const left = game.props.filter((p) => p.kind === "cup");
         const trayDown = !game.held.has(tray.body);

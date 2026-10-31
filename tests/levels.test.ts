@@ -657,6 +657,21 @@ describe("Coffee Run", () => {
   });
 });
 
+describe("Coffee Run reception desk", () => {
+  it("a coffee set down on Reception's desk stays in one piece; anywhere else it's fair game", () => {
+    for (const [where, x, y, survives] of [["desk", 12.4, 1.0, true], ["floor", 9.5, 0.2, false]] as const) {
+      const g = play(coffeeRun);
+      run(g, 0.6);
+      const cup = g.props.find((p) => p.kind === "cup")!;
+      // Knocked over, the way a hand-carried cup tends to land.
+      cup.body.setTranslation({ x, y }, true);
+      cup.body.setRotation(1.3, true);
+      run(g, 2);
+      expect(g.props.includes(cup), where).toBe(survives);
+    }
+  });
+});
+
 describe("Ducking", () => {
   it("ducking lowers Stanley a little", () => {
     const g = play(coffeeRun);

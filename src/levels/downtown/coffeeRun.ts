@@ -113,7 +113,7 @@ export const coffeeRun: Level = {
           return trayDown && q.x > DESK.x0 - 0.4 && q.x < DESK.x1 && q.y > DESK.top && q.y < DESK.top + 0.4 && Math.hypot(v.x, v.y) < 0.15;
         }).length;
         if (left.length < NEEDED) return { done: false, label: "Out of coffee. Restart ↺" };
-        return { done: served >= NEEDED, label: `Coffees at Reception ${Math.min(served, NEEDED)}/${NEEDED} · ${left.length} left` };
+        return { done: served >= NEEDED, label: `${Math.min(served, NEEDED)}/${NEEDED} delivered · ${left.length} left` };
       },
       drawBack(r, game) {
         // Kitchenette, the photocopier, cubicle walls, the boss's assistant's desk.

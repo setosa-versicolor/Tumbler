@@ -888,6 +888,19 @@ describe("Fire Drill", () => {
     expect(g.props.filter((p) => p.kind === "extinguisher").length).toBe(FD.CABINETS.length);
   });
 
+  it("clearing the heater without touching it still starts the fire: he lands on its cord", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, fireDrill);
+    run(g, 1);
+    expect(g.progress.label).not.toContain("FIRE");
+    // Put him down just past the heater, as if he'd jumped it.
+    for (const b of g.stanley.rig.bodies) {
+      const p = b.translation();
+      b.setTranslation({ x: p.x - fireDrill.spawn.x + FD.HEATER.x + 0.8, y: p.y + 0.3 }, true);
+    }
+    run(g, 1.5);
+    expect(g.progress.label).toContain("FIRE");
+  });
+
   it("a mannequin fits through the fire exit", () => {
     const g = play(fireDrill);
     const d = g.props.find((p) => p.kind === "dummy")!.body;

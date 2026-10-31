@@ -14,6 +14,8 @@ const ASSEMBLY = { x0: 13.2, x1: W };
 const NEEDED = 3;
 /** The space heater, in the way between the mannequins and the exit. */
 export const HEATER = { x: 10.3, hw: 0.2, hh: 0.45 };
+/** Its cord runs along the floor to a power strip by the exit: clear the heater and you land on it. */
+export const CORD = { x0: HEATER.x + 0.2, x1: 12.0 };
 /** Where a fire takes hold: a row of cells either side of the heater. */
 export const FIRE = { x0: 9.5, x1: 11.3, cell: 0.2 };
 /** Extinguisher cabinets, one either side of where the fire will be. */
@@ -87,6 +89,8 @@ export const fireDrill: Level = {
     const cells = Array.from({ length: Math.round((FIRE.x1 - FIRE.x0) / FIRE.cell) }, (_, i) => ({ x: FIRE.x0 + (i + 0.5) * FIRE.cell, heat: 0, damp: 0 }));
     const flameH = (heat: number) => 0.25 + heat * 1.0;
     let ignited = false;
+    /** The cord, pulled taut a moment ago (1) and slackening off (0). */
+    let yanked = 0;
     let smoulder = 0;
     let hotCooldown = 0;
     const spray: Puff[] = [];
@@ -115,13 +119,26 @@ export const fireDrill: Level = {
         // Knock the heater and it's a fire. It was always going to be a fire.
         if (!ignited && game.time > 0.5) {
           const v = heater.body.linvel();
-          if (Math.abs(heater.body.rotation()) > 0.45 || Math.hypot(v.x, v.y) > 0.8 || game.held.has(heater.body)) {
+          // Jumped clean over it? A foot comes down on the cord, and the cord
+          // brings the heater down after him.
+          const feet = Object.values(game.stanley.rig.legs).map((l) => l.shin.translation());
+          const onCord = feet.some((f) => f.x > CORD.x0 && f.x < CORD.x1 && f.y < 0.45);
+          if (onCord) {
+            yanked = 1;
+            const m = heater.body.mass();
+            heater.body.applyImpulse({ x: 2.2 * m, y: 0.6 * m }, true);
+            heater.body.applyTorqueImpulse(-0.6 * m, true);
+            ev.push({ type: "trip", pos: feet[0] });
+          }
+          if (onCord || Math.abs(heater.body.rotation()) > 0.45 || Math.hypot(v.x, v.y) > 0.8 || game.held.has(heater.body)) {
             ignited = true;
             heater.color = "#6b6f76";
             light(0.5);
             ev.push({ type: "sfx", name: "boom", pos: heater.body.translation() }, { type: "score", text: "That's… a real fire.", pos: { x: HEATER.x, y: 2.2 } });
           }
         }
+
+        yanked = Math.max(0, yanked - dt * 2);
 
         // The fire: flames grow back, spread, and catch again if left to smoulder.
         const wasBurning = burning();
@@ -312,6 +329,14 @@ export const fireDrill: Level = {
         r.text("ASSEMBLY POINT", { x: 14.15, y: 1.75 }, 0.1, "#fff");
       },
       drawMid(r, game) {
+        // The heater's cord, along the floor to the power strip (taut, briefly, when it's yanked).
+        const hp = heater.body.translation();
+        const sag = 0.02 + (1 - yanked) * 0.0;
+        r.line({ x: hp.x, y: 0.05 }, { x: (hp.x + CORD.x1) / 2, y: sag + yanked * 0.25 }, 0.025, "#2a2230");
+        r.line({ x: (hp.x + CORD.x1) / 2, y: sag + yanked * 0.25 }, { x: CORD.x1, y: 0.05 }, 0.025, "#2a2230");
+        r.roundRect(CORD.x1 - 0.05, 0, CORD.x1 + 0.3, 0.08, 0.02, "#e4e6ea");
+        r.circle({ x: CORD.x1 + 0.08, y: 0.04 }, 0.015, "#2a2230");
+        r.circle({ x: CORD.x1 + 0.18, y: 0.04 }, 0.015, "#2a2230");
         // Foam on the floor, then the flames, then the spray, then smoke.
         for (const f of foam) r.circle({ x: f.x, y: 0.02 }, f.r, "rgba(255,255,255,0.85)");
         for (const c of cells) {

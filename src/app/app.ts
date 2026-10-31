@@ -206,7 +206,7 @@ export class App {
       if (bonus === 0) tags.push(`★4 needs under ${level.par[0]}s`);
       else if (bonus === 1) tags.push("★5: break nothing");
     }
-    const { newBest } = overtime ? recordOvertime(this.save, level.id, bonus, time) : recordJob(this.save, level.id, stars, time, tags);
+    const { newBest } = overtime ? recordOvertime(this.save, level.id, bonus, time, stars) : recordJob(this.save, level.id, stars, time, tags);
     writeSave(this.save);
 
     sfx.complete();

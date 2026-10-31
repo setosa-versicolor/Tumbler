@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clearSave, emptySave, loadSave, recordJob, writeSave, type Storage } from "../src/app/save";
+import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type Storage } from "../src/app/save";
 
 const memory = (): Storage & { data: Map<string, string> } => {
   const data = new Map<string, string>();
@@ -35,5 +35,24 @@ describe("save", () => {
     expect(() => writeSave(emptySave(), broken)).not.toThrow();
     clearSave(store);
     expect(store.data.size).toBe(0);
+  });
+});
+
+describe("Overtime and the regular stars", () => {
+  it("beating the ★★★ time in Overtime earns the regular ★★★ too", () => {
+    const s = emptySave();
+    recordJob(s, "crows-nest", 2, 40, []);
+    recordOvertime(s, "crows-nest", 2, 13.8, 3);
+    expect(s.jobs["crows-nest"].stars).toBe(3);
+    expect(s.overtime["crows-nest"].bonus).toBe(2);
+  });
+
+  it("older saves with ★4 already earned get their ★★★ when loaded", () => {
+    const store = memory();
+    const s = emptySave();
+    recordJob(s, "crows-nest", 2, 40, []);
+    s.overtime["crows-nest"] = { bonus: 2, best: 13.8 };
+    writeSave(s, store);
+    expect(loadSave(store).jobs["crows-nest"].stars).toBe(3);
   });
 });

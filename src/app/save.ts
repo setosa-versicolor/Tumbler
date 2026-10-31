@@ -48,7 +48,11 @@ export function loadSave(store: Storage | null = storage()): SaveData {
     if (!raw) return emptySave();
     const data = JSON.parse(raw);
     if (data?.v !== 1) return emptySave();
-    return { v: 1, jobs: data.jobs ?? {}, seen: data.seen ?? {}, barks: data.barks ?? {}, overtime: data.overtime ?? {} };
+    const save: SaveData = { v: 1, jobs: data.jobs ?? {}, seen: data.seen ?? {}, barks: data.barks ?? {}, overtime: data.overtime ?? {} };
+    // ★4 means the ★★★ time was beaten (with a twist, even): that counts for
+    // the regular stars too. (Older saves didn't do this.)
+    for (const [id, ot] of Object.entries(save.overtime)) if (ot.bonus >= 1 && save.jobs[id]) save.jobs[id].stars = 3;
+    return save;
   } catch {
     return emptySave();
   }
@@ -83,11 +87,17 @@ export function recordJob(data: SaveData, id: string, stars: number, time: numbe
   return { record, newBest };
 }
 
-/** Merge an Overtime finish into the save, keeping the best. */
-export function recordOvertime(data: SaveData, id: string, bonus: number, time: number): { record: OvertimeRecord; newBest: boolean } {
+/**
+ * Merge an Overtime finish into the save, keeping the best. `stars` is what
+ * the time would earn as a regular job: doing it with a twist counts for the
+ * regular stars too.
+ */
+export function recordOvertime(data: SaveData, id: string, bonus: number, time: number, stars = 0): { record: OvertimeRecord; newBest: boolean } {
   const prev = data.overtime[id];
   const newBest = !prev || time < prev.best;
   const record = { bonus: Math.max(bonus, prev?.bonus ?? 0), best: Math.min(time, prev?.best ?? Infinity) };
   data.overtime[id] = record;
+  const job = data.jobs[id];
+  if (job) job.stars = Math.max(job.stars, stars);
   return { record, newBest };
 }

@@ -1,5 +1,6 @@
 import type { Intent } from "../physics/body/stanley";
 import { ARM_REACH } from "../physics/body/armController";
+import { DUCK_DEPTH } from "../physics/body/stanley";
 import type { Camera } from "../render/renderer";
 import { clamp, type Vec } from "../sim/math";
 
@@ -18,8 +19,9 @@ interface Stick {
  *
  * Desktop: A/D run, W/Space jump, mouse points the hands, left/right mouse
  * buttons grip with each hand.
- * Touch: left thumb is a floating stick (flick up to jump); right thumb drags
- * to reach relative to the body and grips with both hands while down.
+ * Touch: left thumb is a floating stick (flick up to jump, pull down to duck);
+ * right thumb drags to reach relative to the body and grips with both hands
+ * while down. S / ↓ ducks on a keyboard.
  */
 export class Input {
   private keys = new Set<string>();
@@ -131,6 +133,11 @@ export class Input {
    */
   read(camera: Camera, shoulder: Vec, facing: 1 | -1, floorY = shoulder.y - 1.4): Intent {
     let move = 0;
+    let duck = this.keys.has("s") || this.keys.has("arrowdown") ? 1 : 0;
+    if (this.moveStick) duck = clamp((this.moveStick.pos.y - this.moveStick.origin.y - STICK_RANGE * 0.35) / (STICK_RANGE * 0.4), 0, 1);
+    // Reaching is measured from where his shoulders are standing up, so when
+    // he ducks his hands (and whatever's in them) stay put while his head goes down.
+    shoulder = { x: shoulder.x, y: shoulder.y + duck * DUCK_DEPTH * 0.9 };
     if (this.keys.has("a") || this.keys.has("arrowleft")) move -= 1;
     if (this.keys.has("d") || this.keys.has("arrowright")) move += 1;
     if (this.moveStick) {
@@ -165,7 +172,7 @@ export class Input {
 
     const jump = this.jumpQueued;
     this.jumpQueued = false;
-    return { move, jump, reach, grip };
+    return { move, jump, reach, grip, duck };
   }
 
   /** Mouse world position, for drawing a cursor. */

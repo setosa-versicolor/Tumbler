@@ -19,12 +19,16 @@ export interface Intent {
   /** World point the hands reach for, or null to let the arms dangle. */
   reach: Vec | null;
   grip: Record<Side, boolean>;
+  /** 0..1: ducking down (to get something over his head, say). */
+  duck?: number;
 }
 
 export const IDLE_INTENT: Intent = { move: 0, jump: false, reach: null, grip: { L: false, R: false } };
 
 // Effective inertias for the limb motors (segment plus what hangs off it).
 const I_UPPER = 0.35;
+/** How far (m) Stanley's hips drop when he ducks. Just enough to squeeze a tray over. */
+export const DUCK_DEPTH = 0.28;
 const I_FORE = 0.1;
 const I_THIGH = 1.0;
 const I_SHIN = 0.25;
@@ -43,6 +47,7 @@ export class Stanley {
   lookAt: Vec | null = null;
   /** How far bent over at the waist, 0..1. */
   private bend = 0;
+  private duck = 0;
   private footContacts = new Set<number>();
   private tripCooldown = 0;
   /** 0..1: how flattened Stanley currently is (cannonballs). Drawn, not simulated. */
@@ -236,7 +241,10 @@ export class Stanley {
       target = low * near;
     }
     this.bend += clamp(target - this.bend, -dt * 3, dt * 3);
-    return { bend: this.bend, crouch: this.bend * 0.3 };
+    // Ducking: knees bent, head down, not bent over.
+    const duck = this.balance.posture === "up" ? clamp(intent.duck ?? 0, 0, 1) : 0;
+    this.duck += clamp(duck - this.duck, -dt * 4, dt * 4);
+    return { bend: this.bend, crouch: Math.max(this.bend * 0.3, this.duck * DUCK_DEPTH) };
   }
 
   private updateFacing(intent: Intent) {

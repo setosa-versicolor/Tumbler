@@ -1,6 +1,6 @@
 import { RAPIER } from "../world";
 import type { Collider, ImpulseJoint, RevoluteImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
-import { ARM_GROUPS, BODY_GROUPS } from "../groups";
+import { ARM_GROUPS, BODY_GROUPS, HEAD_GROUPS } from "../groups";
 import type { Vec } from "../../sim/math";
 
 // Stanley's 13-part ragdoll. Built standing with feet on `origin`.
@@ -102,7 +102,7 @@ export function buildRig(world: World, origin: Vec): Rig {
 
   const pelvis = part(pelvisY, RAPIER.ColliderDesc.capsule(DIM.pelvis.hh, DIM.pelvis.r), MASS.pelvis).body;
   const chest = part(chestY, RAPIER.ColliderDesc.capsule(DIM.chest.hh, DIM.chest.r), MASS.chest).body;
-  const head = part(neckY + 0.2, RAPIER.ColliderDesc.ball(DIM.head.r), MASS.head).body;
+  const head = part(neckY + 0.2, RAPIER.ColliderDesc.ball(DIM.head.r), MASS.head, 0.6, HEAD_GROUPS).body;
   joint(pelvis, chest, spineY, [-0.6, 0.6]);
   joint(chest, head, neckY, [-0.6, 0.6]);
 

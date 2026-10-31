@@ -157,8 +157,8 @@ export class App {
           record: this.save.jobs[level.id],
           twist: twist ? { name: twist.name, blurb: twist.blurb, bonus: this.save.overtime[level.id]?.bonus ?? 0 } : undefined,
           controls: this.input.touch
-            ? "Left thumb: run (flick up to jump) · Right thumb: drag to reach, hold to grab"
-            : "A/D run · W jump · Mouse points hands · Hold click to grab · R restart",
+            ? "Left thumb: run (flick up to jump, pull down to duck) · Right thumb: drag to reach, hold to grab"
+            : "A/D run · W jump · S duck · Mouse points hands · Hold click to grab · R restart",
           onStart: () => this.clockIn(),
         }),
       );
@@ -636,8 +636,8 @@ export class App {
     hint.textContent =
       (m.kind === "play" && firstTime) || m.kind === "sandbox"
         ? this.input.touch
-          ? "Left thumb: run, flick up to jump · Right thumb: drag to reach, hold to grab"
-          : "A/D run · W jump · Mouse points hands · Hold left/right click to grab · R restart"
+          ? "Left thumb: run, flick up to jump, pull down to duck · Right thumb: drag to reach, hold to grab"
+          : "A/D run · W jump · S duck · Mouse points hands · Hold left/right click to grab · R restart"
         : cut
           ? "Tap to speed up"
           : m.kind === "play" && this.input.touch && window.innerHeight > window.innerWidth

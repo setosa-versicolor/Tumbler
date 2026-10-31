@@ -1,11 +1,14 @@
 import type { Collider, ImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../world";
-import { ENV_QUERY, G_FLOOR, G_PROP, G_WORLD, GRAB_QUERY, groups, PROP_GROUPS } from "../groups";
+import { ENV_QUERY, G_FLOOR, G_HEAD, G_PROP, G_WORLD, GRAB_QUERY, groups, PROP_GROUPS } from "../groups";
 import { DIM } from "./rig";
 import type { Vec } from "../../sim/math";
 
-/** Held trays and dangling things don't collide with Stanley. */
-const HELD_APART_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP);
+/**
+ * Held trays and dangling things don't collide with Stanley, except his head:
+ * a tray carried overhead has to clear it (or he has to duck).
+ */
+const HELD_APART_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP | G_HEAD);
 /**
  * A held tool doesn't collide with anything: it's an extension of the arm,
  * and arms pass through the scenery too. (Its work is done by the level:

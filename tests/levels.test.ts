@@ -657,6 +657,41 @@ describe("Coffee Run", () => {
   });
 });
 
+describe("Ducking", () => {
+  it("ducking lowers Stanley a little", () => {
+    const g = play(coffeeRun);
+    run(g, 1);
+    const tall = g.stanley.rig.head.translation().y;
+    run(g, 1, { duck: 1 });
+    const low = g.stanley.rig.head.translation().y;
+    expect(tall - low).toBeGreaterThan(0.18);
+    expect(tall - low).toBeLessThan(0.45);
+    expect(g.stanley.balance.posture).toBe("up");
+  });
+
+  it("ducking, Stanley can bring the tray over his head without spilling", { timeout: 20000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, coffeeRun);
+    const tray = g.props.find((p) => p.kind === "tray")!.body;
+    const hold = { L: true, R: true };
+    const sh = () => g.stanley.shoulder;
+    run(g, 0.5);
+    run(g, 2, { move: -0.4 });
+    const grabAt = { x: tray.translation().x + 0.3, y: tray.translation().y + 0.03 };
+    run(g, 1, { reach: grabAt, grip: hold });
+    run(g, 0.5, { reach: { x: grabAt.x, y: 1.2 }, grip: hold });
+    run(g, 0.5, { reach: { x: grabAt.x, y: 1.45 }, grip: hold, duck: 1 });
+    // Up and over, from the counter side to the other, taking it steady.
+    run(g, 2.5, (t) => {
+      const a = Math.PI * (1 - t / 2.5);
+      return { reach: { x: sh().x + Math.cos(a) * 0.715, y: sh().y + 0.25 + Math.sin(a) * 0.715 }, grip: hold, duck: 1 };
+    });
+    run(g, 1.5, (t) => ({ reach: { x: sh().x + 0.715, y: sh().y + 0.55 * (1 - t / 1.5) }, grip: hold, duck: 1 - t / 1.5 }));
+    expect(g.held.has(tray)).toBe(true);
+    expect(tray.translation().x - g.stanley.rig.head.translation().x).toBeGreaterThan(0.2);
+    expect(g.props.filter((p) => p.kind === "cup").length).toBe(4);
+  });
+});
+
 describe("Window Washer", () => {
   const deck = (f: number) => WW.STOPS[f] + 0.08;
   const setup = () => {

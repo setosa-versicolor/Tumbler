@@ -32,6 +32,9 @@ async function boot() {
   });
   window.addEventListener("pointerdown", unlockAudio);
   window.addEventListener("keydown", unlockAudio);
+  // iOS Safari ignores user-scalable=no: stop its pinch-zoom, which would let
+  // the page pan sideways mid-game.
+  for (const ev of ["gesturestart", "gesturechange"]) document.addEventListener(ev, (e) => e.preventDefault());
 
   // Handy for poking at the sim from the devtools console.
   Object.assign(window, { tumbler: { app, tuning, levels: [...ALL_LEVELS, office] } });

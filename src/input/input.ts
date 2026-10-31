@@ -54,6 +54,7 @@ export class Input {
     el.addEventListener("pointermove", (e) => this.move(e));
     el.addEventListener("pointerup", (e) => this.up(e));
     el.addEventListener("pointercancel", (e) => this.up(e));
+    el.addEventListener("lostpointercapture", (e) => this.up(e));
     el.addEventListener("pointerleave", (e) => {
       if (e.pointerType === "mouse") this.mouse = null;
     });
@@ -76,9 +77,12 @@ export class Input {
     }
     this.touch = true;
     this.el.setPointerCapture(e.pointerId);
+    // A new touch on a side always takes it over. If a finger's lift was ever
+    // missed (the browser cancelled the touch, say), the old stick would
+    // otherwise hang on forever, holding a grip nobody can let go of.
     const stick: Stick = { id: e.pointerId, origin: p, pos: p, jumped: false };
-    if (p.x < this.el.clientWidth / 2) this.moveStick ??= stick;
-    else this.reachStick ??= stick;
+    if (p.x < this.el.clientWidth / 2) this.moveStick = stick;
+    else this.reachStick = stick;
   }
 
   private move(e: PointerEvent) {

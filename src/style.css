@@ -13,6 +13,12 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  /* Pinned in place: no sideways scrolling or pinch-zoom while playing. Cards
+     that scroll still scroll up and down. */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  touch-action: pan-y;
   background: var(--bg);
   color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;

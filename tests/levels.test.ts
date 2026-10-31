@@ -588,12 +588,16 @@ describe("Pin Reset", () => {
     run(g, 6, () => ({ move: Math.abs(pel().x - 7.65) > 0.08 ? Math.sign(7.65 - pel().x) * 0.4 : 0 }));
     run(g, 0.5);
     const hold = { L: true, R: true };
-    run(g, 0.8, (t) => ({ jump: t === 0, reach: { x: 8.2, y: 2.5 }, grip: hold }));
+    // Out of reach from the floor: it takes a jump.
+    run(g, 1, { reach: { x: 8.2, y: 2.85 }, grip: hold });
+    expect(g.held.has(disco)).toBe(false);
+    run(g, 0.8);
+    run(g, 0.8, (t) => ({ jump: t === 0, reach: { x: 8.2, y: 2.85 }, grip: hold }));
     expect(g.held.has(disco)).toBe(true);
     // Pump the swing: Stanley's carried well off the floor.
     let high = 0;
     for (let k = 0; k < 8; k++) {
-      run(g, 0.5, { reach: { x: 8.2, y: 3 }, grip: hold, move: k < 4 ? 1 : -1 });
+      run(g, 0.5, { reach: { x: 8.2, y: 3.3 }, grip: hold, move: k < 4 ? 1 : -1 });
       high = Math.max(high, pel().y);
     }
     expect(g.held.has(disco)).toBe(true);

@@ -8,7 +8,7 @@ const DECK = { x0: 10.0, x1: 12.6 };
 const NEEDED = 4;
 const HOLD = 1.0;
 /** The disco ball hangs from the ceiling on a rod: jump, grab it, and swing. */
-const DISCO = { x: 8.2, top: 4.6, y: 2.5, r: 0.22 };
+const DISCO = { x: 8.2, top: 4.6, y: 2.85, r: 0.22 };
 
 const ALLEY: Theme = {
   outdoor: false,

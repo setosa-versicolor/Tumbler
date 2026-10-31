@@ -1,11 +1,14 @@
 import type { Collider, ImpulseJoint, RigidBody, World } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../world";
-import { G_FLOOR, G_PROP, G_WORLD, GRAB_QUERY, groups, PROP_GROUPS } from "../groups";
+import { ENV_QUERY, G_FLOOR, G_PROP, G_WORLD, GRAB_QUERY, groups, PROP_GROUPS } from "../groups";
 import { DIM } from "./rig";
 import type { Vec } from "../../sim/math";
 
 /** Held trays and dangling things don't collide with Stanley. */
 const HELD_APART_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP);
+
+/** How strongly a dangling thing's swing is damped while it's held. */
+const DANGLE_DAMPING = 10;
 
 /** How far a grip can be yanked before it slips. */
 const SLIP_DISTANCE = 0.22;
@@ -30,6 +33,12 @@ export class Grip {
   private slide: Vec | null = null;
   /** Hands catch things within a few centimetres; fingers reach a bit past the palm. */
   private shape = new RAPIER.Ball(DIM.hand.r + 0.065);
+  /** A held dangly thing's own angular damping, put back when it's let go. */
+  private damping = 0;
+  /** A dangly thing just set down: kept clear of Stanley until his hand's away from it... */
+  private setDown: RigidBody | null = null;
+  /** ...and not grabbed again until grip is let go. */
+  private noRegrab: RigidBody | null = null;
 
   constructor(private hand: RigidBody) {}
 
@@ -54,6 +63,17 @@ export class Grip {
    * thing on top shouldn't latch on.
    */
   update(world: World, wantGrip: boolean, other: Grip, throwAssist: number, minStaticY = -Infinity) {
+    if (this.setDown) {
+      // A pin just set down ignores Stanley until his hand's clear of it, so
+      // the hand that put it there doesn't knock it straight back over.
+      const p = this.setDown.translation();
+      const h = this.hand.translation();
+      if (Math.hypot(p.x - h.x, p.y - h.y) > 0.45) {
+        for (let i = 0; i < this.setDown.numColliders(); i++) this.setDown.collider(i).setCollisionGroups(PROP_GROUPS);
+        this.setDown = null;
+      }
+    }
+    if (!wantGrip) this.noRegrab = null;
     if (!wantGrip) {
       if (this.joint) this.release(world, throwAssist, other);
       return;
@@ -68,6 +88,17 @@ export class Grip {
       const aw = this.anchorWorld()!;
       const h = this.hand.translation();
       if (Math.hypot(aw.x - h.x, aw.y - h.y) > SLIP_DISTANCE) this.release(world, 1, other);
+      else if (this.settled(world)) {
+        // A pin lowered onto something, standing up: it's been set down, so
+        // let go, rather than levering it over onto its side.
+        const obj = this.held!;
+        this.release(world, 1, other);
+        this.setDown = this.noRegrab = obj;
+        for (let i = 0; i < obj.numColliders(); i++) obj.collider(i).setCollisionGroups(HELD_APART_GROUPS);
+        // ...and plonk it down onto its base.
+        obj.setAngvel(-Math.atan2(Math.sin(obj.rotation()), Math.cos(obj.rotation())) * 6, true);
+        obj.setLinvel({ x: 0, y: Math.min(0, obj.linvel().y) }, true);
+      }
       return;
     }
     const h = this.hand.translation();
@@ -78,6 +109,7 @@ export class Grip {
     let best = -1;
     world.intersectionsWithShape(h, 0, this.shape, (c) => {
       const b = c.parent();
+      if (b && (b === this.noRegrab || b === this.setDown)) return true;
       if (!b?.isDynamic() && h.y < minStaticY) return true;
       const score = b?.isDynamic() ? 1 + b.mass() : 0;
       if (score > best) {
@@ -89,6 +121,19 @@ export class Grip {
     const col = found as Collider | null;
     const target = col?.parent();
     if (col && target) this.attach(world, col, target, other);
+  }
+
+  /** A dangly thing standing upright, its base resting on something. */
+  private settled(world: World): boolean {
+    const obj = this.held!;
+    if (!(obj.userData as { dangle?: boolean } | undefined)?.dangle) return false;
+    const a = obj.rotation();
+    if (Math.cos(a) < 0.9) return false;
+    const p = obj.translation();
+    const hh = obj.collider(0).halfExtents()?.y ?? 0;
+    const base = { x: p.x + Math.sin(a) * hh, y: p.y - Math.cos(a) * hh + 0.01 };
+    const hit = world.castRay(new RAPIER.Ray(base, { x: 0, y: -1 }), 0.06, true, undefined, ENV_QUERY, undefined, obj);
+    return !!hit;
   }
 
   /**
@@ -115,12 +160,11 @@ export class Grip {
     if ((centre || dangly) && other.held === target) return;
     let h = (!target.isDynamic() && this.ledgeCorner(col, hand)) || hand;
     if (dangly) {
-      // Grab a dangly thing on its centre line, so it hangs straight.
+      // A dangly thing (a pin) is held by the tip of its top end, wherever it
+      // was grabbed, so it always hangs the right way up. The grip slides there.
       const tp = target.translation();
       const a = target.rotation();
-      const he = col.halfExtents();
-      const along = (hand.x - tp.x) * -Math.sin(a) + (hand.y - tp.y) * Math.cos(a);
-      const t = Math.max(-(he?.y ?? 0), Math.min(he?.y ?? 0, along));
+      const t = col.halfExtents()?.y ?? 0;
       h = { x: tp.x - Math.sin(a) * t, y: tp.y + Math.cos(a) * t };
     }
     // Offset from the hand to the grab point, in the hand's frame.
@@ -146,6 +190,11 @@ export class Grip {
     // A tray on the hand rides above Stanley's arms, and a dangling pin hangs
     // in front of them, instead of being levered about by his own body.
     if (centre || dangly) for (let i = 0; i < target.numColliders(); i++) target.collider(i).setCollisionGroups(HELD_APART_GROUPS);
+    // A held pin swings lazily, so it can be lowered without wobbling over.
+    if (dangly) {
+      this.damping = target.angularDamping();
+      target.setAngularDamping(DANGLE_DAMPING);
+    }
   }
 
   release(world: World, throwAssist: number, other: Grip) {
@@ -157,6 +206,7 @@ export class Grip {
     if (ud?.balances || ud?.dangle) {
       for (let i = 0; i < obj.numColliders(); i++) obj.collider(i).setCollisionGroups(PROP_GROUPS);
     }
+    if (ud?.dangle) obj.setAngularDamping(this.damping);
     this.joint = null;
     this.held = null;
     // A small boost on real throws (not gentle drops) so throwing feels punchy.

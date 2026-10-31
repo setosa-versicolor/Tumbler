@@ -540,14 +540,44 @@ describe("Hang the Painting", () => {
 });
 
 describe("Pin Reset", () => {
-  it("is done with six pins standing on the deck", () => {
+  it("is done with four pins standing on the deck", () => {
     const g = play(pinReset);
-    g.props.filter((p) => p.kind === "pin").slice(0, 6).forEach((p, i) => {
-      p.body.setTranslation({ x: 10.3 + i * 0.36, y: 0.2 }, true);
+    g.props.filter((p) => p.kind === "pin").slice(0, 4).forEach((p, i) => {
+      p.body.setTranslation({ x: 10.16 + i * 0.65, y: 0.21 }, true);
       p.body.setRotation(0, true);
     });
     run(g, 2);
     expect(g.progress.done).toBe(true);
+  });
+
+  it("a pin grabbed by its base hangs neck-up, and lowered onto the deck it's set down standing", { timeout: 20000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, pinReset);
+    const pin = g.props.find((p) => p.kind === "pin")!.body;
+    pin.setTranslation({ x: 2.3, y: 0.085 }, true);
+    pin.setRotation(-Math.PI / 2, true); // base towards Stanley
+    // Everything else out of the way.
+    g.props.filter((p) => p.body !== pin).forEach((p, i) => p.body.setTranslation({ x: 12.9, y: 0.3 + i * 0.45 }, true));
+    run(g, 0.5);
+    const hold = { L: true, R: true };
+    const base = { x: pin.translation().x - 0.17, y: 0.09 };
+    run(g, 1.5, { reach: base, grip: hold });
+    expect(g.held.has(pin)).toBe(true);
+    const out = () => ({ x: g.stanley.shoulder.x + 0.55, y: g.stanley.shoulder.y + 0.05 });
+    run(g, 2, (t) => {
+      const k = Math.min(1, t / 1.2);
+      const to = out();
+      return { reach: { x: base.x + (to.x - base.x) * k, y: base.y + (to.y - base.y) * k }, grip: hold };
+    });
+    const pel = () => g.stanley.rig.pelvis.translation();
+    run(g, 8, () => ({ move: pel().x < 10.0 ? 0.5 : 0, reach: out(), grip: hold }));
+    run(g, 1.5, () => ({ reach: out(), grip: hold }));
+    expect(Math.cos(pin.rotation())).toBeGreaterThan(0.9);
+    // Lower it all the way, past the floor: it's let go when it lands upright.
+    run(g, 2, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.55, y: g.stanley.shoulder.y + 0.05 - Math.min(1, t / 1.5) * 1.1 }, grip: hold }));
+    expect(g.held.has(pin)).toBe(false);
+    run(g, 2);
+    expect(Math.cos(pin.rotation())).toBeGreaterThan(0.98);
+    expect(pin.translation().y).toBeLessThan(0.25);
   });
 
   it("a pin grabbed by its end dangles upright", () => {

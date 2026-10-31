@@ -4,7 +4,7 @@ import { Curio } from "../curio";
 import { wrapAngle } from "../../sim/math";
 
 const DECK = { x0: 10.0, x1: 12.6 };
-const NEEDED = 6;
+const NEEDED = 4;
 const HOLD = 1.0;
 
 const ALLEY: Theme = {
@@ -16,7 +16,7 @@ const ALLEY: Theme = {
   stripe: "rgba(255,255,255,0.04)",
 };
 
-/** Downtown job 3: stand the pins back up. Grab one by the end and it hangs straight. */
+/** Downtown job 3: stand the pins back up. Grab one and it hangs from its neck, the right way up. */
 export const pinReset: Level = {
   id: "pin-reset",
   title: "Pin Reset",
@@ -32,7 +32,7 @@ export const pinReset: Level = {
     const pins: Prop[] = [];
     for (let i = 0; i < 8; i++) {
       const x = 4.2 + i * 0.68 + kit.rand() * 0.2;
-      const pin = kit.box(x, 0.075, 0.07, 0.19, { kind: "pin", density: 5, friction: 0.9, restitution: 0.15, color: "#f4f4f4", angle: Math.PI / 2 + (kit.rand() - 0.5) * 0.3, dangle: true });
+      const pin = kit.box(x, 0.09, 0.085, 0.2, { kind: "pin", density: 5, friction: 0.9, restitution: 0.15, color: "#f4f4f4", angle: Math.PI / 2 + (kit.rand() - 0.5) * 0.3, dangle: true });
       // Dangling pins settle instead of swinging forever.
       pin.body.setAngularDamping(1.5);
       pins.push(pin);
@@ -48,7 +48,7 @@ export const pinReset: Level = {
         if (held.has(p.body)) return false;
         const q = p.body.translation();
         const v = p.body.linvel();
-        return q.x > DECK.x0 && q.x < DECK.x1 && Math.abs(wrapAngle(p.body.rotation())) < 0.2 && Math.hypot(v.x, v.y) < 0.1 && q.y < 0.3;
+        return q.x > DECK.x0 && q.x < DECK.x1 && Math.abs(wrapAngle(p.body.rotation())) < 0.3 && Math.hypot(v.x, v.y) < 0.1 && q.y < 0.3;
       }).length;
     return {
       update(game, dt) {
@@ -60,7 +60,7 @@ export const pinReset: Level = {
       drawBack(r, game) {
         // Neon, the lane's gutters, the pin deck, and the scoreboard.
         r.rect(DECK.x0, 0, DECK.x1, 0.03, "rgba(255,255,255,0.25)");
-        for (const [x, y] of [[10.6, 0.03], [11.0, 0.03], [11.4, 0.03], [11.8, 0.03], [12.2, 0.03], [10.8, 0.03]] as const) r.circle({ x, y }, 0.035, "rgba(232,93,93,0.6)");
+        for (let x = DECK.x0 + 0.33; x < DECK.x1; x += 0.65) r.circle({ x, y: 0.03 }, 0.035, "rgba(232,93,93,0.6)");
         r.rect(9.6, 2.6, 13.0, 3.8, "#1c1a2a");
         r.text("HIGH SCORE", { x: 11.3, y: 3.55 }, 0.16, "#f2c94c");
         r.text("G.T.  ·  300", { x: 11.3, y: 3.1 }, 0.3, "#5de8c8");

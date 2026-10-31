@@ -10,7 +10,7 @@ const NEEDED = 3;
 export const coffeeRun: Level = {
   id: "coffee-run",
   title: "Coffee Run",
-  goal: `Get ${NEEDED} coffees to the desk on the tray. Don't spill.`,
+  goal: `Carry ${NEEDED} coffees on the tray to Reception (the desk on the far right). Don't spill.`,
   icon: "☕",
   par: [25, 55],
   bounds: { w: 14, h: 4.6 },
@@ -41,7 +41,7 @@ export const coffeeRun: Level = {
           return trayDown && q.x > DESK.x0 - 0.4 && q.x < DESK.x1 && q.y > DESK.top && q.y < DESK.top + 0.4 && Math.hypot(v.x, v.y) < 0.15;
         }).length;
         if (left.length < NEEDED) return { done: false, label: "Out of coffee. Restart ↺" };
-        return { done: served >= NEEDED, label: `Coffees served ${Math.min(served, NEEDED)}/${NEEDED} · ${left.length} left` };
+        return { done: served >= NEEDED, label: `Coffees at Reception ${Math.min(served, NEEDED)}/${NEEDED} · ${left.length} left` };
       },
       drawBack(r, game) {
         // Kitchenette, the photocopier, cubicle walls, the boss's assistant's desk.
@@ -68,7 +68,8 @@ export const coffeeRun: Level = {
         for (const x of [6.2, 8.6]) r.rect(x, 0, x + 1.4, 1.2, "rgba(150,158,168,0.92)");
         r.rect(DESK.x0 + 0.3, DESK.top + 0.05, DESK.x0 + 0.9, DESK.top + 0.5, "#2a2230");
         r.rect(DESK.x0 + 0.33, DESK.top + 0.08, DESK.x0 + 0.87, DESK.top + 0.47, "#5d9de8");
-        r.text("RECEPTION", { x: (DESK.x0 + DESK.x1) / 2, y: 2.4 }, 0.16, "#5f6670");
+        r.text("RECEPTION", { x: (DESK.x0 + DESK.x1) / 2, y: 2.4 }, 0.26, "#5f6670");
+        r.text("coffee drop-off", { x: (DESK.x0 + DESK.x1) / 2, y: 2.1 }, 0.14, "#8a7a6a");
       },
     };
   },

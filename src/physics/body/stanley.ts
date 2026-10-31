@@ -28,7 +28,7 @@ export const IDLE_INTENT: Intent = { move: 0, jump: false, reach: null, grip: { 
 // Effective inertias for the limb motors (segment plus what hangs off it).
 const I_UPPER = 0.35;
 /** How far (m) Stanley's hips drop when he ducks. Just enough to squeeze a tray over. */
-export const DUCK_DEPTH = 0.28;
+export const DUCK_DEPTH = 0.2;
 const I_FORE = 0.1;
 const I_THIGH = 1.0;
 const I_SHIN = 0.25;
@@ -241,16 +241,20 @@ export class Stanley {
       target = low * near;
     }
     this.bend += clamp(target - this.bend, -dt * 3, dt * 3);
-    // Ducking: knees bent, head down, not bent over.
+    // Ducking: knees bent and a hunch forward, so his head drops below his
+    // shoulders' line (and out from under whatever's held up overhead).
     const duck = this.balance.posture === "up" ? clamp(intent.duck ?? 0, 0, 1) : 0;
     this.duck += clamp(duck - this.duck, -dt * 4, dt * 4);
-    return { bend: this.bend, crouch: Math.max(this.bend * 0.3, this.duck * DUCK_DEPTH) };
+    return { bend: Math.max(this.bend, this.duck * 0.3), crouch: Math.max(this.bend * 0.3, this.duck * DUCK_DEPTH) };
   }
 
   private updateFacing(intent: Intent) {
     let f = this.facing;
     if (Math.abs(intent.move) > 0.2) f = intent.move > 0 ? 1 : -1;
-    else if (intent.reach) {
+    // Ducking, he stays hunched the way he is while things go over his head:
+    // turning round would swing his head straight into them (and flip his bent
+    // knees, which folds him up). He turns once he's straightened up.
+    else if (intent.reach && this.duck < 0.05) {
       const dx = intent.reach.x - this.position.x;
       if (Math.abs(dx) > 0.35) f = dx > 0 ? 1 : -1;
     }

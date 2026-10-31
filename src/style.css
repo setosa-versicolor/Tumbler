@@ -431,3 +431,28 @@ button.link.danger { color: #b0503c; }
 }
 .mode-switch button.on { background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
 .job.overtime { border-color: #f6c9bb; }
+
+.panel .error-log {
+  max-height: 160px;
+  overflow: auto;
+  margin: 0 0 8px;
+  padding: 8px;
+  font-size: 10px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.gear.has-errors::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e85d5d;
+}

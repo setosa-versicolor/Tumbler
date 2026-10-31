@@ -1,3 +1,4 @@
+import { clearErrorLog, errorLog, errorLogText, onErrorLogChange } from "../app/errorLog";
 import { DEFAULT_TUNING, TUNING_RANGES, type Tuning } from "../sim/tuning";
 
 const STORAGE_KEY = "tumbler.tuning.v1";
@@ -74,11 +75,51 @@ export function mountTuningPanel(root: HTMLElement, tuning: Tuning, onResetRoom:
   buttons.append(defaults, reset);
   panel.append(buttons);
 
+  // The error log: what went wrong on this device, ready to copy and send.
+  const logTitle = document.createElement("h2");
+  const logBox = document.createElement("pre");
+  logBox.className = "error-log";
+  const logButtons = document.createElement("div");
+  logButtons.className = "buttons";
+  const copy = document.createElement("button");
+  copy.textContent = "Copy log";
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(errorLogText());
+      copy.textContent = "Copied!";
+    } catch {
+      // No clipboard (or no permission): select the text so it can be copied by hand.
+      const range = document.createRange();
+      range.selectNodeContents(logBox);
+      getSelection()?.removeAllRanges();
+      getSelection()?.addRange(range);
+      copy.textContent = "Selected — copy it";
+    }
+    setTimeout(() => (copy.textContent = "Copy log"), 2000);
+  });
+  const clear = document.createElement("button");
+  clear.textContent = "Clear log";
+  clear.addEventListener("click", clearErrorLog);
+  logButtons.append(copy, clear);
+  panel.prepend(logTitle, logBox, logButtons);
+
   const toggle = document.createElement("button");
   toggle.className = "gear";
   toggle.setAttribute("aria-label", "Tuning");
   toggle.textContent = "⚙";
   toggle.addEventListener("click", () => (panel.hidden = !panel.hidden));
+
+  const showLog = () => {
+    const entries = errorLog();
+    logTitle.textContent = `Error log (${entries.length})`;
+    logBox.textContent = entries.length
+      ? entries.map((e) => `${e.at.slice(5, 19).replace("T", " ")} ${e.kind}: ${e.message}${e.detail ? `\n${e.detail}` : ""}`).join("\n\n")
+      : "Nothing's gone wrong. Yet.";
+    copy.disabled = clear.disabled = !entries.length;
+    toggle.classList.toggle("has-errors", entries.length > 0);
+  };
+  showLog();
+  onErrorLogChange(showLog);
 
   root.append(toggle, panel);
   return { toggle: () => (panel.hidden = !panel.hidden) };

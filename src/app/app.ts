@@ -1,3 +1,4 @@
+import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 import { DT } from "../physics/world";
 import { IDLE_INTENT, type Intent } from "../physics/body/stanley";
 import { Game, type GameEvent } from "../sim/game";
@@ -14,6 +15,7 @@ import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, t
 import { boardCard, chapterCard, endCard, golfCard, introCard, pressCard, resultsCard } from "../ui/screens";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
 import { sfx } from "../ui/audio";
+import { logError } from "./errorLog";
 
 const MAX_STEPS_PER_FRAME = 8;
 /** The last job; finishing it the first time plays the ending. */
@@ -59,6 +61,8 @@ export class App {
   mode: Mode = { kind: "card" };
   save: SaveData;
   private acc = 0;
+  /** The last couple of seconds of motion, for the error log if the physics blows up. */
+  private trail: string[] = [];
   /** Extra time scaling for slow-mo moments. */
   private warp = 1;
   private wasDown = false;
@@ -105,6 +109,7 @@ export class App {
   // ------------------------------------------------------------ flow ---
 
   private load(level: Level) {
+    this.trail = [];
     const twist = this.overtime && !level.sandbox ? twistFor(level.id) : null;
     this.game = new Game(this.tuning, level, 1, twist);
     this.renderer.camera.setLevel(level);
@@ -433,6 +438,7 @@ export class App {
       let steps = 0;
       while (this.acc >= DT && steps < MAX_STEPS_PER_FRAME) {
         this.handle(g.step(intent));
+        if (this.watchdog(g, intent)) return;
         intent = { ...intent, jump: false };
         this.acc -= DT;
         steps++;
@@ -455,6 +461,47 @@ export class App {
     this.renderer.draw(g, live ? dt : 0);
     this.drawSticks();
     this.hud();
+  }
+
+  /**
+   * If the physics has blown up (a body's position has gone to NaN or flown
+   * off to infinity), log what happened and restart the level, rather than
+   * leaving Stanley and everything else vanished. Returns true if it did.
+   */
+  private watchdog(g: Game, intent: Intent): boolean {
+    const bodies: { what: string; body: RigidBody }[] = [
+      ...g.stanley.rig.bodies.map((body, i) => ({ what: `stanley#${i}`, body })),
+      ...g.props.map((p) => ({ what: p.kind, body: p.body })),
+    ];
+    let fastest = { what: "", speed: 0 };
+    let bad: string | null = null;
+    for (const { what, body } of bodies) {
+      const p = body.translation();
+      const v = body.linvel();
+      const speed = Math.hypot(v.x, v.y);
+      if (!Number.isFinite(p.x + p.y + speed + body.rotation()) || Math.abs(p.x) > 1e4 || Math.abs(p.y) > 1e4) {
+        bad ??= `${what} at ${p.x},${p.y} v ${v.x},${v.y} rot ${body.rotation()}`;
+      } else if (speed > fastest.speed) fastest = { what, speed };
+    }
+    const f = (n: number) => n.toFixed(2);
+    if (Math.round(g.time * 120) % 12 === 0) {
+      const pel = g.stanley.rig.pelvis.translation();
+      const held = g.props.filter((p) => g.held.has(p.body)).map((p) => p.kind);
+      const r = intent.reach;
+      this.trail = [
+        ...this.trail,
+        `t ${f(g.time)} pelvis ${f(pel.x)},${f(pel.y)} ${g.stanley.balance.posture} fastest ${fastest.what} ${f(fastest.speed)} held [${held}] move ${f(intent.move)} reach ${r ? `${f(r.x)},${f(r.y)}` : "-"} grip ${intent.grip.L || intent.grip.R}`,
+      ].slice(-20);
+    }
+    if (!bad) return false;
+    const twist = g.twist ? " (overtime)" : "";
+    logError("physics", `Physics blew up in ${g.level.id}${twist}: ${bad}`, this.trail.join("\n"));
+    this.trail = [];
+    if (this.mode.kind === "play" || this.mode.kind === "sandbox") {
+      this.restart();
+      this.renderer.popup("Stanley briefly left this plane of existence.", this.game.stanley.position, "#e85d5d");
+    }
+    return true;
   }
 
   private handle(events: GameEvent[]) {

@@ -5,6 +5,9 @@ import { ALL_LEVELS } from "./app/campaign";
 import { office } from "./story/office";
 import { loadTuning, mountTuningPanel } from "./ui/tuningPanel";
 import { unlockAudio } from "./ui/audio";
+import { captureGlobalErrors, logError } from "./app/errorLog";
+
+captureGlobalErrors();
 
 async function boot() {
   await initPhysics();
@@ -44,8 +47,14 @@ async function boot() {
   const frame = (now: number) => {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    app.frame(dt);
     requestAnimationFrame(frame);
+    try {
+      app.frame(dt);
+    } catch (e) {
+      // Keep going, but write it down: the log's in the ⚙ panel.
+      const err = e as Error;
+      logError("error", String(err?.message ?? err), err?.stack);
+    }
   };
   requestAnimationFrame(frame);
   document.body.classList.add("ready");

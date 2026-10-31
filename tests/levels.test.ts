@@ -206,7 +206,8 @@ describe("Breakables", () => {
   const fragiles = (g: Game) => g.props.filter((p) => p.fragile);
 
   it("every job has something breakable in the way", () => {
-    for (const level of ALL_LEVELS) expect(fragiles(play(level)).length, level.id).toBeGreaterThan(0);
+    // Window Washer's breakable is part of the building: a cracked pane (tested there).
+    for (const level of ALL_LEVELS) if (level.id !== "window-washer") expect(fragiles(play(level)).length, level.id).toBeGreaterThan(0);
   });
 
   it("running into one knocks it over and smashes it", () => {
@@ -702,21 +703,45 @@ describe("Window Washer", () => {
       run(g, 4, () => ({ move: Math.abs(pel().x - x) > 0.08 ? Math.sign(x - pel().x) * 0.4 : 0, reach: { x: g.stanley.shoulder.x + Math.sign(x - pel().x) * 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold }));
     run(g, 0.5);
     const p0 = sq.translation();
-    run(g, 1.5, { reach: { x: p0.x, y: p0.y }, grip: hold });
+    // Picking it up is calm: nothing goes flying.
+    let fastest = 0;
+    run(g, 1.5, () => {
+      const v = sq.linvel();
+      const pv = g.stanley.rig.pelvis.linvel();
+      fastest = Math.max(fastest, Math.hypot(v.x, v.y), Math.hypot(pv.x, pv.y));
+      return { reach: { x: p0.x, y: p0.y }, grip: hold };
+    });
     expect(g.held.has(sq)).toBe(true);
+    expect(fastest).toBeLessThan(4);
     // It's held by the handle's end and points on out along the arm, like a longer arm.
     run(g, 1.5, { reach: { x: g.stanley.shoulder.x - 0.6, y: g.stanley.shoulder.y }, grip: hold });
     expect(blade().x).toBeLessThan(holder().x - 0.3);
     // Point it into the bucket from a step away.
     walkTo(2.3);
     const bp = bucket.translation();
-    run(g, 2, (t) => ({ reach: { x: bp.x, y: bp.y + 0.2 + Math.sin(t * 6) * 0.1 }, grip: hold }));
+    run(g, 2, (t) => ({ reach: { x: bp.x, y: bp.y + 0.4 + Math.sin(t * 6) * 0.1 }, grip: hold }));
     expect(g.progress.label).toContain("wet");
     // Then point it at a spot and scrub.
     const sp = { x: WW.SPOTS[0].x, y: deck(0) + WW.SPOTS[0].up };
     walkTo(sp.x - 0.9);
     run(g, 5, (t) => ({ reach: { x: sp.x + Math.sin(t * 6) * 0.3, y: sp.y + Math.cos(t * 4) * 0.15 }, grip: hold }));
     expect(grime()).toBeLessThan(90);
+  });
+
+  it("wiping the cracked pane shatters it, and that counts as a breakage", () => {
+    const { g } = setup();
+    const sq = g.props.find((p) => p.kind === "squeegee")!.body;
+    run(g, 0.5);
+    // Pretend he's holding it, swept across the crack.
+    g.stanley.grips.R.held = sq;
+    const k = WW.CRACKED;
+    const cy = (k.y0 + k.y1) / 2;
+    run(g, 0.5, (t) => {
+      sq.setTranslation({ x: k.x0 + 0.2 + t * 2, y: cy - 0.26 }, true);
+      sq.setRotation(0, true);
+      return {};
+    });
+    expect(g.breaks).toBe(1);
   });
 
   it("smacking ▲ on the control post takes the cradle up a floor", { timeout: 20000 }, () => {

@@ -15,6 +15,14 @@ const SPEED = 0.7;
 export const PADS = { x0: CRADLE.x1 - 0.42, x1: CRADLE.x1 - 0.04, up: 1.35, down: 0.95, hh: 0.14 };
 /** The glass, behind everything. */
 const GLASS = { x0: 0.25, x1: 7.75, y0: 0.55, y1: 8.0 };
+/** A pane of glass, by floor (0-2) and column (0-4). */
+const pane = (floor: number, col: number) => {
+  const y0 = deckTop(STOPS[floor]) + 0.25;
+  const x0 = GLASS.x0 + col * 1.5;
+  return { x0: x0 + 0.06, y0, x1: x0 + 1.44, y1: y0 + 2.2 };
+};
+/** The cracked pane, on 49, next to a dirty one. It's clean. Wipe it and it goes. */
+export const CRACKED = pane(1, 3);
 /** The squeegee's handle half-length; the blade's across the top end. */
 const HANDLE = 0.26;
 const BLADE = 0.16;
@@ -29,7 +37,9 @@ export const SPOTS: { x: number; floor: number; up: number }[] = [
   { x: 2.2, floor: 2, up: 1.55 },
   { x: 4.1, floor: 2, up: 1.0 },
 ];
-const deckTop = (y: number) => y + CRADLE.hh;
+function deckTop(y: number) {
+  return y + CRADLE.hh;
+}
 
 /** Rubbing this fast (m/s, relative to the cradle) counts as a wipe. */
 const WIPE_SPEED = 0.35;
@@ -77,7 +87,6 @@ export const windowWasher: Level = {
     // Held by the handle's end, blade out, like a longer arm.
     squeegee.body.userData = { tool: true };
     kit.world.createCollider(RAPIER.ColliderDesc.cuboid(BLADE, 0.025).setTranslation(0, HANDLE).setDensity(6).setFriction(0.8).setCollisionGroups(PROP_GROUPS), squeegee.body);
-    kit.fragile(4.4, deck0, "bottles");
 
     const blobs: Blob[] = SPOTS.map((s, i) => ({ x: s.x, y: deckTop(STOPS[s.floor]) + s.up, r: 0.22, dirt: 1, spot: true, seed: i * 1.7 }));
     const area = (b: Blob) => b.dirt * b.r * b.r;
@@ -100,6 +109,9 @@ export const windowWasher: Level = {
     let padCooldown = 0;
     const handWasIn = { L: "", R: "" } as Record<"L" | "R", string>;
     let taught = false;
+    let shattered = false;
+    /** Bits of glass falling, and papers blowing out of the office behind. */
+    const shards: { x: number; y: number; vx: number; vy: number; a: number; paper: boolean }[] = [];
 
     const blade = (): Vec => {
       const p = squeegee.body.translation();
@@ -172,7 +184,42 @@ export const windowWasher: Level = {
         }
         const moved = lastBlade ? Math.hypot(b.x - lastBlade.x, b.y - lastBlade.y - vy * dt) : 0;
         lastBlade = b;
-        const wiping = moved / dt > WIPE_SPEED && onGlass(b);
+        // The cracked pane: wipe it (or smack it) and it's gone.
+        const inCrack = (p: Vec) => p.x > CRACKED.x0 && p.x < CRACKED.x1 && p.y > CRACKED.y0 && p.y < CRACKED.y1;
+        if (!shattered) {
+          const hands = [game.stanley.rig.arms.L.hand, game.stanley.rig.arms.R.hand];
+          const smack = hands.some((h) => {
+            const v = h.linvel();
+            return inCrack(h.translation()) && Math.hypot(v.x, v.y - vy) > 2.5;
+          });
+          if (smack || (moved / dt > WIPE_SPEED && inCrack(b) && game.held.has(squeegee.body))) {
+            shattered = true;
+            game.breaks++;
+            const c = { x: (CRACKED.x0 + CRACKED.x1) / 2, y: (CRACKED.y0 + CRACKED.y1) / 2 };
+            ev.push({ type: "break", pos: c, kind: "window" }, { type: "score", text: "It was already cracked. Was.", pos: { x: c.x, y: CRACKED.y1 + 0.2 } });
+            for (let i = 0; i < 26; i++) {
+              const paper = i >= 18;
+              shards.push({
+                x: CRACKED.x0 + game.rand() * (CRACKED.x1 - CRACKED.x0),
+                y: CRACKED.y0 + game.rand() * (CRACKED.y1 - CRACKED.y0),
+                vx: paper ? -0.6 - game.rand() * 0.8 : (game.rand() - 0.5) * 1.5,
+                vy: paper ? 0.4 + game.rand() * 0.6 : game.rand() * 1.5,
+                a: game.rand() * 6,
+                paper,
+              });
+            }
+          }
+        }
+        for (const s of shards) {
+          // Glass drops; paper flutters off on the breeze.
+          s.vy -= (s.paper ? 0.6 : 9.8) * dt;
+          if (s.paper) s.vx += Math.sin(game.time * 3 + s.a) * 0.6 * dt;
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.a += dt * (s.paper ? 2 : 8);
+        }
+        for (let i = shards.length - 1; i >= 0; i--) if (shards[i].y < -1) shards.splice(i, 1);
+        const wiping = moved / dt > WIPE_SPEED && onGlass(b) && !inCrack(b);
         if (wiping) {
           travelled += moved;
           const under = blobs.filter((d) => d.dirt > 0 && Math.hypot(d.x - b.x, d.y - b.y) < d.r + BLADE * 0.8);
@@ -248,8 +295,29 @@ export const windowWasher: Level = {
         }
         // Somebody's office, through the glass on 49. They have a plant. It's fine.
         const o = deckTop(STOPS[1]) + 0.25;
-        r.rect(5.9, o, 6.7, o + 0.55, "rgba(90,74,60,0.35)");
-        r.circle({ x: 7.0, y: o + 0.7 }, 0.2, "rgba(76,140,80,0.45)");
+        r.rect(6.45, o, 7.2, o + 0.55, "rgba(90,74,60,0.35)");
+        r.circle({ x: 7.45, y: o + 0.7 }, 0.2, "rgba(76,140,80,0.45)");
+        // The cracked pane: a spiderweb of cracks, and a strip of tape someone thought would help.
+        const k = CRACKED;
+        if (!shattered) {
+          const hit = { x: k.x0 + 0.5, y: k.y0 + 1.3 };
+          for (let i = 0; i < 9; i++) {
+            const a = i * 0.7 + 0.3;
+            const len = 0.35 + ((i * 37) % 5) * 0.12;
+            const mid = { x: hit.x + Math.cos(a) * len * 0.5 + 0.04, y: hit.y + Math.sin(a) * len * 0.5 };
+            r.line(hit, mid, 0.012, "rgba(255,255,255,0.85)");
+            r.line(mid, { x: hit.x + Math.cos(a + 0.15) * len, y: hit.y + Math.sin(a + 0.15) * len }, 0.01, "rgba(255,255,255,0.75)");
+          }
+          for (const rr of [0.12, 0.24]) r.ring(hit, rr, "rgba(255,255,255,0.55)", 0.008);
+          r.poly([{ x: k.x0 + 0.85, y: k.y0 + 0.7 }, { x: k.x0 + 1.25, y: k.y0 + 1.15 }, { x: k.x0 + 1.18, y: k.y0 + 1.22 }, { x: k.x0 + 0.78, y: k.y0 + 0.77 }], "rgba(242,201,76,0.8)");
+        } else {
+          // Gone: the office behind, and a few jagged bits left in the frame.
+          r.rect(k.x0, k.y0, k.x1, k.y1, "#3c4654");
+          r.rect(k.x0 + 0.2, k.y0, k.x0 + 0.9, k.y0 + 0.55, "#5a4a3c");
+          r.poly([{ x: k.x0, y: k.y1 }, { x: k.x0 + 0.4, y: k.y1 }, { x: k.x0, y: k.y1 - 0.5 }], "#a8cbe3");
+          r.poly([{ x: k.x1, y: k.y0 }, { x: k.x1 - 0.5, y: k.y0 }, { x: k.x1, y: k.y0 + 0.35 }], "#a8cbe3");
+          r.poly([{ x: k.x1, y: k.y1 }, { x: k.x1 - 0.25, y: k.y1 }, { x: k.x1, y: k.y1 - 0.7 }], "#a8cbe3");
+        }
         // Gerald, in his office on 50, with his coffee.
         const g = deckTop(STOPS[2]) + 1.35;
         r.circle({ x: 6.6, y: g + 0.55 }, 0.17, "#eebd92");
@@ -296,6 +364,12 @@ export const windowWasher: Level = {
         // The squeegee's blade: blue and dripping when it's wet, brown when it's dragging dirt about.
         squeegee.color = wet > 0 ? "#5dade8" : carry > 0.05 ? "#8a6a40" : "#3a3f48";
         for (const d of drips) r.circle(d, 0.025, "rgba(93,173,232,0.8)");
+        for (const sh of shards) {
+          if (sh.paper) {
+            const c = Math.cos(sh.a) * 0.09;
+            r.poly([{ x: sh.x - c, y: sh.y - 0.06 }, { x: sh.x + c, y: sh.y - 0.06 }, { x: sh.x + c, y: sh.y + 0.06 }, { x: sh.x - c, y: sh.y + 0.06 }], "#f4f4f4");
+          } else r.poly([{ x: sh.x, y: sh.y + 0.05 }, { x: sh.x + Math.cos(sh.a) * 0.06, y: sh.y - 0.03 }, { x: sh.x - 0.04, y: sh.y - Math.sin(sh.a) * 0.04 }], "rgba(200,230,250,0.9)");
+        }
       },
     };
   },

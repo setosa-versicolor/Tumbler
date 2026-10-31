@@ -6,6 +6,12 @@ import type { Vec } from "../../sim/math";
 
 /** Held trays and dangling things don't collide with Stanley. */
 const HELD_APART_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP);
+/**
+ * A held tool doesn't collide with anything: it's an extension of the arm,
+ * and arms pass through the scenery too. (Its work is done by the level:
+ * where the squeegee's blade is, where the extinguisher's pointing.)
+ */
+const HELD_TOOL_GROUPS = groups(G_PROP, 0);
 
 /** How strongly a dangling thing's swing is damped while it's held. */
 const DANGLE_DAMPING = 10;
@@ -199,12 +205,22 @@ export class Grip {
     if (tool && this.fore) {
       // A tool is fixed to the forearm (at the hand), pointing on out along
       // it: a forearm's local -y runs elbow-to-hand and a tool's local +y is
-      // its business end, so it's turned half round to line up.
+      // its business end, so it's turned half round to line up. It's put
+      // straight into that pose before the joint's made, so the joint has
+      // nothing to yank (which would send Stanley and the tool flying).
       holder = this.fore;
+      const hand = this.hand.translation();
+      const hh = target.collider(0).halfExtents()?.y ?? 0;
+      const theta = this.fore.rotation() + Math.PI;
+      target.setRotation(theta, true);
+      target.setTranslation({ x: hand.x - hh * Math.sin(theta), y: hand.y + hh * Math.cos(theta) }, true);
+      target.setLinvel(this.fore.linvel(), true);
+      target.setAngvel(this.fore.angvel(), true);
+      this.anchor = { x: 0, y: -hh };
       const fp = this.fore.translation();
       const fa = -this.fore.rotation();
-      const dx = h.x - fp.x;
-      const dy = h.y - fp.y;
+      const dx = hand.x - fp.x;
+      const dy = hand.y - fp.y;
       data = RAPIER.JointData.fixed({ x: dx * Math.cos(fa) - dy * Math.sin(fa), y: dx * Math.sin(fa) + dy * Math.cos(fa) }, 0, this.anchor, -Math.PI);
       this.slide = null;
     } else if (pivot) data = RAPIER.JointData.revolute(this.slide ?? { x: 0, y: 0 }, this.anchor);
@@ -214,7 +230,7 @@ export class Grip {
     this.held = target;
     // A tray on the hand rides above Stanley's arms, and a dangling pin hangs
     // in front of them, instead of being levered about by his own body.
-    if (centre || dangly || tool) for (let i = 0; i < target.numColliders(); i++) target.collider(i).setCollisionGroups(HELD_APART_GROUPS);
+    if (centre || dangly || tool) for (let i = 0; i < target.numColliders(); i++) target.collider(i).setCollisionGroups(tool ? HELD_TOOL_GROUPS : HELD_APART_GROUPS);
     // A held pin swings lazily, so it can be lowered without wobbling over.
     if (dangly) {
       this.damping = target.angularDamping();

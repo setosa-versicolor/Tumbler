@@ -692,6 +692,19 @@ describe("Ducking", () => {
   });
 });
 
+describe("Fish Toss backboard", () => {
+  it("a fish thrown long hits the backboard and drops into the bin", () => {
+    for (const vx of [6, 7.5, 9]) {
+      const g = play(fishToss);
+      const fish = g.props.filter((p) => p.kind === "fish");
+      fish[0].body.setTranslation({ x: 9.6, y: 2.4 }, true);
+      fish[0].body.setLinvel({ x: vx, y: 2.5 }, true);
+      run(g, 2.5);
+      expect(g.progress.label, `thrown at ${vx} m/s`).toBe("Fish 1/4");
+    }
+  });
+});
+
 describe("Window Washer", () => {
   const deck = (f: number) => WW.STOPS[f] + 0.08;
   const setup = () => {

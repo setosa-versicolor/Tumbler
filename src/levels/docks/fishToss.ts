@@ -7,6 +7,8 @@ import type { Renderer } from "../../render/renderer";
 const DOCK_Y = 1.0;
 const BIN = { x0: 11.4, x1: 13.0, depth: 0.6 };
 const NEEDED = 4;
+/** A backboard behind the bin: make the distance and the fish drops in. */
+export const BOARD = { x: BIN.x1 + 0.06, y0: DOCK_Y + BIN.depth, y1: DOCK_Y + 2.6 };
 const GULL = { x: 9.9, y: DOCK_Y + 1.3 };
 /** Chance per second a held fish slips, plus more when Stanley's moving. */
 const SLIP_BASE = 0.3;
@@ -30,6 +32,8 @@ export const fishToss: Level = {
     kit.solid(11, DOCK_Y / 2, 3, DOCK_Y / 2, "dock");
     kit.basket(0.6, 2.0, DOCK_Y, 0.35);
     kit.basket(BIN.x0, BIN.x1, DOCK_Y, BIN.depth);
+    // A dead (unbouncy) board, so a fish that hits it drops straight down.
+    kit.solid(BOARD.x, (BOARD.y0 + BOARD.y1) / 2, 0.06, (BOARD.y1 - BOARD.y0) / 2, "post", { hidden: true, friction: 0.9 });
     kit.solid(GULL.x, DOCK_Y + 0.6, 0.1, 0.6, "post");
     kit.fragile(9.0, DOCK_Y, "bottles");
     const fish: Prop[] = [];
@@ -96,6 +100,14 @@ export const fishToss: Level = {
         r.text("FRESH(ISH) FISH", { x: 1.35, y: 3.4 }, 0.2, "#3b6ea8");
       },
       drawFront(r) {
+        // The backboard, on its pole: white, with a square to aim at.
+        const top = BOARD.y1;
+        r.rect(BOARD.x + 0.02, DOCK_Y, BOARD.x + 0.08, BOARD.y0 + 0.4, "#5f6670");
+        r.rect(BOARD.x - 0.06, BOARD.y0 + 0.35, BOARD.x + 0.06, top, "#f4f4f4");
+        r.rect(BOARD.x - 0.06, BOARD.y0 + 0.35, BOARD.x + 0.06, BOARD.y0 + 0.4, "#e8913c");
+        r.rect(BOARD.x - 0.06, top - 0.05, BOARD.x + 0.06, top, "#e8913c");
+        r.rect(BOARD.x - 0.07, BOARD.y0 + 0.75, BOARD.x + 0.07, BOARD.y0 + 1.25, "#e85d5d");
+        r.rect(BOARD.x - 0.04, BOARD.y0 + 0.8, BOARD.x + 0.04, BOARD.y0 + 1.2, "#f4f4f4");
         // Ice bin front and the crate of fish.
         r.rect(BIN.x0, DOCK_Y, BIN.x1, DOCK_Y + BIN.depth - 0.05, "rgba(225,240,248,0.93)");
         r.text("ICE", { x: (BIN.x0 + BIN.x1) / 2, y: DOCK_Y + 0.3 }, 0.18, "#5d9de8");

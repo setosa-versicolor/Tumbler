@@ -114,7 +114,10 @@ export class App {
   private load(level: Level) {
     this.trail = [];
     const twist = this.overtime && !level.sandbox ? twistFor(level.id) : null;
+    const old = this.game;
     this.game = new Game(this.tuning, level, 1, twist);
+    // The old level's physics world goes, rather than piling up in memory.
+    old?.free();
     this.renderer.camera.setLevel(level);
     this.renderer.clearFx();
     this.renderer.camera.follow(this.game.stanley.position, 0, true);
@@ -444,6 +447,8 @@ export class App {
       let steps = 0;
       while (this.acc >= DT && steps < MAX_STEPS_PER_FRAME) {
         this.handle(g.step(intent));
+        // Something in there loaded a new level: the old one's gone.
+        if (this.game !== g) return;
         if (this.watchdog(g, intent)) return;
         intent = { ...intent, jump: false };
         this.acc -= DT;
@@ -473,6 +478,27 @@ export class App {
   }
 
   /**
+   * After a crash inside a frame (the physics engine can't be trusted after
+   * one), start the level again with a fresh world, rather than leaving
+   * everything vanished. Not more than once every couple of seconds.
+   */
+  recover() {
+    const now = performance.now();
+    if (now - this.lastRecover < 2000) return;
+    this.lastRecover = now;
+    if (this.mode.kind === "play" || this.mode.kind === "sandbox") {
+      this.restart();
+      this.renderer.popup("Stanley briefly left this plane of existence.", this.game.stanley.position, "#e85d5d");
+    } else this.showBoard();
+  }
+  private lastRecover = 0;
+
+  /** The level being played, for the error log. */
+  get levelId(): string {
+    return this.game ? `${this.game.level.id}${this.overtime ? " (overtime)" : ""} · ${this.mode.kind}` : "-";
+  }
+
+  /**
    * If the physics has blown up (a body's position has gone to NaN or flown
    * off to infinity), log what happened and restart the level, rather than
    * leaving Stanley and everything else vanished. Returns true if it did.
@@ -488,7 +514,8 @@ export class App {
       const p = body.translation();
       const v = body.linvel();
       const speed = Math.hypot(v.x, v.y);
-      if (!Number.isFinite(p.x + p.y + speed + body.rotation()) || Math.abs(p.x) > 1e4 || Math.abs(p.y) > 1e4) {
+      const lost = what.startsWith("stanley") && (Math.abs(p.x) > 1e4 || Math.abs(p.y) > 1e4);
+      if (!Number.isFinite(p.x + p.y + speed + body.rotation()) || lost) {
         bad ??= `${what} at ${p.x},${p.y} v ${v.x},${v.y} rot ${body.rotation()}`;
       } else if (speed > fastest.speed) fastest = { what, speed };
     }

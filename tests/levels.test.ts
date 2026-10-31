@@ -884,3 +884,35 @@ describe("The reveal", () => {
     expect(g.props.find((p) => p.kind === "photo")!.mood).toBe("front");
   });
 });
+
+describe("Robustness", () => {
+  it("shredding a paper Stanley's still holding doesn't break anything", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, shredIt);
+    const paper = g.props.find((p) => p.kind === "paper")!;
+    run(g, 0.5);
+    const q = paper.body.translation();
+    run(g, 1.5, { reach: { x: q.x, y: q.y }, grip: { L: true, R: true } });
+    g.removeProp(paper);
+    run(g, 1, { reach: { x: g.stanley.shoulder.x + 0.5, y: g.stanley.shoulder.y }, grip: { L: true, R: true } });
+    expect(g.held.size).toBe(0);
+  });
+
+  it("something that falls out of the world is tidied away, and isn't a blow-up", () => {
+    const g = play(shredIt);
+    const p = g.props.find((x) => x.kind === "paper")!;
+    p.body.setTranslation({ x: -100, y: -30 }, true);
+    run(g, 0.1);
+    expect(g.props).not.toContain(p);
+  });
+
+  it("levels can be loaded over and over (each old physics world is freed)", () => {
+    let g: Game | null = null;
+    for (let i = 0; i < 40; i++) {
+      const old = g;
+      g = play(ALL_LEVELS[i % ALL_LEVELS.length]);
+      old?.free();
+      run(g, 0.05);
+    }
+    expect(g!.stanley.balance.posture).toBe("up");
+  });
+});

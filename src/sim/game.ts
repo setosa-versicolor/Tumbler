@@ -88,7 +88,7 @@ export class Game {
   }
 
   reset() {
-    this.world?.free();
+    this.free();
     this.world = createWorld(this.tuning.gravity);
     const kit = new Kit(this.world, this.seed);
     this.inst = this.level.build(kit);
@@ -187,6 +187,11 @@ export class Game {
       }
       events.push(ev);
     }
+    // Anything that's fallen out of the world is tidied away.
+    for (const p of [...this.props]) {
+      const q = p.body.translation();
+      if (q.y < -20 || Math.abs(q.x) > 200) this.removeProp(p);
+    }
     this.progress = this.inst.progress(this);
     if (this.progress.done && this.doneAt === null && !this.level.sandbox) {
       this.doneAt = this.time;
@@ -280,6 +285,16 @@ export class Game {
     this.lastVel.delete(p.body);
     this.lastHeld.delete(p.body);
     this.fragile.delete(p.body);
+  }
+
+  /**
+   * Free the physics world (it lives in WebAssembly memory, which isn't
+   * garbage-collected): every level load makes a new one, and without this
+   * they pile up until the physics engine runs out of memory and crashes.
+   */
+  free() {
+    this.world?.free();
+    this.world = undefined!;
   }
 
   /** Take a prop out of the level entirely (fed into a shredder, say). */

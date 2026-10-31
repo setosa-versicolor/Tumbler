@@ -53,7 +53,13 @@ async function boot() {
     } catch (e) {
       // Keep going, but write it down: the log's in the ⚙ panel.
       const err = e as Error;
-      logError("error", String(err?.message ?? err), err?.stack);
+      logError("error", `${String(err?.message ?? err)} [in ${app.levelId}]`, err?.stack);
+      // And start the level again with a fresh physics world.
+      try {
+        app.recover();
+      } catch (e2) {
+        logError("error", `Couldn't recover: ${String((e2 as Error)?.message ?? e2)}`, (e2 as Error)?.stack);
+      }
     }
   };
   requestAnimationFrame(frame);

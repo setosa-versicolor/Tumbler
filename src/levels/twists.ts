@@ -1,3 +1,4 @@
+import type { Prop } from "./kit";
 import type { Collider, RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 import { RAPIER } from "../physics/world";
 import { G_BODY, G_FLOOR, G_PROP, G_WORLD, groups } from "../physics/groups";
@@ -12,6 +13,8 @@ import { clamp, type Vec } from "../sim/math";
 export interface TwistInstance {
   update(game: Game, dt: number): GameEvent[];
   draw?(r: Renderer, game: Game): void;
+  /** A fragile thing the twist is throwing about, and so shouldn't count as Stanley breaking. */
+  safe?(p: Prop, game: Game): boolean;
 }
 
 export interface Twist {
@@ -426,12 +429,37 @@ function earthquake(): Twist {
       const QUAKE = 1.6;
       let t = 2;
       let jolt = 0;
+      /** Seconds since the ground last shook: things are still coming down for a moment after. */
+      let since = Infinity;
+      /** Fragile things the quake left lying on their side. */
+      const fallen = new Set<Prop>();
+      const touching = (p: Prop, g: Game) => {
+        const q = p.body.translation();
+        const reach = Math.max(p.hw, p.hh) + 0.15;
+        return g.stanley.rig.bodies.some((b) => {
+          const s = b.translation();
+          return Math.hypot(s.x - q.x, s.y - q.y) < reach;
+        });
+      };
       return {
+        // What the quake throws about doesn't break when it comes down (even on
+        // Stanley), or for lying where it fell, until Stanley bumps it himself.
+        safe(p, g) {
+          if (since < 1.5) return true;
+          return fallen.has(p) && !touching(p, g);
+        },
         update(g, dt) {
           const ev: GameEvent[] = [];
           t += dt;
+          since += dt;
+          // Once it's all come down: whatever's lying on its side, the quake did that.
+          if (since > 1.2 && since < 1.5) {
+            for (const p of g.props) if (p.fragile && Math.cos(p.body.rotation()) < Math.cos(0.9)) fallen.add(p);
+          }
+          for (const p of fallen) if (Math.cos(p.body.rotation()) > Math.cos(0.9)) fallen.delete(p);
           const phase = t % PERIOD;
           if (phase > PERIOD - QUAKE) {
+            since = 0;
             jolt -= dt;
             if (jolt <= 0) {
               jolt = 0.16;

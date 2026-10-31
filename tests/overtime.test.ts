@@ -63,6 +63,12 @@ describe("Overtime twists", () => {
     expect(g.progress.done).toBe(true);
   });
 
+  it("what the earthquake throws about doesn't break when it lands (Stack It's plant, for ★5)", () => {
+    const g = withTwist("quake", stackIt);
+    collect(g, 20);
+    expect(g.breaks).toBe(0);
+  });
+
   it("the goblin stabs Stanley if he walks into it", () => {
     const g = withTwist("goblin", dingDong);
     const ev = collect(g, 14, { move: 0.35 });

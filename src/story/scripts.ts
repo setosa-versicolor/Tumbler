@@ -259,7 +259,7 @@ export const REVIEW_4: Script = {
   steps: [
     { do: "walk", to: VISIT },
     { do: "say", text: "Stanley. Sit down. Or— no, stand. Stand there. That's where you stand." },
-    { do: "say", text: "All six windows: clean. The client also wants me to pass on that they're 'open.' All of them. On a windy day. Their entire Q3 strategy is now in the river." },
+    { do: "say", text: "The windows: clean. Also streaky. Also, somehow, still dripping. The client says it's like looking out through a nice bath, and they've asked whether we do curtains." },
     { do: "fidget", at: "mug", time: 0.9 },
     { do: "say", text: "The mail room says the parcels are sorted. They've asked who sorted the mail room." },
     { do: "say", text: "The shredder has asked for a lawyer." },

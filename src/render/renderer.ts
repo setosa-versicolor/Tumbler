@@ -979,6 +979,22 @@ export class Renderer {
         ctx.fillRect(-w * 0.5, -h * 0.55, w, h * 0.08);
         ctx.fillRect(-w * 0.55, -h * 0.42, w * 1.1, h * 0.06);
         break;
+      case "squeegee": {
+        // A yellow handle, with the rubber blade across the top end (local +y,
+        // which is -y on the canvas). The blade's colour says wet, dry or dirty.
+        ctx.fillStyle = "#f2c94c";
+        ctx.beginPath();
+        ctx.roundRect(-w, -h, w * 2, h * 2, w);
+        ctx.fill();
+        outline();
+        const bw = 0.16 * sc;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.roundRect(-bw, -h - 0.025 * sc, bw * 2, 0.05 * sc, 0.015 * sc);
+        ctx.fill();
+        outline();
+        break;
+      }
       case "discoball":
         // Mirror tiles, turning with the ball, with a glint or two.
         ctx.fillStyle = p.color;

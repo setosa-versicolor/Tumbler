@@ -157,7 +157,8 @@ export class Grip {
     // A second hand would just tip or wedge them.
     const centre = (target.userData as { balances?: boolean } | undefined)?.balances;
     const dangly = (target.userData as { dangle?: boolean } | undefined)?.dangle;
-    if ((centre || dangly) && other.held === target) return;
+    const tool = (target.userData as { tool?: boolean } | undefined)?.tool;
+    if ((centre || dangly || tool) && other.held === target) return;
     let h = (!target.isDynamic() && this.ledgeCorner(col, hand)) || hand;
     if (dangly) {
       // A dangly thing (a pin) is held by the tip of its top end, wherever it
@@ -165,6 +166,14 @@ export class Grip {
       const tp = target.translation();
       const a = target.rotation();
       const t = col.halfExtents()?.y ?? 0;
+      h = { x: tp.x - Math.sin(a) * t, y: tp.y + Math.cos(a) * t };
+    }
+    if (tool) {
+      // A tool (the squeegee) is held by the end of its handle, pointing on
+      // out along the forearm like a longer arm, however it was lying.
+      const tp = target.translation();
+      const a = target.rotation();
+      const t = -(target.collider(0).halfExtents()?.y ?? 0);
       h = { x: tp.x - Math.sin(a) * t, y: tp.y + Math.cos(a) * t };
     }
     // Offset from the hand to the grab point, in the hand's frame.
@@ -181,15 +190,17 @@ export class Grip {
     this.anchor = { x: dx * c - dy * s, y: dx * s + dy * c };
     // Trays balance on the hand (a pivot) rather than being clamped to it.
     const pivot = !target.isDynamic() || other.held === target || !!dangly || !!centre;
+    // At rest a hand points down its forearm (its local -y); a tool's local +y
+    // is its business end, so it's turned half round to line up.
     const data = pivot
       ? RAPIER.JointData.revolute(this.slide ?? { x: 0, y: 0 }, this.anchor)
-      : RAPIER.JointData.fixed(this.slide ?? { x: 0, y: 0 }, 0, this.anchor, this.hand.rotation() - ta);
+      : RAPIER.JointData.fixed(this.slide ?? { x: 0, y: 0 }, 0, this.anchor, tool ? 0 : this.hand.rotation() - ta);
     this.joint = world.createImpulseJoint(data, this.hand, target, true);
     this.joint.setContactsEnabled(false);
     this.held = target;
     // A tray on the hand rides above Stanley's arms, and a dangling pin hangs
     // in front of them, instead of being levered about by his own body.
-    if (centre || dangly) for (let i = 0; i < target.numColliders(); i++) target.collider(i).setCollisionGroups(HELD_APART_GROUPS);
+    if (centre || dangly || tool) for (let i = 0; i < target.numColliders(); i++) target.collider(i).setCollisionGroups(HELD_APART_GROUPS);
     // A held pin swings lazily, so it can be lowered without wobbling over.
     if (dangly) {
       this.damping = target.angularDamping();
@@ -202,8 +213,8 @@ export class Grip {
     world.removeImpulseJoint(this.joint, true);
     this.slide = null;
     const obj = this.held!;
-    const ud = obj.userData as { balances?: boolean; dangle?: boolean } | undefined;
-    if (ud?.balances || ud?.dangle) {
+    const ud = obj.userData as { balances?: boolean; dangle?: boolean; tool?: boolean } | undefined;
+    if (ud?.balances || ud?.dangle || ud?.tool) {
       for (let i = 0; i < obj.numColliders(); i++) obj.collider(i).setCollisionGroups(PROP_GROUPS);
     }
     if (ud?.dangle) obj.setAngularDamping(this.damping);

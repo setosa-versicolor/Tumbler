@@ -24,6 +24,7 @@ import { pinReset } from "../src/levels/downtown/pinReset";
 import { coffeeRun } from "../src/levels/downtown/coffeeRun";
 import { wrapAngle } from "../src/sim/math";
 import { windowWasher } from "../src/levels/skyscraper/windowWasher";
+import * as WW from "../src/levels/skyscraper/windowWasher";
 import { mailRoom } from "../src/levels/skyscraper/mailRoom";
 import { shredIt } from "../src/levels/skyscraper/shredIt";
 import { fireDrill } from "../src/levels/skyscraper/fireDrill";
@@ -654,18 +655,81 @@ describe("Coffee Run", () => {
 });
 
 describe("Window Washer", () => {
-  it("Stanley rides the cradle and can scrub every window over a trip up and down", { timeout: 30000 }, () => {
-    const g = play(windowWasher);
-    g.props.find((p) => p.kind === "bucket")!.body.setTranslation({ x: 2.9, y: 0.6 }, true);
+  const deck = (f: number) => WW.STOPS[f] + 0.08;
+  const setup = () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, windowWasher);
+    const sq = g.props.find((p) => p.kind === "squeegee")!.body;
+    // Hold the squeegee upright with its blade at (x, y).
+    const put = (x: number, y: number) => {
+      sq.setTranslation({ x, y: y - 0.26 }, true);
+      sq.setRotation(0, true);
+      sq.setLinvel({ x: 0, y: 0 }, true);
+      sq.setAngvel(0, true);
+    };
+    return { g, sq, put, grime: () => Number(/Grime (\d+)%/.exec(g.progress.label ?? "")?.[1] ?? 0) };
+  };
+
+  it("a dry squeegee smears the dirt about; dipped in the suds, it wipes it off", () => {
+    const { g, put, grime } = setup();
+    run(g, 0.5);
+    expect(grime()).toBe(100);
+    const spot = { x: WW.SPOTS[1].x, y: deck(0) + WW.SPOTS[1].up };
+    run(g, 2, (t) => (put(spot.x + Math.sin(t * 5) * 0.6, spot.y + Math.cos(t * 3) * 0.2), {}));
+    expect(grime()).toBeGreaterThan(110);
+    expect(g.progress.label).toContain("dirty");
+    const bp = g.props.find((p) => p.kind === "bucket")!.body.translation();
+    run(g, 0.3, () => (put(bp.x, bp.y + 0.28), {}));
+    expect(g.progress.label).toContain("wet");
+    const smeared = grime();
+    run(g, 5, (t) => (put(spot.x - 0.7 + ((t * 1.5) % 1.4), spot.y + Math.sin(t * 7) * 0.25), {}));
+    expect(grime()).toBeLessThan(smeared - 30);
+  });
+
+  it("Stanley can pick up the squeegee, dip it, and wipe with it", { timeout: 20000 }, () => {
+    const { g, sq, grime } = setup();
+    const bucket = g.props.find((p) => p.kind === "bucket")!.body;
+    const pel = () => g.stanley.rig.pelvis.translation();
+    const hold = { L: true, R: true };
+    // Steer the blade, wherever it is relative to the hand holding it.
+    const blade = () => {
+      const p = sq.translation();
+      const a = sq.rotation();
+      return { x: p.x - Math.sin(a) * 0.26, y: p.y + Math.cos(a) * 0.26 };
+    };
+    const holder = () => (g.stanley.grips.L.held === sq ? g.stanley.rig.arms.L.hand : g.stanley.rig.arms.R.hand).translation();
+    const steer = (want: { x: number; y: number }) => {
+      const b = blade();
+      const h = holder();
+      return { x: h.x + want.x - b.x, y: h.y + want.y - b.y };
+    };
+    run(g, 0.5);
+    const p0 = sq.translation();
+    run(g, 1.5, { reach: { x: p0.x, y: p0.y }, grip: hold });
+    expect(g.held.has(sq)).toBe(true);
+    // It's held by the handle's end, blade out.
+    run(g, 1.5, { reach: { x: g.stanley.shoulder.x - 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold });
+    expect(Math.hypot(blade().x - holder().x, blade().y - holder().y)).toBeGreaterThan(0.4);
+    run(g, 3, () => ({ move: pel().x > 1.9 ? -0.4 : 0, reach: { x: g.stanley.shoulder.x - 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold }));
+    const bp = bucket.translation();
+    run(g, 1.5, (t) => ({ reach: steer({ x: bp.x, y: bp.y + 0.26 + Math.sin(t * 6) * 0.08 }), grip: hold }));
+    const sp = { x: WW.SPOTS[0].x, y: deck(0) + WW.SPOTS[0].up };
+    run(g, 5, () => ({ move: Math.abs(pel().x - (sp.x - 0.6)) > 0.1 ? Math.sign(sp.x - 0.6 - pel().x) * 0.4 : 0, reach: { x: g.stanley.shoulder.x + 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold }));
+    expect(g.progress.label).toContain("wet");
+    run(g, 5, (t) => ({ reach: steer({ x: sp.x + Math.sin(t * 6) * 0.3, y: sp.y + Math.cos(t * 4) * 0.12 }), grip: hold }));
+    expect(grime()).toBeLessThan(90);
+  });
+
+  it("smacking ▲ on the control post takes the cradle up a floor", { timeout: 20000 }, () => {
+    const { g } = setup();
+    const pel = () => g.stanley.rig.pelvis.translation();
+    run(g, 5, () => ({ move: Math.abs(pel().x - 4.4) > 0.08 ? Math.sign(4.4 - pel().x) * 0.4 : 0 }));
+    const y0 = pel().y;
+    run(g, 1.5, (t) => ({ reach: { x: (WW.PADS.x0 + WW.PADS.x1) / 2 + (t % 0.5 < 0.25 ? 0 : -0.4), y: deck(0) + WW.PADS.up } }));
     run(g, 4);
-    expect(g.stanley.rig.pelvis.translation().y).toBeGreaterThan(windowWasher.spawn.y + 2);
+    expect(pel().y - y0).toBeGreaterThan(2.2);
     expect(g.stanley.balance.posture).toBe("up");
-    // Scrub up and down at shoulder height against the glass the whole way.
-    run(g, 32, (t) => ({ move: 0.4, reach: { x: 6.1, y: g.stanley.shoulder.y + Math.sin(t * 10) * 0.35 } }));
-    expect(g.progress.done).toBe(true);
   });
 });
-
 describe("Mail Room", () => {
   it("counts parcels only in the shelf of their own colour", () => {
     const g = play(mailRoom);

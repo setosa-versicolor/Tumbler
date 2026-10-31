@@ -113,9 +113,9 @@ export const MEMOS: Record<string, string[]> = {
     "MEMO: You are now on the do-not-hand-a-tray list. It's a short list. You're on it twice.",
   ],
   "window-washer": [
-    "MEMO: Windows clean. The client can see out now. They've asked us to un-see some things.",
-    "MEMO: Reminder that the cradle is not a ride. It is, technically, a ride.",
-    "MEMO: The bucket has been reported missing. Last seen: falling.",
+    "MEMO: Windows clean. Also soapy. The client says it's 'like looking out through a nice bath.'",
+    "MEMO: The cradle is not a ride. Please stop pressing ▲▼▲▼ to 'feel the breeze.'",
+    "MEMO: The squeegee has been reported missing. Last seen: forty-eight floors down.",
   ],
   "mail-room": [
     "MEMO: Parcels sorted. Mail room re-sorted. Mail room staff re-hired.",

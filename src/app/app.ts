@@ -215,7 +215,8 @@ export class App {
     this.warp = 0.3;
     this.mode = { kind: "celebrate", start: this.mode.start };
 
-    if (level.id === FINALE && !overtime && !this.save.seen.ending) return this.ending();
+    // The ending plays every time the final job is done (not in Overtime, where the stars need showing).
+    if (level.id === FINALE && !overtime) return this.ending();
     setTimeout(() => {
       this.warp = 1;
       if (this.mode.kind !== "celebrate") return;

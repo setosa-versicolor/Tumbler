@@ -95,7 +95,7 @@ export const windowWasher: Level = {
     const suds: { x: number; y: number; age: number }[] = [];
     /** Drips off a wet blade. */
     const drips: { x: number; y: number; vy: number }[] = [];
-    const gerald = new Curio("gerald-window", "Through the glass, Gerald raises his coffee to you.", { x0: 6.1, y0: 6.5, x1: 7.1, y1: 7.5 }, 0.5);
+    const gerald = new Curio("gerald-window", "Through the glass, Gerald raises his coffee to you.", { x0: pane(2, 4).x0 + 0.3, y0: pane(2, 4).y0 + 0.6, x1: pane(2, 4).x0 + 1.15, y1: pane(2, 4).y0 + 1.6 }, 0.5);
 
     let y = STOPS[0];
     let stop = 0;
@@ -227,6 +227,8 @@ export const windowWasher: Level = {
             wet = Math.max(0, wet - dt / WET_SECONDS);
             for (const d of under) {
               d.dirt = Math.max(0, d.dirt - dt / WIPE_TIME);
+              // A last faint smudge counts as gone.
+              if (d.dirt < 0.06) d.dirt = 0;
               if (d.dirt === 0 && d.spot) ev.push({ type: "score", text: "Squeaky!", pos: { x: d.x, y: d.y + 0.4 } });
             }
             // ...and soap left behind, wherever the blade's been.
@@ -274,29 +276,52 @@ export const windowWasher: Level = {
         return [...ev, ...gerald.update(game, dt)];
       },
       progress: () => {
-        const left = Math.round(grime() * 100);
-        const done = blobs.every((d) => d.dirt <= 0.02);
-        return { done, label: done ? "Sparkling. Ish." : `Grime ${left}% · squeegee ${state() === "wet" ? "💧 wet" : state()}` };
+        // Rounded up, so it only says 0% when it's actually done.
+        const left = Math.ceil(grime() * 100 - 1e-6);
+        const done = blobs.every((d) => d.dirt <= 0.06);
+        const sq = state() === "wet" ? `💧 ${Math.ceil(wet * 100)}%` : state();
+        return { done, label: done ? "Sparkling. Ish." : `Grime ${left}% · squeegee ${sq}` };
       },
       drawBack(r, game) {
-        // Sky above the roofline, then the tower's glass face, floor by floor.
-        r.rect(0, GLASS.y0 - 0.3, 8, GLASS.y1 + 0.3, "#5f7d96");
+        // The tower: the offices inside first, then the glass in front of them.
+        r.rect(0, GLASS.y0 - 0.3, 8, GLASS.y1 + 0.3, "#4f6579");
+        // Somebody's office on 49. They have a plant. It's fine.
+        const o = pane(1, 4);
+        r.rect(o.x0 + 0.15, o.y0, o.x0 + 0.95, o.y0 + 0.6, "#6b5646");
+        r.rect(o.x0 + 0.25, o.y0 + 0.6, o.x0 + 0.65, o.y0 + 0.9, "#2a2f38");
+        r.rect(o.x0 + 1.05, o.y0, o.x0 + 1.25, o.y0 + 0.35, "#8a5a3c");
+        r.circle({ x: o.x0 + 1.15, y: o.y0 + 0.6 }, 0.24, "#5c9a5a");
+        // Gerald's office on 50: Gerald, at his desk, with his mug.
+        const go = pane(2, 4);
+        const gx = go.x0 + 0.65;
+        const gy = go.y0 + 0.7;
+        r.rect(go.x0 + 0.1, go.y0 + 1.45, go.x0 + 0.6, go.y0 + 1.85, "#5b3a2a");
+        r.roundRect(gx - 0.2, gy, gx + 0.2, gy + 0.42, 0.08, "#4a5160");
+        r.poly([{ x: gx - 0.05, y: gy + 0.42 }, { x: gx + 0.05, y: gy + 0.42 }, { x: gx, y: gy + 0.25 }], "#f4f4f4");
+        r.rect(gx - 0.015, gy + 0.18, gx + 0.015, gy + 0.38, "#c0392b");
+        r.circle({ x: gx, y: gy + 0.6 }, 0.17, "#eebd92");
+        r.poly([{ x: gx - 0.16, y: gy + 0.66 }, { x: gx + 0.16, y: gy + 0.67 }, { x: gx + 0.15, y: gy + 0.74 }, { x: gx - 0.1, y: gy + 0.76 }], "#9aa0a8");
+        r.ring({ x: gx - 0.06, y: gy + 0.6 }, 0.045, "#2a2230", 0.012);
+        r.ring({ x: gx + 0.06, y: gy + 0.6 }, 0.045, "#2a2230", 0.012);
+        r.roundRect(gx - 0.08, gy + 0.49, gx + 0.08, gy + 0.52, 0.015, "#7a7f86");
+        r.rect(go.x0 + 0.1, go.y0, go.x1 - 0.1, go.y0 + 0.72, "#6b4a3a");
+        r.rect(go.x0 + 0.1, go.y0 + 0.66, go.x1 - 0.1, go.y0 + 0.72, "#82604c");
+        // His mug, raised to you once you've noticed him.
+        const lift = gerald.found ? Math.min(0.3, gerald.age * 0.6) : 0;
+        r.roundRect(gx + 0.3, gy + 0.02 + lift, gx + 0.42, gy + 0.17 + lift, 0.02, "#f4f4f4");
+        r.text("#1", { x: gx + 0.36, y: gy + 0.1 + lift }, 0.06, "#c0392b");
         for (let f = 0; f < 3; f++) {
           const y0 = deckTop(STOPS[f]) + 0.25;
           const y1 = y0 + 2.2;
           for (let i = 0; i < 5; i++) {
             const x0 = GLASS.x0 + i * 1.5;
-            r.rect(x0 + 0.06, y0, x0 + 1.44, y1, "#a8cbe3");
+            r.rect(x0 + 0.06, y0, x0 + 1.44, y1, "rgba(168,203,227,0.55)");
             // Reflections.
             r.poly([{ x: x0 + 0.3, y: y0 }, { x: x0 + 0.55, y: y0 }, { x: x0 + 1.2, y: y1 }, { x: x0 + 0.95, y: y1 }], "rgba(255,255,255,0.22)");
           }
           r.rect(0, y1, 8, y1 + 0.14, "#c9d4dd");
           r.text(`FL ${48 + f}`, { x: 7.3, y: y1 - 0.25 }, 0.12, "rgba(42,34,48,0.35)");
         }
-        // Somebody's office, through the glass on 49. They have a plant. It's fine.
-        const o = deckTop(STOPS[1]) + 0.25;
-        r.rect(6.45, o, 7.2, o + 0.55, "rgba(90,74,60,0.35)");
-        r.circle({ x: 7.45, y: o + 0.7 }, 0.2, "rgba(76,140,80,0.45)");
         // The cracked pane: a spiderweb of cracks, and a strip of tape someone thought would help.
         const k = CRACKED;
         if (!shattered) {
@@ -318,11 +343,6 @@ export const windowWasher: Level = {
           r.poly([{ x: k.x1, y: k.y0 }, { x: k.x1 - 0.5, y: k.y0 }, { x: k.x1, y: k.y0 + 0.35 }], "#a8cbe3");
           r.poly([{ x: k.x1, y: k.y1 }, { x: k.x1 - 0.25, y: k.y1 }, { x: k.x1, y: k.y1 - 0.7 }], "#a8cbe3");
         }
-        // Gerald, in his office on 50, with his coffee.
-        const g = deckTop(STOPS[2]) + 1.35;
-        r.circle({ x: 6.6, y: g + 0.55 }, 0.17, "#eebd92");
-        r.rect(6.38, g, 6.82, g + 0.38, "#4a5160");
-        r.roundRect(6.86, g + 0.25 + (gerald.found ? Math.min(0.25, gerald.age) : 0), 6.96, g + 0.4 + (gerald.found ? Math.min(0.25, gerald.age) : 0), 0.02, "#f4f4f4");
         // The dirt: brown splodges, and Stanley's smears.
         for (const d of blobs) {
           if (d.dirt <= 0) continue;
@@ -362,7 +382,10 @@ export const windowWasher: Level = {
         }
         r.text(`FL ${48 + stop}`, { x: (CRADLE.x0 + CRADLE.x1) / 2, y: y - 0.25 }, 0.13, "rgba(255,255,255,0.75)");
         // The squeegee's blade: blue and dripping when it's wet, brown when it's dragging dirt about.
-        squeegee.color = wet > 0 ? "#5dade8" : carry > 0.05 ? "#8a6a40" : "#3a3f48";
+        // Blue fading to grey as the suds run out (so a dip's due before it starts
+        // smearing), brown when it's dragging dirt about.
+        const mix = (a: number[], b: number[], k: number) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(",")})`;
+        squeegee.color = carry > 0.05 ? mix([58, 63, 72], [138, 106, 64], Math.min(1, carry * 2)) : mix([58, 63, 72], [93, 173, 232], Math.min(1, wet * 1.15));
         for (const d of drips) r.circle(d, 0.025, "rgba(93,173,232,0.8)");
         for (const sh of shards) {
           if (sh.paper) {

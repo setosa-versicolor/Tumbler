@@ -682,7 +682,7 @@ describe("Window Washer", () => {
     expect(g.progress.label).toContain("dirty");
     const bp = g.props.find((p) => p.kind === "bucket")!.body.translation();
     run(g, 0.3, () => (put(bp.x, bp.y + 0.28), {}));
-    expect(g.progress.label).toContain("wet");
+    expect(g.progress.label).toContain("💧");
     const smeared = grime();
     run(g, 5, (t) => (put(spot.x - 0.7 + ((t * 1.5) % 1.4), spot.y + Math.sin(t * 7) * 0.25), {}));
     expect(grime()).toBeLessThan(smeared - 30);
@@ -720,12 +720,27 @@ describe("Window Washer", () => {
     walkTo(2.3);
     const bp = bucket.translation();
     run(g, 2, (t) => ({ reach: { x: bp.x, y: bp.y + 0.4 + Math.sin(t * 6) * 0.1 }, grip: hold }));
-    expect(g.progress.label).toContain("wet");
+    expect(g.progress.label).toContain("💧");
     // Then point it at a spot and scrub.
     const sp = { x: WW.SPOTS[0].x, y: deck(0) + WW.SPOTS[0].up };
     walkTo(sp.x - 0.9);
     run(g, 5, (t) => ({ reach: { x: sp.x + Math.sin(t * 6) * 0.3, y: sp.y + Math.cos(t * 4) * 0.15 }, grip: hold }));
     expect(grime()).toBeLessThan(90);
+  });
+
+  it("is done once every spot's been wiped off (and only says 0% when it is)", { timeout: 20000 }, () => {
+    const { g, put } = setup();
+    const sq = g.props.find((p) => p.kind === "squeegee")!.body;
+    run(g, 0.5);
+    g.stanley.grips.R.held = sq;
+    const bp = g.props.find((p) => p.kind === "bucket")!.body.translation();
+    for (const s of WW.SPOTS) {
+      run(g, 0.2, () => (put(bp.x, bp.y + 0.28), {}));
+      const y = deck(s.floor) + s.up;
+      run(g, 1.5, (t) => (put(s.x - 0.3 + ((t * 2) % 0.6), y + Math.sin(t * 9) * 0.12), {}));
+    }
+    run(g, 0.2);
+    expect(g.progress.done).toBe(true);
   });
 
   it("wiping the cracked pane shatters it, and that counts as a breakage", () => {

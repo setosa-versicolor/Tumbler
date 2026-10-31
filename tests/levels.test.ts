@@ -672,6 +672,20 @@ describe("Coffee Run reception desk", () => {
   });
 });
 
+describe("Moving Day lamp", () => {
+  it("the lamp stood up in the van stays in one piece; tipped over, it breaks", () => {
+    for (const [angle, survives] of [[0, true], [1.3, false]] as const) {
+      const g = play(movingDay);
+      run(g, 0.6);
+      const lamp = g.props.find((p) => p.kind === "lamp")!;
+      lamp.body.setTranslation({ x: 14.5, y: 0.8 + 0.52 }, true);
+      lamp.body.setRotation(angle, true);
+      run(g, 3);
+      expect(g.props.includes(lamp), `at angle ${angle}`).toBe(survives);
+    }
+  });
+});
+
 describe("Ducking", () => {
   it("ducking lowers Stanley a little", () => {
     const g = play(coffeeRun);

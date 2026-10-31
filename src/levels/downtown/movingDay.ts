@@ -56,6 +56,13 @@ export const movingDay: Level = {
         }
         return [];
       },
+      // The lamp can go in the van first, out of the sofa's way: stood up in
+      // there, it's safe. (Tipped over, in there or anywhere, it's not.)
+      safe: (p) => {
+        if (p.kind !== "lamp") return false;
+        const q = p.body.translation();
+        return q.x > VAN.x0 && q.x < VAN.x1 && q.y > VAN.floor && q.y < VAN.roof && Math.cos(p.body.rotation()) > Math.cos(0.5);
+      },
       progress: () => ({ done: settled > 0.6, label: settled > 0 ? "Loaded!" : "Sofa → van" }),
       drawBack(r) {
         // Office side: a window onto the street, a desk, a motivational poster.

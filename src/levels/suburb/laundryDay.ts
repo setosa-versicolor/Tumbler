@@ -12,7 +12,7 @@ export const laundryDay: Level = {
   title: "Laundry Day",
   goal: `Get ${NEEDED} socks into the laundry basket.`,
   icon: "🧦",
-  par: [14, 35],
+  par: [23, 35],
   bounds: { w: 12, h: 6 },
   spawn: { x: 2, y: 0 },
   target: { x: (BASKET.x0 + BASKET.x1) / 2, y: BASKET.y + 0.3 },

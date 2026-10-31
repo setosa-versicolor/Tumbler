@@ -5,6 +5,7 @@ import { DEFAULT_TUNING } from "../src/sim/tuning";
 import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
 import { ALL_LEVELS, overtimeBonus } from "../src/app/campaign";
 import { LEVEL_TWISTS, TWISTS, twistFor } from "../src/levels/twists";
+import { fishToss } from "../src/levels/docks/fishToss";
 import { emptySave, loadSave, recordOvertime, writeSave, type Storage } from "../src/app/save";
 import { dayOff } from "../src/levels/dayOff";
 import { dingDong } from "../src/levels/suburb/dingDong";
@@ -36,6 +37,19 @@ describe("Overtime twists", () => {
     expect(ev.some((e) => e.type === "sfx" && e.name === "boom")).toBe(true);
     expect(ev.some((e) => e.type === "ouch")).toBe(true);
     expect(g.falls).toBeGreaterThan(0);
+  });
+
+  it("cannonballs clear whatever's next to the cannon (Fish Toss: a crate one side, the backboard the other)", () => {
+    for (const x of [3, 11]) {
+      const g = withTwist("cannons", fishToss);
+      // Stand him at either end, so either cannon has to fire past its clutter.
+      for (const b of g.stanley.rig.bodies) {
+        const p = b.translation();
+        b.setTranslation({ x: p.x - 2.8 + x, y: p.y }, true);
+      }
+      const ev = collect(g, 10);
+      expect(ev.some((e) => e.type === "ouch"), `standing at ${x}`).toBe(true);
+    }
   });
 
   it("the goblin stabs Stanley if he walks into it", () => {

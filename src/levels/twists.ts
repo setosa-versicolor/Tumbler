@@ -24,6 +24,11 @@ export interface Twist {
 
 /** Collides with level geometry and Stanley, but never the job's props. */
 const MISSILE_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_BODY);
+/**
+ * Just fired: clears whatever's next to the cannon (a crate, a bin, a
+ * backboard) and only starts hitting scenery once it's out in the open.
+ */
+const LAUNCH_GROUPS = groups(G_PROP, G_BODY);
 const GROUND_QUERY = groups(0xffff, G_WORLD | G_FLOOR);
 
 /** Height of the walkable surface under x (searching down from `from`). */
@@ -54,16 +59,24 @@ function cannons(): Twist {
       const R = 0.15;
       const w = game.level.bounds.w;
       // A cannon on each side with open ground (not up on a roof or a dock wall).
-      const all = [0.35, w - 0.35].map((x, i) => ({ x, y: groundAt(game, x), dir: i ? -1 : 1 }));
-      const usable = all.filter((s) => s.y < game.level.spawn.y + 0.8);
-      const sides = usable.length ? usable : [all[0]];
+      // Placed on the first update: the physics answers ground queries only
+      // once it's taken a step (before that, every cannon sat at height 0).
+      let sides: { x: number; y: number; dir: number }[] = [];
+      const place = (g: Game) => {
+        // Search down from a couple of metres over the floor: from higher up, indoors, it'd find the ceiling.
+        const from = g.level.spawn.y + 2.5;
+        const all = [0.35, w - 0.35].map((x, i) => ({ x, y: groundAt(g, x, from), dir: i ? -1 : 1 }));
+        const usable = all.filter((s) => s.y < g.level.spawn.y + 0.8);
+        sides = usable.length ? usable : [all[0]];
+      };
       let timer = 1.8;
       let flash = 0;
       let lastSide = 0;
-      const balls: { body: RigidBody; col: Collider; age: number; hit: boolean }[] = [];
+      const balls: { body: RigidBody; col: Collider; age: number; hit: boolean; clear: boolean }[] = [];
       return {
         update(g, dt) {
           const ev: GameEvent[] = [];
+          if (!sides.length) place(g);
           timer -= dt;
           flash = Math.max(0, flash - dt);
           if (timer <= 0) {
@@ -74,14 +87,16 @@ function cannons(): Twist {
             const s = sides[lastSide];
             const muzzle = { x: s.x + s.dir * 0.3, y: s.y + 0.55 };
             const v = g.stanley.rig.chest.linvel();
-            const aim = { x: g.stanley.position.x + v.x * FLIGHT * 0.6, y: g.stanley.position.y };
-            const vx = (aim.x - muzzle.x) / FLIGHT;
-            const vy = (aim.y - muzzle.y) / FLIGHT + 0.5 * g.tuning.gravity * FLIGHT;
+            // Longer shots go higher, lobbing over whatever's in between.
+            const flight = clamp(0.5 + Math.abs(g.stanley.position.x - muzzle.x) * 0.12, FLIGHT, 1.8);
+            const aim = { x: g.stanley.position.x + v.x * flight * 0.6, y: g.stanley.position.y };
+            const vx = (aim.x - muzzle.x) / flight;
+            const vy = (aim.y - muzzle.y) / flight + 0.5 * g.tuning.gravity * flight;
             const body = g.world.createRigidBody(
               RAPIER.RigidBodyDesc.dynamic().setTranslation(muzzle.x, muzzle.y).setLinvel(vx, vy).setCcdEnabled(true),
             );
-            const col = g.world.createCollider(RAPIER.ColliderDesc.ball(R).setDensity(60).setRestitution(0.3).setCollisionGroups(MISSILE_GROUPS), body);
-            balls.push({ body, col, age: 0, hit: false });
+            const col = g.world.createCollider(RAPIER.ColliderDesc.ball(R).setDensity(60).setRestitution(0.3).setCollisionGroups(LAUNCH_GROUPS), body);
+            balls.push({ body, col, age: 0, hit: false, clear: false });
             flash = 0.25;
             ev.push({ type: "sfx", name: "boom", pos: muzzle });
           }
@@ -89,6 +104,15 @@ function cannons(): Twist {
           for (const b of [...balls]) {
             b.age += dt;
             const p = b.body.translation();
+            // Out in the open (a little way out, and not inside anything): now it hits scenery.
+            if (!b.clear && b.age > 0.15) {
+              let inside = false;
+              g.world.intersectionsWithShape(p, 0, new RAPIER.Ball(R + 0.05), () => ((inside = true), false), undefined, GROUND_QUERY);
+              if (!inside) {
+                b.clear = true;
+                b.col.setCollisionGroups(MISSILE_GROUPS);
+              }
+            }
             const v = b.body.linvel();
             if (!b.hit && Math.hypot(v.x, v.y) > 2.5) {
               const struck = [rig.chest, rig.head, rig.pelvis].some((part) => {
@@ -231,7 +255,9 @@ function rabbit(): Twist {
     start(game) {
       const w = game.level.bounds.w;
       const rb = { x: clamp(game.level.spawn.x + 3, 1, w - 1), y: 0, vx: 0, hop: 0, startled: 0, look: 1 };
-      rb.y = groundAt(game, rb.x);
+      // (Ground queries only work once the physics has stepped, so start on
+      // the spawn floor; the first update finds the ground properly.)
+      rb.y = game.level.spawn.y;
       let target = rb.x;
       let wander = 1;
       let poopCooldown = 0;

@@ -515,3 +515,57 @@ button.link.danger { color: #b0503c; }
   border-radius: 50%;
   background: #e85d5d;
 }
+
+/* Meanwhile, at the golf course: Gerald reads the news. */
+.golf-stage { position: relative; margin: 10px 0 14px; border-radius: 12px; overflow: hidden; }
+.golf-scene svg { display: block; width: 100%; height: auto; }
+.golf .text-notice {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  max-width: 48%;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  text-align: left;
+  animation: notice 0.4s 0.4s both;
+}
+.golf .text-notice .who { display: block; font-size: 11px; font-weight: 800; color: var(--muted, #6b6475); }
+.golf .gerald-says {
+  position: absolute;
+  top: 26%;
+  left: 58%;
+  padding: 7px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--teal, #37a59c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+  animation: pop 0.35s 1.8s both;
+}
+.golf .screen { animation: glow 1s 0.4s 3 alternate both; }
+.golf .tear { opacity: 0; animation: tear 1.6s 2.4s both; }
+.golf .smile { opacity: 0; animation: fade-in 0.3s 1.8s both; }
+.golf .ball { animation: putt 1.6s 3s both; }
+.golf .flag { transform-origin: 248px 105px; animation: flutter 1.2s ease-in-out infinite alternate; }
+@keyframes notice { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes glow { from { fill: #bfe6ff; } to { fill: #ffffff; } }
+@keyframes tear { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 1; transform: translateY(9px); } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes putt {
+  0% { transform: translate(196px, 152px); opacity: 1; }
+  80% { transform: translate(247px, 150px); opacity: 1; }
+  100% { transform: translate(248px, 152px); opacity: 0; }
+}
+@keyframes flutter { from { transform: scaleX(1); } to { transform: scaleX(0.85); } }
+@media (prefers-reduced-motion: reduce) {
+  .golf .text-notice, .golf .gerald-says, .golf .tear, .golf .smile, .golf .ball, .golf .flag, .golf .screen { animation: none; opacity: 1; }
+}
+@media (max-height: 500px) {
+  .golf-stage { width: min(100%, calc(48vh * 300 / 180)); margin: 6px auto 10px; }
+  .golf .gerald-says { font-size: 13px; }
+  .golf .text-notice { font-size: 12px; }
+}

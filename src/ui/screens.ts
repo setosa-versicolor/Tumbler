@@ -225,19 +225,79 @@ export function pressCard(o: { onNext: () => void }): HTMLElement {
   );
 }
 
+/**
+ * Gerald, on the green, reading a text from the office. Drawn to match the
+ * office Gerald: grey hair, round glasses, moustache. Behind him, his ball
+ * drops into the hole, and he doesn't notice.
+ */
+const GOLF_SCENE = `
+<svg viewBox="0 0 300 180" role="img" aria-label="Gerald on a golf course, reading his phone">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd3f0"/><stop offset="1" stop-color="#dff1fb"/></linearGradient>
+  </defs>
+  <rect width="300" height="180" fill="url(#sky)"/>
+  <circle cx="252" cy="32" r="16" fill="#ffe08a"/>
+  <ellipse cx="70" cy="128" rx="140" ry="40" fill="#8fcf7a"/>
+  <ellipse cx="250" cy="134" rx="120" ry="36" fill="#7bc46a"/>
+  <rect y="132" width="300" height="48" fill="#6db35c"/>
+  <ellipse cx="236" cy="150" rx="48" ry="9" fill="#8ad97a"/>
+  <!-- The flag, and the hole. -->
+  <ellipse cx="248" cy="150" rx="6" ry="2.2" fill="#2a2230"/>
+  <line x1="248" y1="150" x2="248" y2="98" stroke="#f4f4f4" stroke-width="2"/>
+  <path d="M248 98 L272 105 L248 112 Z" fill="#e85d5d" class="flag"/>
+  <!-- His ball, rolling in behind him. -->
+  <circle r="3" fill="#ffffff" stroke="#c9ccd1" stroke-width="0.6" class="ball"/>
+  <!-- Gerald. -->
+  <g transform="translate(118 0)">
+    <ellipse cx="32" cy="167" rx="30" ry="5" fill="rgba(0,0,0,0.15)"/>
+    <rect x="17" y="122" width="12" height="44" rx="4" fill="#d9c9a3"/>
+    <rect x="35" y="122" width="12" height="44" rx="4" fill="#d9c9a3"/>
+    <rect x="13" y="162" width="18" height="6" rx="3" fill="#2a2230"/>
+    <rect x="33" y="162" width="18" height="6" rx="3" fill="#2a2230"/>
+    <rect x="10" y="78" width="44" height="50" rx="12" fill="#e8a3b5"/>
+    <path d="M26 78 L32 90 L38 78 Z" fill="#f4f4f4"/>
+    <!-- The club, in his right hand, resting on the grass. -->
+    <line x1="56" y1="112" x2="78" y2="166" stroke="#9aa0a8" stroke-width="2.5"/>
+    <path d="M74 166 L86 166 L84 161 Z" fill="#5f6670"/>
+    <line x1="50" y1="88" x2="56" y2="112" stroke="#e8a3b5" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="56" cy="113" r="4.5" fill="#eebd92"/>
+    <!-- The phone, held up to read. -->
+    <line x1="14" y1="88" x2="4" y2="70" stroke="#e8a3b5" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="3" cy="68" r="4.5" fill="#eebd92"/>
+    <rect x="-7" y="52" width="13" height="20" rx="2.5" fill="#2a2230"/>
+    <rect x="-5.5" y="54" width="10" height="15" rx="1.5" fill="#bfe6ff" class="screen"/>
+    <!-- Head: grey hair, glasses, moustache, a flat cap for the weekend. -->
+    <circle cx="30" cy="58" r="18" fill="#eebd92"/>
+    <path d="M13 54 Q16 40 30 40 Q46 40 48 54 L44 50 Q30 44 16 50 Z" fill="#9aa0a8"/>
+    <path d="M11 44 Q14 30 32 31 Q48 32 50 43 Q34 39 11 44 Z" fill="#4a5160"/>
+    <path d="M8 45 L22 41 L22 44 L9 47 Z" fill="#3a404d"/>
+    <circle cx="22" cy="59" r="5" fill="none" stroke="#2a2230" stroke-width="1.4"/>
+    <circle cx="35" cy="59" r="5" fill="none" stroke="#2a2230" stroke-width="1.4"/>
+    <line x1="27" y1="59" x2="30" y2="59" stroke="#2a2230" stroke-width="1.2"/>
+    <circle cx="21" cy="60" r="1.3" fill="#2a2230" class="eye"/>
+    <circle cx="34" cy="60" r="1.3" fill="#2a2230" class="eye"/>
+    <rect x="19" y="66" width="16" height="4" rx="2" fill="#7a7f86"/>
+    <path d="M23 72 Q28 75 33 72" fill="none" stroke="#6b2a2a" stroke-width="1.4" class="smile"/>
+    <!-- One single, proud tear. -->
+    <path d="M38 63 Q40 67 38 69 Q36 67 38 63 Z" fill="#7fc8f8" class="tear"/>
+  </g>
+</svg>`;
+
 export function golfCard(o: { onNext: () => void }): HTMLElement {
+  const scene = h("div", { class: "golf-scene" });
+  scene.innerHTML = GOLF_SCENE;
   return h(
     "div",
     { class: "card golf" },
-    h("div", { class: "big-icon" }, "⛳"),
     h("div", { class: "kicker" }, "Meanwhile, at the golf course"),
     h(
       "div",
-      { class: "chat" },
-      h("div", { class: "msg them" }, h("span", { class: "who" }, "Office"), "he moved a file"),
-      h("div", { class: "msg me" }, "That's my boy."),
+      { class: "golf-stage" },
+      scene,
+      h("div", { class: "text-notice" }, h("span", { class: "who" }, "💬 Office"), "he moved a file"),
+      h("div", { class: "gerald-says" }, "That's my boy."),
     ),
-    h("button", { class: "primary", click: o.onNext }, "▸"),
+    h("button", { class: "primary", click: o.onNext }, "The end ▸"),
   );
 }
 

@@ -203,6 +203,10 @@ export class Renderer {
     this.notes.push({ text, pos: { ...pos }, age: 0 });
   }
 
+  clearNotes() {
+    this.notes = [];
+  }
+
   clearFx() {
     this.notes = [];
     this.popups = [];

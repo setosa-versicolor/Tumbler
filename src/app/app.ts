@@ -20,6 +20,8 @@ import { logError } from "./errorLog";
 const MAX_STEPS_PER_FRAME = 8;
 /** The last job; finishing it the first time plays the ending. */
 const FINALE = "executive-action";
+/** Seconds (ms) between each member of staff cheering, at the end. */
+const CHEER_GAP = 2400;
 const TRIP_WORDS = ["Whoa!", "Wha—", "Oof!", "Hup—no!", "Yikes!"];
 const BREAK_WORDS = ["CRASH!", "Oops.", "Whoops!", "…Sorry.", "SMASH!", "Uh-oh."];
 const BREAK_BILLS = [
@@ -36,7 +38,8 @@ type Mode =
   | { kind: "results" }
   | { kind: "sandbox" }
   | { kind: "cutscene"; scene: Cutscene; then: () => void; ending: boolean }
-  | { kind: "ending" }
+  /** The staff go wild; `cheer` is who's speaking (the camera goes to them). */
+  | { kind: "ending"; cheer: number }
   | { kind: "card" };
 
 export interface Dom {
@@ -279,18 +282,21 @@ export class App {
     setTimeout(() => {
       this.warp = 1;
       if (this.mode.kind !== "celebrate") return;
-      this.mode = { kind: "ending" };
+      this.mode = { kind: "ending", cheer: -1 };
       STAFF_CHEERS.forEach((line, i) =>
         setTimeout(() => {
           if (this.mode.kind !== "ending") return;
+          this.mode.cheer = i;
           const at = STAFF_SPOTS[i];
+          this.renderer.clearNotes();
           this.renderer.note(line, { x: at.x, y: at.y + 0.9 });
           this.renderer.confetti({ x: at.x, y: at.y + 0.5 });
           sfx.score();
-        }, 400 + i * 1900),
+        }, 900 + i * CHEER_GAP),
       );
       setTimeout(() => {
         if (this.mode.kind !== "ending") return;
+        this.renderer.clearNotes();
         sfx.complete();
         this.dom.overlay.replaceChildren(
           pressCard({
@@ -306,7 +312,7 @@ export class App {
               ),
           }),
         );
-      }, 400 + STAFF_CHEERS.length * 1900 + 600);
+      }, 900 + STAFF_CHEERS.length * CHEER_GAP + 600);
     }, 1300);
   }
 
@@ -450,7 +456,10 @@ export class App {
     const cam = this.renderer.camera;
     // During the intro card the camera shows the goal, then pans to Stanley on clock-in.
     const focus =
-      m.kind === "cutscene"
+      m.kind === "ending"
+        ? // The camera goes over to the staff, and along them as each one speaks.
+          { x: m.cheer >= 0 ? STAFF_SPOTS[m.cheer].x : STAFF_SPOTS[0].x - 0.6, y: 2.0 }
+        : m.kind === "cutscene"
         ? ((g.inst as OfficeInstance).focus ?? { x: (g.stanley.position.x + BOSS.x) / 2, y: 1.6 })
         : m.kind === "intro" && g.level.target
           ? g.level.target

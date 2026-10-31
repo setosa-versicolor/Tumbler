@@ -376,16 +376,75 @@ button.link.danger { color: #b0503c; }
 
 /* ------------------------------------------------------------- ending --- */
 
-.press { font-family: Georgia, "Times New Roman", serif; }
-.press .masthead {
-  font-weight: 900;
-  font-size: 24px;
-  letter-spacing: 0.04em;
-  border-bottom: 3px double var(--ink);
-  padding-bottom: 6px;
-  margin-bottom: 8px;
+/* The Daily Ledger: newsprint, a masthead, two columns, slightly askew on the table. */
+.card.press {
+  font-family: Georgia, "Times New Roman", serif;
+  background: #f3eedf;
+  color: #1d1b18;
+  text-align: left;
+  border-radius: 3px;
+  transform: rotate(-1.2deg);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35), inset 0 0 60px rgba(120, 100, 60, 0.12);
 }
-.press h1 { font-size: 24px; line-height: 1.15; }
+.press .masthead {
+  font-family: "Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif;
+  font-weight: 900;
+  font-size: 30px;
+  text-align: center;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.press .dateline {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-top: 3px double #1d1b18;
+  border-bottom: 1px solid #1d1b18;
+  padding: 3px 0;
+  margin: 6px 0 10px;
+}
+.press h1 {
+  font-size: 23px;
+  line-height: 1.12;
+  margin: 0 0 10px;
+  text-align: center;
+  font-weight: 900;
+}
+.press .columns { display: grid; grid-template-columns: 38% 1fr; gap: 12px; align-items: start; }
+.press .columns p { margin: 0; font-size: 13px; line-height: 1.4; text-align: justify; hyphens: auto; }
+.press .photo-img {
+  height: 78px;
+  display: grid;
+  place-items: center;
+  font-size: 36px;
+  background: repeating-linear-gradient(45deg, #d6d0bf 0 2px, #cbc4b2 2px 4px);
+  filter: grayscale(1) contrast(1.1);
+  border: 1px solid #1d1b18;
+}
+.press .caption { font-size: 10px; font-style: italic; margin-top: 3px; line-height: 1.25; }
+.press .dropcap { float: left; font-size: 34px; line-height: 0.85; padding: 3px 4px 0 0; font-weight: 900; }
+.press .review {
+  font-size: 13px;
+  font-style: italic;
+  border-top: 1px solid #1d1b18;
+  padding-top: 8px;
+  margin: 12px 0 14px;
+}
+.press button.primary { display: block; margin: 0 auto; font-family: system-ui, -apple-system, sans-serif; }
+/* A phone on its side: the same front page, folded a bit smaller. */
+@media (max-height: 500px) {
+  .card.press { padding-top: 10px; padding-bottom: 10px; }
+  .press .masthead { font-size: 22px; }
+  .press .dateline { margin: 4px 0 6px; font-size: 9px; }
+  .press h1 { font-size: 17px; margin-bottom: 6px; }
+  .press .columns p { font-size: 11.5px; line-height: 1.32; }
+  .press .photo-img { height: 48px; font-size: 26px; }
+  .press .dropcap { font-size: 26px; }
+  .press .review { font-size: 11.5px; margin: 6px 0 8px; padding-top: 5px; }
+  .press button.primary { padding-top: 8px; padding-bottom: 8px; }
+}
 .chat { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 18px; text-align: left; }
 .msg {
   max-width: 80%;

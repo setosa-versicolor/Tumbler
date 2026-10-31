@@ -201,12 +201,27 @@ export function pressCard(o: { onNext: () => void }): HTMLElement {
   return h(
     "div",
     { class: "card press" },
-    h("div", { class: "masthead" }, "THE DAILY LEDGER"),
-    h("div", { class: "kicker" }, "Business · Late edition"),
-    h("h1", {}, "CEO Personally Relocates Document; Shares Up 40%"),
-    h("p", { class: "goal" }, "Staff describe the moment as \"the bravest thing we've ever seen.\" Analysts are calling it \"hands-on.\""),
-    h("p", { class: "memo" }, "★★★★★  \"Finally.\" — Mrs. Henderson, No. 12"),
-    h("button", { class: "primary", click: o.onNext }, "Meanwhile… ▸"),
+    h("div", { class: "masthead" }, "The Daily Ledger"),
+    h("div", { class: "dateline" }, h("span", {}, "Late Edition"), h("span", {}, "Business"), h("span", {}, "Price: one (1) file")),
+    h("h1", {}, "CEO Personally Moves Document: Shares Up 40%"),
+    h(
+      "div",
+      { class: "columns" },
+      h(
+        "div",
+        { class: "photo" },
+        h("div", { class: "photo-img" }, "📁"),
+        h("div", { class: "caption" }, "The document, shortly after being moved."),
+      ),
+      h(
+        "p",
+        {},
+        h("span", { class: "dropcap" }, "I"),
+        "n a move analysts are calling unprecedented, the chief executive of Odd Jobs Ltd. relocated a file from a desk to a cabinet, without assistance. Critics say, \u201cCEOs aren\u2019t supposed to do things.\u201d Staff are calling it \u201cvery hands-on.\u201d",
+      ),
+    ),
+    h("p", { class: "review" }, "\u2605\u2605\u2605\u2605\u2605 \u201cI still want a new doorbell.\u201d \u2014 Mrs. Henderson, No. 12"),
+    h("button", { class: "primary", click: o.onNext }, "Meanwhile\u2026 \u25b8"),
   );
 }
 

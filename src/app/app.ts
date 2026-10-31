@@ -1,7 +1,7 @@
 import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 import { DT } from "../physics/world";
 import { IDLE_INTENT, type Intent } from "../physics/body/stanley";
-import { Game, type GameEvent } from "../sim/game";
+import { Game, onStale, type GameEvent } from "../sim/game";
 import type { Tuning } from "../sim/tuning";
 import type { Level } from "../levels/level";
 import { Renderer } from "../render/renderer";
@@ -472,26 +472,29 @@ export class App {
     this.renderer.goal = m.kind === "play" && g.level.target ? { pos: g.level.target, icon: g.level.icon } : null;
     cam.follow(focus, dt);
     this.renderer.cursor = m.kind === "play" || m.kind === "sandbox" ? this.input.cursor(cam) : null;
+    const stale = g.pruneStale();
+    if (stale.length) onStale(g.level.id, stale, "before drawing");
     this.renderer.draw(g, live ? dt : 0);
     this.drawSticks();
     this.hud();
   }
 
-  /**
-   * After a crash inside a frame (the physics engine can't be trusted after
-   * one), start the level again with a fresh world, rather than leaving
-   * everything vanished. Not more than once every couple of seconds.
-   */
-  recover() {
-    const now = performance.now();
-    if (now - this.lastRecover < 2000) return;
-    this.lastRecover = now;
-    if (this.mode.kind === "play" || this.mode.kind === "sandbox") {
-      this.restart();
-      this.renderer.popup("Stanley briefly left this plane of existence.", this.game.stanley.position, "#e85d5d");
-    } else this.showBoard();
+  /** What to come back to after a reload: the level being played (and whether it's Overtime). */
+  resumePoint(): { level: string; overtime: boolean } | null {
+    const m = this.mode.kind;
+    if (!this.game || (m !== "play" && m !== "intro" && m !== "celebrate")) return null;
+    return { level: this.game.level.id, overtime: this.overtime };
   }
-  private lastRecover = 0;
+
+  /** Straight back into a level after a reload (see main.ts). */
+  resume(levelId: string, overtime: boolean) {
+    const level = CHAPTERS.flatMap((c) => c.levels).find((l) => l.id === levelId);
+    if (!level) return this.start();
+    this.overtime = overtime;
+    this.load(level);
+    this.mode = { kind: "play", start: 0 };
+    this.renderer.popup("Stanley briefly left this plane of existence.", this.game.stanley.position, "#e85d5d");
+  }
 
   /** The level being played, for the error log. */
   get levelId(): string {

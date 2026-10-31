@@ -26,6 +26,12 @@ export type GameEvent =
 
 /** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
 const IMPACT_DV = 2.2;
+/** Told about props found with no body (see pruneStale); the app logs it. */
+export let onStale: (level: string, kinds: string[], when: string) => void = () => {};
+export function setOnStale(fn: typeof onStale) {
+  onStale = fn;
+}
+
 /** A bump this hard breaks a fragile thing. */
 const BREAK_DV = 1.5;
 /** Tipped this far (radians), a fragile thing is done for. */
@@ -121,8 +127,28 @@ export class Game {
     return s;
   }
 
+  /**
+   * Drop any prop whose body is no longer in the world. Touching such a body
+   * crashes the physics engine outright, so this is checked on the JS side
+   * (no call into the engine). It shouldn't happen; if it does, it's logged
+   * with what it was, so it can be tracked down.
+   */
+  pruneStale(): string[] {
+    const stale = this.props.filter((p) => this.world.getRigidBody(p.body.handle) !== p.body);
+    if (!stale.length) return [];
+    for (const p of stale) {
+      this.lastVel.delete(p.body);
+      this.lastHeld.delete(p.body);
+      this.fragile.delete(p.body);
+    }
+    this.props = this.props.filter((p) => !stale.includes(p));
+    return stale.map((p) => p.kind);
+  }
+
   step(intent: Intent): GameEvent[] {
     const events: GameEvent[] = [];
+    const stale = this.pruneStale();
+    if (stale.length) onStale(this.level.id, stale, "before a step");
     this.world.gravity = { x: 0, y: -this.tuning.gravity };
     this.intent = intent;
     this.stanley.step(intent, this.tuning, DT);

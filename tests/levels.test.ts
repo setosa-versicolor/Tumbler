@@ -28,6 +28,8 @@ import * as WW from "../src/levels/skyscraper/windowWasher";
 import { mailRoom } from "../src/levels/skyscraper/mailRoom";
 import { shredIt } from "../src/levels/skyscraper/shredIt";
 import { fireDrill } from "../src/levels/skyscraper/fireDrill";
+import * as FD from "../src/levels/skyscraper/fireDrill";
+const EXIT_LINE = FD.DROP_X;
 import { executiveAction } from "../src/levels/finale/executiveAction";
 import type { Level } from "../src/levels/level";
 
@@ -690,32 +692,30 @@ describe("Window Washer", () => {
     const bucket = g.props.find((p) => p.kind === "bucket")!.body;
     const pel = () => g.stanley.rig.pelvis.translation();
     const hold = { L: true, R: true };
-    // Steer the blade, wherever it is relative to the hand holding it.
     const blade = () => {
       const p = sq.translation();
       const a = sq.rotation();
       return { x: p.x - Math.sin(a) * 0.26, y: p.y + Math.cos(a) * 0.26 };
     };
     const holder = () => (g.stanley.grips.L.held === sq ? g.stanley.rig.arms.L.hand : g.stanley.rig.arms.R.hand).translation();
-    const steer = (want: { x: number; y: number }) => {
-      const b = blade();
-      const h = holder();
-      return { x: h.x + want.x - b.x, y: h.y + want.y - b.y };
-    };
+    const walkTo = (x: number) =>
+      run(g, 4, () => ({ move: Math.abs(pel().x - x) > 0.08 ? Math.sign(x - pel().x) * 0.4 : 0, reach: { x: g.stanley.shoulder.x + Math.sign(x - pel().x) * 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold }));
     run(g, 0.5);
     const p0 = sq.translation();
     run(g, 1.5, { reach: { x: p0.x, y: p0.y }, grip: hold });
     expect(g.held.has(sq)).toBe(true);
-    // It's held by the handle's end, blade out.
-    run(g, 1.5, { reach: { x: g.stanley.shoulder.x - 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold });
-    expect(Math.hypot(blade().x - holder().x, blade().y - holder().y)).toBeGreaterThan(0.4);
-    run(g, 3, () => ({ move: pel().x > 1.9 ? -0.4 : 0, reach: { x: g.stanley.shoulder.x - 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold }));
+    // It's held by the handle's end and points on out along the arm, like a longer arm.
+    run(g, 1.5, { reach: { x: g.stanley.shoulder.x - 0.6, y: g.stanley.shoulder.y }, grip: hold });
+    expect(blade().x).toBeLessThan(holder().x - 0.3);
+    // Point it into the bucket from a step away.
+    walkTo(2.3);
     const bp = bucket.translation();
-    run(g, 1.5, (t) => ({ reach: steer({ x: bp.x, y: bp.y + 0.26 + Math.sin(t * 6) * 0.08 }), grip: hold }));
-    const sp = { x: WW.SPOTS[0].x, y: deck(0) + WW.SPOTS[0].up };
-    run(g, 5, () => ({ move: Math.abs(pel().x - (sp.x - 0.6)) > 0.1 ? Math.sign(sp.x - 0.6 - pel().x) * 0.4 : 0, reach: { x: g.stanley.shoulder.x + 0.3, y: g.stanley.shoulder.y + 0.2 }, grip: hold }));
+    run(g, 2, (t) => ({ reach: { x: bp.x, y: bp.y + 0.2 + Math.sin(t * 6) * 0.1 }, grip: hold }));
     expect(g.progress.label).toContain("wet");
-    run(g, 5, (t) => ({ reach: steer({ x: sp.x + Math.sin(t * 6) * 0.3, y: sp.y + Math.cos(t * 4) * 0.12 }), grip: hold }));
+    // Then point it at a spot and scrub.
+    const sp = { x: WW.SPOTS[0].x, y: deck(0) + WW.SPOTS[0].up };
+    walkTo(sp.x - 0.9);
+    run(g, 5, (t) => ({ reach: { x: sp.x + Math.sin(t * 6) * 0.3, y: sp.y + Math.cos(t * 4) * 0.15 }, grip: hold }));
     expect(grime()).toBeLessThan(90);
   });
 
@@ -771,23 +771,56 @@ describe("Fire Drill", () => {
   it("is done with every mannequin outside", () => {
     const g = play(fireDrill);
     g.props.filter((p) => p.kind === "dummy").forEach((d, i) => {
-      d.body.setTranslation({ x: 13.3 + i * 0.5, y: 0.51 }, true);
+      d.body.setTranslation({ x: 13.5 + i * 0.5, y: 0.51 }, true);
       d.body.setRotation(0, true);
     });
     run(g, 1);
     expect(g.progress.done).toBe(true);
   });
 
+  it("there's an extinguisher on each side of the fire, so Stanley's never stuck on the wrong side", () => {
+    expect(FD.CABINETS.some((c) => c.x < FD.FIRE.x0 - 0.3)).toBe(true);
+    expect(FD.CABINETS.some((c) => c.x > FD.FIRE.x1 + 0.3 && c.x < FD.DROP_X)).toBe(true);
+    const g = play(fireDrill);
+    expect(g.props.filter((p) => p.kind === "extinguisher").length).toBe(FD.CABINETS.length);
+  });
+
   it("a mannequin fits through the fire exit", () => {
     const g = play(fireDrill);
     const d = g.props.find((p) => p.kind === "dummy")!.body;
-    d.setTranslation({ x: 11.8, y: 0.52 }, true);
+    d.setTranslation({ x: 12.0, y: 0.52 }, true);
     d.setLinvel({ x: 5.5, y: 0 }, true);
     run(g, 1.5);
-    expect(d.translation().x).toBeGreaterThan(12.8);
+    expect(d.translation().x).toBeGreaterThan(13.0);
+  });
+
+  it("the heater starts a fire; the extinguisher puts it out, stays indoors, and the fire comes back if you dawdle", { timeout: 40000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, fireDrill);
+    const ex = g.props.find((p) => p.kind === "extinguisher")!.body;
+    const pel = () => g.stanley.rig.pelvis.translation();
+    const hold = { L: true, R: true };
+    const walkTo = (x: number, extra: () => Partial<Intent> = () => ({})) =>
+      run(g, 7, () => ({ ...extra(), move: Math.abs(pel().x - x) > 0.08 ? Math.sign(x - pel().x) * 0.5 : 0 }));
+    // Off he goes, straight into the heater. The fire stops him going any further.
+    run(g, 12, { move: 0.6 });
+    expect(g.progress.label).toContain("FIRE");
+    expect(pel().x).toBeLessThan(FD.FIRE.x0 + 0.3);
+    // The extinguisher, off its bracket: it goes off at once. Aim it at the flames.
+    walkTo(FD.CABINET.x - 0.45);
+    const e0 = ex.translation();
+    run(g, 1.5, { reach: { x: e0.x, y: e0.y - 0.18 }, grip: hold });
+    expect(g.held.has(ex)).toBe(true);
+    run(g, 8, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.6, y: 1.0 + Math.sin(t * 3) * 0.4 }, grip: hold }));
+    expect(g.progress.label).toContain("Fire's out");
+    // Carrying it out the exit: it's put down at the line.
+    walkTo(EXIT_LINE + 0.5, () => ({ reach: { x: g.stanley.shoulder.x + 0.3, y: g.stanley.shoulder.y }, grip: hold }));
+    expect(g.held.has(ex)).toBe(false);
+    expect(ex.translation().x).toBeLessThan(FD.DROP_X + 0.5);
+    // And left too long, it catches again.
+    run(g, FD.SMOULDER);
+    expect(g.progress.label).toContain("FIRE");
   });
 });
-
 describe("Executive Action", () => {
   it("is done when the file is in the cabinet", () => {
     const g = play(executiveAction);

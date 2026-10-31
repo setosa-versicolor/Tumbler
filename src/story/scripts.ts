@@ -263,7 +263,7 @@ export const REVIEW_4: Script = {
     { do: "fidget", at: "mug", time: 0.9 },
     { do: "say", text: "The mail room says the parcels are sorted. They've asked who sorted the mail room." },
     { do: "say", text: "The shredder has asked for a lawyer." },
-    { do: "say", text: "And the fire drill. Everyone got out in record time. Mostly to get away from you." },
+    { do: "say", text: "And the fire drill. You brought your own fire. That's very… proactive. The mannequins are fine. One has asked for a transfer." },
     { do: "say", text: "I've now placed you in every department, every neighbourhood and every job category we offer. I invented three new ones. 'Senior Associate Doorbell Consultant' was a real stretch for HR." },
     { do: "say", text: "*Leans back. Steeples his fingers. A long pause.*", aside: true },
     { do: "reveal" },

@@ -74,6 +74,8 @@ export type PropKind =
   | "bowlingball"
   | "discoball"
   | "squeegee"
+  | "heater"
+  | "extinguisher"
   | "tray"
   | "cup"
   | "trophy"

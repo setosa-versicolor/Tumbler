@@ -106,14 +106,18 @@ export const windowWasher: Level = {
       const a = squeegee.body.rotation();
       return { x: p.x - Math.sin(a) * HANDLE, y: p.y + Math.cos(a) * HANDLE };
     };
+    // Any part of the blade in the suds will do.
     const inBucket = (b: Vec) => {
       const p = bucket.body.translation();
       const a = -bucket.body.rotation();
-      const dx = b.x - p.x;
-      const dy = b.y - p.y;
-      const lx = dx * Math.cos(a) - dy * Math.sin(a);
-      const ly = dx * Math.sin(a) + dy * Math.cos(a);
-      return Math.abs(lx) < bucket.hw && ly > bucket.hh - 0.06 && ly < bucket.hh + 0.2;
+      const sa = squeegee.body.rotation();
+      return [-1, 0, 1].some((k) => {
+        const dx = b.x + Math.cos(sa) * BLADE * k - p.x;
+        const dy = b.y + Math.sin(sa) * BLADE * k - p.y;
+        const lx = dx * Math.cos(a) - dy * Math.sin(a);
+        const ly = dx * Math.sin(a) + dy * Math.cos(a);
+        return Math.abs(lx) < bucket.hw && ly > bucket.hh - 0.06 && ly < bucket.hh + 0.25;
+      });
     };
     const onGlass = (b: Vec) => b.x > GLASS.x0 && b.x < GLASS.x1 && b.y > GLASS.y0 && b.y < GLASS.y1;
     const grime = () => blobs.reduce((n, b) => n + area(b), 0) / total0;

@@ -50,7 +50,7 @@ export class Stanley {
 
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);
-    this.grips = { L: new Grip(this.rig.arms.L.hand), R: new Grip(this.rig.arms.R.hand) };
+    this.grips = { L: new Grip(this.rig.arms.L.hand, this.rig.arms.L.fore), R: new Grip(this.rig.arms.R.hand, this.rig.arms.R.fore) };
   }
 
   /**

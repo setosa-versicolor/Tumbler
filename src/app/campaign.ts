@@ -128,9 +128,9 @@ export const MEMOS: Record<string, string[]> = {
     "MEMO: Paper is a renewable resource. Our patience is less renewable.",
   ],
   "fire-drill": [
-    "MEMO: Fire drill complete. No fire. Several near-fires.",
+    "MEMO: Fire drill complete. Fire also complete.",
+    "MEMO: Health & Safety have asked why the fire drill had a fire. They've also asked us to stop calling it 'the advanced drill.'",
     "MEMO: The mannequins have asked to be evacuated from future jobs.",
-    "MEMO: Health & Safety would like to thank you for the material.",
   ],
   "executive-action": [
     "MEMO: The file has been moved. History has been made. Shares are up.",

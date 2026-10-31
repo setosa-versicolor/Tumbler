@@ -979,6 +979,38 @@ export class Renderer {
         ctx.fillRect(-w * 0.5, -h * 0.55, w, h * 0.08);
         ctx.fillRect(-w * 0.55, -h * 0.42, w * 1.1, h * 0.06);
         break;
+      case "heater": {
+        // An oil-filled radiator: fins, little feet, a dial. Grey once it's caught.
+        body(w * 0.3);
+        ctx.strokeStyle = "rgba(42,34,48,0.25)";
+        ctx.lineWidth = Math.max(1, sc * 0.012);
+        for (let k = -2; k <= 2; k++) {
+          ctx.beginPath();
+          ctx.moveTo((k * w) / 2.6, -h * 0.75);
+          ctx.lineTo((k * w) / 2.6, h * 0.8);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#e85d5d";
+        ctx.beginPath();
+        ctx.arc(w * 0.55, -h * 0.82, w * 0.13, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case "extinguisher": {
+        // Red cylinder, handle and lever at the bottom (the end it's held by),
+        // black hose and nozzle at the top (local +y, which is -y on the canvas).
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.roundRect(-w, -h * 0.7, w * 2, h * 1.6, w * 0.6);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#2a2230";
+        ctx.fillRect(-w * 0.35, -h, w * 0.7, h * 0.32);
+        ctx.fillRect(-w * 0.5, h * 0.85, w, h * 0.15);
+        ctx.fillStyle = "#f4f4f4";
+        ctx.fillRect(-w, -h * 0.15, w * 2, h * 0.3);
+        break;
+      }
       case "squeegee": {
         // A yellow handle, with the rubber blade across the top end (local +y,
         // which is -y on the canvas). The blade's colour says wet, dry or dirty.

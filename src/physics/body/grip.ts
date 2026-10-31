@@ -40,7 +40,11 @@ export class Grip {
   /** ...and not grabbed again until grip is let go. */
   private noRegrab: RigidBody | null = null;
 
-  constructor(private hand: RigidBody) {}
+  /** `fore`: the forearm, which a tool is fixed to so it points where the arm points (the wrist is floppy). */
+  constructor(
+    private hand: RigidBody,
+    private fore?: RigidBody,
+  ) {}
 
   get holdingStatic() {
     return !!this.held && !this.held.isDynamic();
@@ -190,12 +194,22 @@ export class Grip {
     this.anchor = { x: dx * c - dy * s, y: dx * s + dy * c };
     // Trays balance on the hand (a pivot) rather than being clamped to it.
     const pivot = !target.isDynamic() || other.held === target || !!dangly || !!centre;
-    // At rest a hand points down its forearm (its local -y); a tool's local +y
-    // is its business end, so it's turned half round to line up.
-    const data = pivot
-      ? RAPIER.JointData.revolute(this.slide ?? { x: 0, y: 0 }, this.anchor)
-      : RAPIER.JointData.fixed(this.slide ?? { x: 0, y: 0 }, 0, this.anchor, tool ? 0 : this.hand.rotation() - ta);
-    this.joint = world.createImpulseJoint(data, this.hand, target, true);
+    let data;
+    let holder = this.hand;
+    if (tool && this.fore) {
+      // A tool is fixed to the forearm (at the hand), pointing on out along
+      // it: a forearm's local -y runs elbow-to-hand and a tool's local +y is
+      // its business end, so it's turned half round to line up.
+      holder = this.fore;
+      const fp = this.fore.translation();
+      const fa = -this.fore.rotation();
+      const dx = h.x - fp.x;
+      const dy = h.y - fp.y;
+      data = RAPIER.JointData.fixed({ x: dx * Math.cos(fa) - dy * Math.sin(fa), y: dx * Math.sin(fa) + dy * Math.cos(fa) }, 0, this.anchor, -Math.PI);
+      this.slide = null;
+    } else if (pivot) data = RAPIER.JointData.revolute(this.slide ?? { x: 0, y: 0 }, this.anchor);
+    else data = RAPIER.JointData.fixed(this.slide ?? { x: 0, y: 0 }, 0, this.anchor, this.hand.rotation() - ta);
+    this.joint = world.createImpulseJoint(data, holder, target, true);
     this.joint.setContactsEnabled(false);
     this.held = target;
     // A tray on the hand rides above Stanley's arms, and a dangling pin hangs
@@ -206,6 +220,14 @@ export class Grip {
       this.damping = target.angularDamping();
       target.setAngularDamping(DANGLE_DAMPING);
     }
+  }
+
+  /** Make the hand let go of whatever it's holding, and not grab it again until grip is let go. */
+  drop(world: World, other: Grip) {
+    const obj = this.held;
+    if (!obj) return;
+    this.release(world, 1, other);
+    this.noRegrab = obj;
   }
 
   release(world: World, throwAssist: number, other: Grip) {

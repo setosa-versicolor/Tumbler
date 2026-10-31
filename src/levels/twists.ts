@@ -484,7 +484,7 @@ export const LEVEL_TWISTS: Record<string, string> = {
   "crows-nest": "wind",
   "moving-day": "goblin",
   "hang-the-painting": "rabbit",
-  "pin-reset": "quake",
+  "pin-reset": "ice",
   "coffee-run": "moon",
   "window-washer": "wind",
   "mail-room": "cannons",

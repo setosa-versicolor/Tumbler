@@ -6,6 +6,7 @@ import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
 import { ALL_LEVELS, overtimeBonus } from "../src/app/campaign";
 import { LEVEL_TWISTS, TWISTS, twistFor } from "../src/levels/twists";
 import { fishToss } from "../src/levels/docks/fishToss";
+import { pinReset } from "../src/levels/downtown/pinReset";
 import { emptySave, loadSave, recordOvertime, writeSave, type Storage } from "../src/app/save";
 import { dayOff } from "../src/levels/dayOff";
 import { dingDong } from "../src/levels/suburb/dingDong";
@@ -50,6 +51,16 @@ describe("Overtime twists", () => {
       const ev = collect(g, 10);
       expect(ev.some((e) => e.type === "ouch"), `standing at ${x}`).toBe(true);
     }
+  });
+
+  it("Pin Reset's twist leaves pins that are stood up standing", () => {
+    const g = new Game({ ...DEFAULT_TUNING }, pinReset, 1, twistFor("pin-reset"));
+    g.props.filter((p) => p.kind === "pin").slice(0, 4).forEach((p, i) => {
+      p.body.setTranslation({ x: 10.16 + i * 0.65, y: 0.21 }, true);
+      p.body.setRotation(0, true);
+    });
+    collect(g, 4);
+    expect(g.progress.done).toBe(true);
   });
 
   it("the goblin stabs Stanley if he walks into it", () => {

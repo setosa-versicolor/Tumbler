@@ -72,6 +72,7 @@ export type PropKind =
   | "stool"
   | "pin"
   | "bowlingball"
+  | "discoball"
   | "tray"
   | "cup"
   | "trophy"

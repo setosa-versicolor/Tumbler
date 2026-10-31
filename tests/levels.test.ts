@@ -556,7 +556,7 @@ describe("Pin Reset", () => {
     pin.setTranslation({ x: 2.3, y: 0.085 }, true);
     pin.setRotation(-Math.PI / 2, true); // base towards Stanley
     // Everything else out of the way.
-    g.props.filter((p) => p.body !== pin).forEach((p, i) => p.body.setTranslation({ x: 12.9, y: 0.3 + i * 0.45 }, true));
+    g.props.filter((p) => p.body !== pin && p.kind !== "discoball").forEach((p, i) => p.body.setTranslation({ x: 12.9, y: 0.3 + i * 0.45 }, true));
     run(g, 0.5);
     const hold = { L: true, R: true };
     const base = { x: pin.translation().x - 0.17, y: 0.09 };
@@ -578,6 +578,26 @@ describe("Pin Reset", () => {
     run(g, 2);
     expect(Math.cos(pin.rotation())).toBeGreaterThan(0.98);
     expect(pin.translation().y).toBeLessThan(0.25);
+  });
+
+  it("Stanley can jump up, grab the disco ball and swing on it", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, pinReset);
+    const disco = g.props.find((p) => p.kind === "discoball")!.body;
+    const pel = () => g.stanley.rig.pelvis.translation();
+    g.props.filter((p) => p.body !== disco).forEach((p, i) => p.body.setTranslation({ x: 12.9, y: 0.3 + i * 0.45 }, true));
+    run(g, 6, () => ({ move: Math.abs(pel().x - 7.65) > 0.08 ? Math.sign(7.65 - pel().x) * 0.4 : 0 }));
+    run(g, 0.5);
+    const hold = { L: true, R: true };
+    run(g, 0.8, (t) => ({ jump: t === 0, reach: { x: 8.2, y: 2.5 }, grip: hold }));
+    expect(g.held.has(disco)).toBe(true);
+    // Pump the swing: Stanley's carried well off the floor.
+    let high = 0;
+    for (let k = 0; k < 8; k++) {
+      run(g, 0.5, { reach: { x: 8.2, y: 3 }, grip: hold, move: k < 4 ? 1 : -1 });
+      high = Math.max(high, pel().y);
+    }
+    expect(g.held.has(disco)).toBe(true);
+    expect(high).toBeGreaterThan(1.6);
   });
 
   it("a pin grabbed by its end dangles upright", () => {

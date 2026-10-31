@@ -2,10 +2,13 @@ import { type Level, type Theme } from "../level";
 import type { Prop } from "../kit";
 import { Curio } from "../curio";
 import { wrapAngle } from "../../sim/math";
+import { RAPIER } from "../../physics/world";
 
 const DECK = { x0: 10.0, x1: 12.6 };
 const NEEDED = 4;
 const HOLD = 1.0;
+/** The disco ball hangs from the ceiling on a rod: jump, grab it, and swing. */
+const DISCO = { x: 8.2, top: 4.6, y: 2.5, r: 0.22 };
 
 const ALLEY: Theme = {
   outdoor: false,
@@ -39,6 +42,9 @@ export const pinReset: Level = {
     }
     kit.ball(2.8, 0.12, 0.12, { kind: "bowlingball", density: 40, color: "#3b6ea8", restitution: 0.1 });
     kit.fragile(3.6, 0, "trophy");
+    const disco = kit.ball(DISCO.x, DISCO.y, DISCO.r, { kind: "discoball", density: 250, color: "#c9ccd1", restitution: 0.1 });
+    kit.world.createImpulseJoint(RAPIER.JointData.revolute({ x: DISCO.x, y: DISCO.top }, { x: 0, y: DISCO.top - DISCO.y }), kit.room, disco.body, true);
+    disco.body.setAngularDamping(0.4);
     const board = new Curio("scoreboard", "Perfect game. Naturally.", { x0: 9.6, y0: 2.6, x1: 13.0, y1: 3.8 });
     let standing = 0;
     let stable = 0;
@@ -65,14 +71,11 @@ export const pinReset: Level = {
         r.text("HIGH SCORE", { x: 11.3, y: 3.55 }, 0.16, "#f2c94c");
         r.text("G.T.  ·  300", { x: 11.3, y: 3.1 }, 0.3, "#5de8c8");
         r.text("BOWL-O-RAMA", { x: 4.5, y: 3.6 }, 0.34, "#e85d9d");
-        // A disco ball, throwing spots of light about.
-        const ball = { x: 8.2, y: 3.5 };
-        r.line({ x: ball.x, y: 4.6 }, ball, 0.015, "#9aa0a8");
-        r.circle(ball, 0.22, "#c9ccd1");
+        // The disco ball's rod, and the spots of light it throws about.
+        const ball = disco.body.translation();
+        r.line({ x: DISCO.x, y: DISCO.top }, ball, 0.015, "#9aa0a8");
         for (let i = 0; i < 6; i++) {
-          const a = game.time * 1.3 + i;
-          r.circle({ x: ball.x + Math.cos(a) * 0.13, y: ball.y + Math.sin(a * 0.7) * 0.13 }, 0.035, "rgba(255,255,255,0.9)");
-          const sx = ((game.time * 0.35 + i * 0.37) % 1) * 13;
+          const sx = ((game.time * 0.35 + i * 0.37 + (ball.x - DISCO.x) * 0.2) % 1) * 13;
           const sy = 1.2 + ((i * 0.53) % 1) * 2.4;
           r.circle({ x: sx, y: sy }, 0.06, ["rgba(232,93,157,0.35)", "rgba(93,232,200,0.35)", "rgba(242,201,76,0.35)"][i % 3]);
         }

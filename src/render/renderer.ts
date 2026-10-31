@@ -979,6 +979,35 @@ export class Renderer {
         ctx.fillRect(-w * 0.5, -h * 0.55, w, h * 0.08);
         ctx.fillRect(-w * 0.55, -h * 0.42, w * 1.1, h * 0.06);
         break;
+      case "discoball":
+        // Mirror tiles, turning with the ball, with a glint or two.
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.save();
+        ctx.clip();
+        ctx.strokeStyle = "rgba(90,96,108,0.55)";
+        ctx.lineWidth = Math.max(1, sc * 0.008);
+        for (let k = -3; k <= 3; k++) {
+          ctx.beginPath();
+          ctx.moveTo(-w, (k * w) / 3.5);
+          ctx.lineTo(w, (k * w) / 3.5);
+          ctx.moveTo((k * w) / 3.5, -w);
+          ctx.lineTo((k * w) / 3.5, w);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        outline();
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        for (const [dx, dy] of [[-0.35, -0.4], [0.3, 0.1], [-0.1, 0.45]] as const) {
+          ctx.beginPath();
+          ctx.arc(dx * w, dy * w, w * 0.13, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
       case "bowlingball":
         ctx.fillStyle = p.color;
         ctx.beginPath();

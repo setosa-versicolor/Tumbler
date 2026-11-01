@@ -4,6 +4,9 @@ import type { GameEvent } from "../../sim/game";
 import type { Renderer } from "../../render/renderer";
 import type { Vec } from "../../sim/math";
 import { RAPIER } from "../../physics/world";
+import { BOSS, drawBoss } from "../../story/office";
+import { drawKnight } from "./yeOldeJob";
+import { drawCoworkerHead, drawGoat, drawGoblin, drawHenderson, drawMom, drawRabbit } from "../../render/characters";
 
 const W = 16;
 const H = 4.6;
@@ -14,16 +17,16 @@ const DISCO = { top: H, y: 2.85, r: 0.22 };
 
 type Who = "gerald" | "henderson" | "knight" | "goat" | "goblin" | "rabbit" | "mannequin" | "coworker" | "mom";
 
-/** Everyone you've met, dancing. Size, where they start, and what they say on the way out. */
+/** Everyone you've met, dancing: sized to how they're drawn, and what they say on the way out. */
 export const GUESTS: { who: Who; x: number; hw: number; hh: number; bye: string }[] = [
-  { who: "gerald", x: 3.2, hw: 0.24, hh: 0.6, bye: "Say hi to your mother!" },
-  { who: "mom", x: 4.0, hw: 0.22, hh: 0.58, bye: "Bye, sweetie!" },
-  { who: "henderson", x: 5.6, hw: 0.22, hh: 0.55, bye: "I still want a doorbell!" },
-  { who: "goat", x: 6.6, hw: 0.3, hh: 0.22, bye: "Meh." },
-  { who: "knight", x: 7.6, hw: 0.26, hh: 0.65, bye: "Thou art a better fit!" },
-  { who: "coworker", x: 8.8, hw: 0.2, hh: 0.55, bye: "Is that really the way you should be doing that?" },
+  { who: "gerald", x: 3.3, hw: 0.32, hh: 1.0, bye: "Say hi to your mother!" },
+  { who: "mom", x: 4.2, hw: 0.3, hh: 0.92, bye: "Bye, sweetie!" },
+  { who: "henderson", x: 5.6, hw: 0.28, hh: 0.9, bye: "I still want a doorbell!" },
+  { who: "goat", x: 6.6, hw: 0.36, hh: 0.42, bye: "Meh." },
+  { who: "knight", x: 7.7, hw: 0.3, hh: 1.0, bye: "Thou art a better fit!" },
+  { who: "coworker", x: 8.9, hw: 0.22, hh: 0.85, bye: "Is that really the way you should be doing that?" },
   { who: "goblin", x: 10.6, hw: 0.18, hh: 0.4, bye: "I'll be under the floor." },
-  { who: "rabbit", x: 11.4, hw: 0.12, hh: 0.1, bye: "*plop*" },
+  { who: "rabbit", x: 11.4, hw: 0.17, hh: 0.17, bye: "*plop*" },
   { who: "mannequin", x: 12.4, hw: 0.16, hh: 0.5, bye: "…" },
 ];
 
@@ -54,7 +57,9 @@ export const officeParty: Level = {
     });
 
     const guests = GUESTS.map((g, i) => {
-      const prop = kit.box(g.x, g.hh + 0.01, g.hw, g.hh, { kind: "guest", density: 3.5, friction: 0.9, color: "#ffffff", tag: g.who });
+      // (The mannequin is the Fire Drill's own: the renderer draws it.)
+      const kind = g.who === "mannequin" ? "dummy" : "guest";
+      const prop = kit.box(g.x, g.hh + 0.01, g.hw, g.hh, { kind, density: 1.8, friction: 0.9, color: "#e6c9a4", tag: g.who });
       return { ...g, prop, gone: false, phase: i * 0.7 };
     });
     let left = guests.length;
@@ -123,7 +128,8 @@ export const officeParty: Level = {
         for (const d of discos) r.line({ x: d.x, y: DISCO.top }, d.prop.body.translation(), 0.015, "#9aa0a8");
       },
       drawMid(r, game) {
-        for (const g of guests) if (!g.gone) drawGuest(r, g.who, g.prop, game.time);
+        const look = game.stanley.rig.head.translation();
+        for (const g of guests) if (!g.gone && g.who !== "mannequin") drawGuest(r, g.who, g.prop, game.time, look);
       },
       drawFront(r, game) {
         // The party hat, once everyone's gone.
@@ -141,94 +147,64 @@ export const officeParty: Level = {
   },
 };
 
-/** Draw a guest on their (dancing, possibly flying) body. */
-function drawGuest(r: Renderer, who: Who, prop: Prop, t: number) {
+/**
+ * Draw a guest on their (dancing, possibly flying) body, with the very same
+ * drawing as in their own scene, moved onto the body's feet and turned with it.
+ * (Gerald, Mrs. Henderson and the coworker had only been seen from the waist
+ * up: below that's new, in the same style.)
+ */
+function drawGuest(r: Renderer, who: Who, prop: Prop, t: number, look: Vec) {
   const p = prop.body.translation();
   const a = prop.body.rotation();
-  const at = (x: number, y: number): Vec => ({ x: p.x + x * Math.cos(a) - y * Math.sin(a), y: p.y + x * Math.sin(a) + y * Math.cos(a) });
-  const box = (x0: number, y0: number, x1: number, y1: number, c: string) => r.poly([at(x0, y0), at(x1, y0), at(x1, y1), at(x0, y1)], c);
-  const { hw, hh } = prop;
-  const wave = Math.sin(t * 6 + p.x) * 0.12;
-  const arms = (c: string) => {
-    r.line(at(-hw, hh * 0.3), at(-hw - 0.18, hh * 0.3 + 0.25 + wave), 0.06, c);
-    r.line(at(hw, hh * 0.3), at(hw + 0.18, hh * 0.3 + 0.25 - wave), 0.06, c);
-  };
-  const head = (c: string, y = hh + 0.15, rad = 0.16) => r.circle(at(0, y), rad, c);
-  const eyes = (y = hh + 0.17) => {
-    r.circle(at(-0.05, y), 0.02, "#2a2230");
-    r.circle(at(0.05, y), 0.02, "#2a2230");
-  };
+  const feet = { x: p.x + Math.sin(a) * prop.hh, y: p.y - Math.cos(a) * prop.hh };
+  const f = look.x > p.x ? 1 : -1;
+  const at = (native: Vec, fn: () => void) => r.place(native, feet, a, fn);
   switch (who) {
     case "gerald":
-      box(-hw, -hh, hw, hh * 0.7, "#4a5160");
-      r.poly([at(-0.05, hh * 0.7), at(0.05, hh * 0.7), at(0, hh * 0.2)], "#c0392b");
-      arms("#4a5160");
-      head("#eebd92");
-      r.poly([at(-0.15, hh + 0.2), at(0.15, hh + 0.2), at(0.12, hh + 0.3), at(-0.12, hh + 0.3)], "#9aa0a8");
-      r.ring(at(-0.06, hh + 0.15), 0.045, "#2a2230", 0.012);
-      r.ring(at(0.06, hh + 0.15), 0.045, "#2a2230", 0.012);
-      box(-0.08, hh + 0.05, 0.08, hh + 0.08, "#7a7f86");
-      box(hw + 0.12, hh * 0.3 + 0.2 - wave, hw + 0.26, hh * 0.3 + 0.36 - wave, "#f4f4f4");
+      // Gerald, as at his desk (he faces left there), and the legs that were under it.
+      at({ x: BOSS.x, y: 0 }, () => {
+        r.rect(BOSS.x - 0.22, 0, BOSS.x - 0.04, 0.88, "#3a404d");
+        r.rect(BOSS.x + 0.04, 0, BOSS.x + 0.22, 0.88, "#3a404d");
+        r.roundRect(BOSS.x - 0.26, 0, BOSS.x - 0.02, 0.07, 0.03, "#2a2230");
+        r.roundRect(BOSS.x + 0.02, 0, BOSS.x + 0.26, 0.07, 0.03, "#2a2230");
+        drawBoss(r, false, t, false);
+      });
       break;
     case "mom":
-      box(-hw, -hh, hw, hh * 0.7, "#ffffff");
-      r.poly([at(-0.06, hh * 0.7), at(0.06, hh * 0.7), at(0, hh * 0.35)], "#5d9de8");
-      arms("#ffffff");
-      head("#eebd92");
-      r.circle(at(0.1, hh + 0.32), 0.08, "#6b4a3a");
-      r.poly([at(-0.16, hh + 0.18), at(0.16, hh + 0.2), at(0.1, hh + 0.3), at(-0.1, hh + 0.3)], "#6b4a3a");
-      r.ring(at(-0.06, hh + 0.15), 0.045, "#2a2230", 0.012);
-      r.ring(at(0.06, hh + 0.15), 0.045, "#2a2230", 0.012);
+      at({ x: 0, y: 0 }, () => drawMom(r, 0, 0, -f));
       break;
     case "henderson":
-      box(-hw, -hh, hw, hh * 0.7, "#e8a3b5");
-      arms("#e8a3b5");
-      head("#f2c79b");
-      for (const dx of [-0.1, 0, 0.1]) r.circle(at(dx, hh + 0.3), 0.045, "#5d9de8");
-      eyes();
+      // As at her window (the sill's at her waist), and the rest of her.
+      at({ x: 0, y: 0 }, () => {
+        r.rect(-0.12, 0, -0.03, 0.5, "#f2c79b");
+        r.rect(0.03, 0, 0.12, 0.5, "#f2c79b");
+        r.poly([{ x: -0.32, y: 0.45 }, { x: 0.32, y: 0.45 }, { x: 0.28, y: 1.0 }, { x: -0.28, y: 1.0 }], "#c58be8");
+        drawHenderson(r, 0, 1.0);
+      });
       break;
     case "knight":
-      box(-hw, -hh, hw, hh * 0.6, "#9aa3ad");
-      box(-hw * 0.7, -hh * 0.2, hw * 0.7, hh * 0.5, "#c0392b");
-      arms("#9aa3ad");
-      box(-0.15, hh * 0.6, 0.15, hh + 0.25, "#9aa3ad");
-      box(-0.12, hh + 0.08, 0.12, hh + 0.11, "#2a2230");
-      box(-0.2, hh * 0.6 + 0.12, 0.2, hh * 0.6 + 0.18, "#5f5a55");
-      r.poly([at(0, hh + 0.25), at(-0.2, hh + 0.5), at(0.04, hh + 0.25)], "#e85d5d");
+      at({ x: 0, y: 0 }, () => drawKnight(r, { x: 0, face: f, swing: 0, flash: 0, phase: "advance", hp: 5, guard: 1.2, clang: 0 }, 0, true));
       break;
     case "goat":
-      box(-hw, -hh, hw, hh, "#e8e2d4");
-      r.circle(at(hw + 0.05, hh * 0.6), 0.12, "#e8e2d4");
-      r.circle(at(hw + 0.09, hh * 0.65), 0.018, "#2a2230");
-      for (const dx of [-hw * 0.7, hw * 0.6]) box(dx - 0.03, -hh - 0.12, dx + 0.03, -hh, "#6b5b45");
-      break;
-    case "goblin":
-      box(-hw, -hh, hw, hh * 0.6, "#4f7a3a");
-      arms("#7bbf5a");
-      head("#7bbf5a", hh + 0.1, 0.15);
-      r.poly([at(-0.12, hh + 0.15), at(-0.32, hh + 0.28), at(-0.1, hh + 0.05)], "#7bbf5a");
-      r.poly([at(0.12, hh + 0.15), at(0.32, hh + 0.28), at(0.1, hh + 0.05)], "#7bbf5a");
-      r.circle(at(-0.05, hh + 0.13), 0.025, "#e85d5d");
-      r.circle(at(0.05, hh + 0.13), 0.025, "#e85d5d");
-      break;
-    case "rabbit":
-      r.circle(at(0, 0), hw + 0.02, "#f4f4f4");
-      box(-0.05, hh, -0.01, hh + 0.18, "#f4f4f4");
-      box(0.02, hh, 0.06, hh + 0.18, "#f4f4f4");
-      r.circle(at(0.06, 0.03), 0.015, "#2a2230");
-      break;
-    case "mannequin":
-      box(-hw, -hh, hw, hh * 0.7, "#e6c9a4");
-      arms("#e6c9a4");
-      head("#e6c9a4");
-      for (const dy of [-0.3, 0.1, 0.5]) r.circle(at(0, dy * hh), 0.02, "rgba(0,0,0,0.25)");
+      at({ x: 0.07, y: 0 }, () => drawGoat(r, 0));
       break;
     case "coworker":
-      box(-hw, -hh, hw, hh * 0.7, "#2a2230");
-      arms("#f2c79b");
-      head("#f2c79b");
-      r.poly([at(-0.17, hh + 0.15), at(0.17, hh + 0.15), at(0.14, hh + 0.32), at(-0.14, hh + 0.32)], "#c58be8");
-      eyes();
+      // The coworker who peeks over the cubicle wall, all of them for once.
+      at({ x: 0, y: 0 }, () => {
+        r.rect(-0.12, 0, -0.03, 0.75, "#3b4a7a");
+        r.rect(0.03, 0, 0.12, 0.75, "#3b4a7a");
+        r.roundRect(-0.22, 0.7, 0.22, 1.32, 0.1, "#2a2230");
+        for (const s of [-1, 1]) r.circle({ x: s * 0.27, y: 1.15 + Math.sin(t * 6 + s) * 0.12 }, 0.05, "#f2c79b");
+        drawCoworkerHead(r, 0, 1.5, "#f2c79b", "#c58be8", look);
+      });
+      break;
+    case "goblin":
+      at({ x: 0, y: 0 }, () => drawGoblin(r, 0, 0, f));
+      break;
+    case "rabbit":
+      at({ x: 0, y: 0 }, () => drawRabbit(r, 0, 0, f));
+      break;
+    case "mannequin":
       break;
   }
 }

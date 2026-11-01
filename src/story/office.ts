@@ -165,7 +165,7 @@ function drawOffice(r: Renderer, incident: boolean) {
 }
 
 /** Gerald: seated, unflappable, permanently holding a coffee. */
-function drawBoss(r: Renderer, talking: boolean, t: number, sipping = false) {
+export function drawBoss(r: Renderer, talking: boolean, t: number, sipping = false) {
   const { x, headY } = BOSS;
   // Suit.
   r.roundRect(x - 0.32, 0.85, x + 0.32, 1.6, 0.14, "#4a5160");

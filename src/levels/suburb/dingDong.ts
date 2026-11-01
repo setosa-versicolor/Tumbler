@@ -2,6 +2,7 @@ import { OUTDOOR, type Level } from "../level";
 import { Curio } from "../curio";
 import { toward } from "../../sim/math";
 import type { GameEvent } from "../../sim/game";
+import { drawHenderson } from "../../render/characters";
 
 const HOUSE_X = 11.5;
 const BELL_Y = 2.25;
@@ -72,14 +73,7 @@ export const dingDong: Level = {
         r.rect(HOUSE_X + 0.4, 3.0, HOUSE_X + 1.3, 3.9, "#bfe3f2");
         if (henderson.found) {
           // Mrs. Henderson, curlers in, glaring.
-          const cx = HOUSE_X + 0.85;
-          const up = Math.min(1, henderson.age * 3);
-          r.rect(cx - 0.28, 3.0, cx + 0.28, 3.0 + 0.35 * up, "#c58be8");
-          r.circle({ x: cx, y: 3.25 + 0.3 * up }, 0.2, "#f2c79b");
-          for (const dx of [-0.14, 0, 0.14]) r.circle({ x: cx + dx, y: 3.45 + 0.3 * up }, 0.06, "#f4a6c0");
-          r.line({ x: cx - 0.12, y: 3.32 + 0.3 * up }, { x: cx - 0.03, y: 3.29 + 0.3 * up }, 0.025, "#2a2230");
-          r.line({ x: cx + 0.12, y: 3.32 + 0.3 * up }, { x: cx + 0.03, y: 3.29 + 0.3 * up }, 0.025, "#2a2230");
-          r.line({ x: cx - 0.07, y: 3.14 + 0.3 * up }, { x: cx + 0.07, y: 3.14 + 0.3 * up }, 0.025, "#2a2230");
+          drawHenderson(r, HOUSE_X + 0.85, 3.0, Math.min(1, henderson.age * 3));
         }
         r.text("12", { x: HOUSE_X + 0.75, y: 2.6 }, 0.22, "#5b3a2a");
         // Bell plate.

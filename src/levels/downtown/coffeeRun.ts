@@ -1,6 +1,6 @@
 import { OFFICE, type Level } from "../level";
-import { toward } from "../../sim/math";
 import { Curio } from "../curio";
+import { drawCoworkerHead } from "../../render/characters";
 
 const COUNTER = { x0: 0.2, x1: 1.8, top: 0.95 };
 const DESK = { x0: 11.4, x1: 13.4, top: 0.78 };
@@ -130,14 +130,7 @@ export const coffeeRun: Level = {
         for (const p of peekers) {
           const k = lift(p);
           if (k <= 0) continue;
-          const face = { x: p.x, y: WALL_TOP - 0.2 + k * 0.32 };
-          r.circle({ x: p.x, y: face.y + 0.05 }, 0.17, p.hair);
-          r.circle({ x: p.x, y: face.y - 0.02 }, 0.155, p.skin);
-          for (const dx of [-0.06, 0.06]) {
-            const e = { x: p.x + dx, y: face.y };
-            r.circle(e, 0.035, "#fff");
-            r.circle(toward(e, head, 0.015), 0.016, "#2a2230");
-          }
+          drawCoworkerHead(r, p.x, WALL_TOP - 0.2 + k * 0.32, p.skin, p.hair, head);
         }
         for (const x of CUBICLES) {
           r.rect(x, 0, x + 1.4, WALL_TOP, "#969ea8");

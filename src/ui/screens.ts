@@ -447,8 +447,7 @@ export function partyEndCard(o: { onBoard: () => void }): HTMLElement {
     { class: "card intro end" },
     h("div", { class: "big-icon" }, "🎉"),
     h("h1", {}, "That's everything."),
-    h("p", { class: "goal" }, "Every job done, perfectly. Everyone's gone home. Stanley's still wearing the hat."),
-    h("p", { class: "controls" }, "Thanks for playing Tumbler. Say hi to your mother."),
+    h("p", { class: "goal" }, "Every job done, perfectly. Everyone's gone home. Party on."),
     h("button", { class: "primary", click: o.onBoard }, "Job Board"),
   );
 }

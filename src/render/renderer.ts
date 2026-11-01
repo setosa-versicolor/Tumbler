@@ -240,6 +240,23 @@ export class Renderer {
     this.ctx.fill();
   }
 
+  /**
+   * Draw something (with `fn`, at its usual spot) moved and turned: the world
+   * point `from` lands on `to`, turned by `angle` about it. So a character's
+   * own drawing can be reused anywhere (a guest at a party, flying through a door).
+   */
+  place(from: Vec, to: Vec, angle: number, fn: () => void) {
+    const ctx = this.ctx;
+    const a = this.camera.toScreen(to);
+    const b = this.camera.toScreen(from);
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(-angle);
+    ctx.translate(-b.x, -b.y);
+    fn();
+    ctx.restore();
+  }
+
   ring(c: Vec, r: number, color: string, width: number) {
     const s = this.camera.toScreen(c);
     this.ctx.strokeStyle = color;

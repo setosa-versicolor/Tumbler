@@ -5,6 +5,7 @@ import { G_BODY, G_FLOOR, G_PROP, G_WORLD, groups } from "../physics/groups";
 import type { Game, GameEvent } from "../sim/game";
 import type { Renderer } from "../render/renderer";
 import { clamp, type Vec } from "../sim/math";
+import { drawGoblin, drawRabbit } from "../render/characters";
 
 // Overtime twists: complications layered over a level after the story's
 // done. Each is self-contained: it starts with the level, ticks every
@@ -232,16 +233,7 @@ function goblin(): Twist {
           // The goblin: green, pointy, pleased with itself.
           const y = at.y - 0.6 + rise * 0.6;
           // Facing back toward Stanley (the spear points at him).
-          const f = -dir;
-          r.roundRect(at.x - 0.17, y, at.x + 0.17, y + 0.45, 0.08, "#4f7a3a");
-          r.circle({ x: at.x, y: y + 0.58 }, 0.17, "#7bbf5a");
-          r.poly([{ x: at.x - 0.14, y: y + 0.65 }, { x: at.x - 0.36, y: y + 0.78 }, { x: at.x - 0.12, y: y + 0.55 }], "#7bbf5a");
-          r.poly([{ x: at.x + 0.14, y: y + 0.65 }, { x: at.x + 0.36, y: y + 0.78 }, { x: at.x + 0.12, y: y + 0.55 }], "#7bbf5a");
-          r.circle({ x: at.x + f * 0.07, y: y + 0.62 }, 0.035, "#e85d5d");
-          r.line({ x: at.x + f * 0.02, y: y + 0.5 }, { x: at.x + f * 0.13, y: y + 0.52 }, 0.02, "#2a2230");
-          const tip = at.x + f * (0.35 + thrust * 0.75);
-          r.line({ x: at.x - f * 0.25, y: y + 0.3 }, { x: tip, y: y + 0.3 }, 0.035, "#8a6a4e");
-          r.poly([{ x: tip, y: y + 0.38 }, { x: tip + f * 0.18, y: y + 0.3 }, { x: tip, y: y + 0.22 }], "#c9ccd1");
+          drawGoblin(r, at.x, y, -dir, thrust);
         },
       };
     },
@@ -321,18 +313,7 @@ function rabbit(): Twist {
         },
         draw(r) {
           for (const q of poops) for (const [dx, dy] of [[-0.05, 0.03], [0.03, 0.03], [0, 0.07], [0.07, 0.025]] as const) r.circle({ x: q.x + dx, y: q.y + dy }, 0.032, "#5b3a22");
-          const hopY = Math.sin(rb.hop * Math.PI) * 0.18;
-          const x = rb.x;
-          const y = rb.y + hopY;
-          const f = rb.look;
-          r.roundRect(x - 0.17, y, x + 0.15, y + 0.2, 0.09, "#f4efe6");
-          r.circle({ x: x - f * 0.17, y: y + 0.1 }, 0.06, "#ffffff");
-          r.circle({ x: x + f * 0.16, y: y + 0.24 }, 0.1, "#f4efe6");
-          r.roundRect(x + f * 0.1 - 0.03, y + 0.3, x + f * 0.1 + 0.03, y + 0.55, 0.03, "#f4efe6");
-          r.roundRect(x + f * 0.19 - 0.03, y + 0.3, x + f * 0.19 + 0.03, y + 0.52, 0.03, "#f4efe6");
-          r.circle({ x: x + f * 0.21, y: y + 0.26 }, 0.018, "#2a2230");
-          r.circle({ x: x + f * 0.26, y: y + 0.22 }, 0.015, "#e8a0a0");
-          if (rb.startled > 0) r.text("!", { x: x + f * 0.1, y: y + 0.75 }, 0.3, "#c0392b", "center", 900);
+          drawRabbit(r, rb.x, rb.y + Math.sin(rb.hop * Math.PI) * 0.18, rb.look, rb.startled > 0);
         },
       };
     },

@@ -5,6 +5,7 @@ import type { Renderer } from "../../render/renderer";
 import { RAPIER } from "../../physics/world";
 import { G_BODY, G_PROP, G_WORLD, groups } from "../../physics/groups";
 import { clamp } from "../../sim/math";
+import { drawGoat } from "../../render/characters";
 
 const W = 14;
 /** The weapon rack, on the left: everything lying hilt-out, towards Stanley. */
@@ -260,14 +261,10 @@ function drawCastle(r: Renderer, game: Game) {
     r.text("OJ", { x: x + 0.35, y: 2.35 }, 0.22, "#f2c94c");
   }
   // A goat, unimpressed.
-  const gx = 4.3;
-  r.roundRect(gx - 0.3, 0.3, gx + 0.25, 0.65, 0.12, "#e8e2d4");
-  r.circle({ x: gx + 0.32, y: 0.72 }, 0.13, "#e8e2d4");
-  for (const dx of [-0.2, -0.05, 0.08, 0.2]) r.rect(gx + dx - 0.03, 0, gx + dx + 0.03, 0.32, "#6b5b45");
-  r.circle({ x: gx + 0.36, y: 0.75 }, 0.02, "#2a2230");
+  drawGoat(r, 4.3);
 }
 
-function drawKnight(
+export function drawKnight(
   r: Renderer,
   k: { x: number; face: number; swing: number; flash: number; phase: string; hp: number; guard: number; clang: number },
   down: number,

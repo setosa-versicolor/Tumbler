@@ -1086,7 +1086,7 @@ describe("The office party", () => {
   it("the guests dance (and stay on their feet) until they're thrown out", () => {
     const g = play(officeParty);
     run(g, 6);
-    const guests = g.props.filter((p) => p.kind === "guest");
+    const guests = g.props.filter((p) => PARTY_GUESTS.some((x) => x.who === p.tag));
     expect(guests.length).toBe(PARTY_GUESTS.length);
     for (const p of guests) {
       expect(Math.cos(p.body.rotation())).toBeGreaterThan(0.7);
@@ -1097,7 +1097,7 @@ describe("The office party", () => {
   it("everyone out the door: a party hat, and the party's over", () => {
     const g = play(officeParty);
     run(g, 0.5);
-    const guests = g.props.filter((p) => p.kind === "guest");
+    const guests = g.props.filter((p) => PARTY_GUESTS.some((x) => x.who === p.tag));
     // The first one, given a shove out the door.
     guests[0].body.setTranslation({ x: PARTY_DOOR.x - 0.6, y: 0.8 }, true);
     guests[0].body.setLinvel({ x: 4, y: 0.5 }, true);

@@ -38,6 +38,8 @@ export interface LevelInstance {
   drawFront?(r: Renderer, game: Game): void;
   /** A safe spot for a fragile thing (it won't break while it's here). */
   safe?(p: Prop): boolean;
+  /** Where the level's characters' heads are, for speech in a scene. */
+  speakers?: Record<string, () => Vec>;
 }
 
 export interface Level {

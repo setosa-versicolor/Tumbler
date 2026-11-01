@@ -209,6 +209,10 @@ export const yeOldeJob: Level = {
         knightBody.setNextKinematicTranslation({ x: k.x, y: k.phase === "yield" ? 0.95 - Math.min(0.5, done) : 0.95 });
         return ev;
       },
+      speakers: {
+        knight: () => ({ x: k.x, y: 2.05 - Math.min(0.5, done) }),
+        goat: () => ({ x: 4.65, y: 0.85 }),
+      },
       progress: () => ({
         done: k.phase === "yield" && done > 1.2,
         label: k.phase === "yield" ? "Victory! Of a sort." : `Ser Geraldus ${"♥".repeat(k.hp)}${"♡".repeat(KNIGHT_HP - k.hp)}`,

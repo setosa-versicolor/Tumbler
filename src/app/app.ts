@@ -7,12 +7,13 @@ import type { Level } from "../levels/level";
 import { Renderer } from "../render/renderer";
 import { Input } from "../input/input";
 import { Cutscene } from "../story/cutscene";
+import { Scene } from "../story/scene";
 import { BOSS, office, type OfficeInstance } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
 import { CHAPTERS, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
-import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, quantumCard, resultsCard, yieldCard } from "../ui/screens";
+import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, quantumCard, resultsCard } from "../ui/screens";
 import { theGift } from "../levels/secret/theGift";
 import { yeOldeJob } from "../levels/secret/yeOldeJob";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
@@ -40,6 +41,8 @@ type Mode =
   | { kind: "results" }
   | { kind: "sandbox" }
   | { kind: "cutscene"; scene: Cutscene; then: () => void; ending: boolean }
+  /** A little scene in a level (speech bubbles over its characters, like Gerald's reviews). */
+  | { kind: "scene"; scene: Scene; then: () => void; ending: boolean }
   /** The staff go wild; `cheer` is who's speaking (the camera goes to them). */
   | { kind: "ending"; cheer: number }
   | { kind: "card" };
@@ -286,24 +289,36 @@ export class App {
     setTimeout(() => this.playSecret(yeOldeJob, "THE YEAR 1194. Grab a weapon."), 900);
   }
 
-  /** He yields (a scene in the courtyard), then home, slightly singed, to call Mom. */
+  /** He yields (in the courtyard, the way Gerald talks in his office), then home to call Mom. */
   private backToTheOffice() {
     this.mode = { kind: "card" };
     sfx.complete();
     this.save.seen.gift = true;
     writeSave(this.save);
-    setTimeout(
-      () =>
-        this.dom.overlay.replaceChildren(
-          yieldCard({
-            onNext: () => {
-              this.renderer.camera.shake(14);
-              this.callMom();
-            },
-          }),
-        ),
-      900,
-    );
+    const who = this.game.inst.speakers ?? {};
+    const knight = who.knight ?? (() => this.game.stanley.position);
+    const goat = who.goat ?? knight;
+    const stanley = () => {
+      const h = this.game.stanley.rig.head.translation();
+      return { x: h.x, y: h.y + 0.25 };
+    };
+    setTimeout(() => {
+      this.mode = {
+        kind: "scene",
+        ending: false,
+        scene: new Scene([
+          { at: knight, text: "I yield! Thou art… a better fit." },
+          { at: knight, text: "Take my lands. My title. My goat." },
+          { at: stanley, text: "I just came to open a present." },
+          { at: goat, text: "Meh." },
+        ]),
+        then: () => {
+          this.mode = { kind: "card" };
+          this.renderer.camera.shake(14);
+          this.callMom();
+        },
+      };
+    }, 900);
   }
 
   private callMom() {
@@ -475,7 +490,7 @@ export class App {
 
   private tap() {
     if (this.paused) return;
-    if (this.mode.kind === "cutscene") this.mode.scene.advance();
+    if (this.mode.kind === "cutscene" || this.mode.kind === "scene") this.mode.scene.advance();
     else if (this.mode.kind === "intro") this.clockIn();
   }
 
@@ -508,6 +523,16 @@ export class App {
       intent = this.input.read(this.renderer.camera, st.shoulder, st.facing, floor);
     } else {
       this.input.read(this.renderer.camera, g.stanley.shoulder, g.stanley.facing);
+    }
+    if (m.kind === "scene") {
+      m.scene.update(dt);
+      this.renderer.camera.punch = 0.3;
+      this.renderer.bubble = m.scene.bubble();
+      if (m.scene.done && !m.ending) {
+        m.ending = true;
+        this.renderer.bubble = null;
+        m.then();
+      }
     }
     if (m.kind === "cutscene") {
       intent = m.scene.update(dt);
@@ -544,6 +569,9 @@ export class App {
           { x: m.cheer >= 0 ? STAFF_SPOTS[m.cheer].x : STAFF_SPOTS[0].x - 0.6, y: 2.0 }
         : m.kind === "cutscene"
         ? ((g.inst as OfficeInstance).focus ?? { x: (g.stanley.position.x + BOSS.x) / 2, y: 1.6 })
+        : m.kind === "scene"
+        ? // Between Stanley and whoever's talking.
+          { x: (g.stanley.position.x + (m.scene.speaker() ?? g.stanley.position).x) / 2, y: 1.5 }
         : m.kind === "intro" && g.level.target
           ? g.level.target
           : g.stanley.position;
@@ -719,7 +747,7 @@ export class App {
         ? this.input.touch
           ? "Left thumb: run, flick up to jump, pull down to duck · Right thumb: drag to reach, hold to grab"
           : "A/D run · W jump · S duck · Mouse points hands · Hold left/right click to grab · R restart"
-        : cut
+        : cut || m.kind === "scene"
           ? "Tap to speed up"
           : m.kind === "play" && this.input.touch && window.innerHeight > window.innerWidth
             ? "↻ Turn your phone sideways for a bigger view"

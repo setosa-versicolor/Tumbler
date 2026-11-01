@@ -1015,6 +1015,9 @@ export class Renderer {
         ctx.fillRect(-w, -h * 0.15, w * 2, h * 0.3);
         break;
       }
+      case "guest":
+        // Party guests are drawn by the party itself (each one's different).
+        break;
       case "sword":
       case "axe":
       case "spear": {

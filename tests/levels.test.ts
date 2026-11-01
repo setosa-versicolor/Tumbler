@@ -3,7 +3,7 @@ import { initPhysics } from "../src/physics/world";
 import { Game } from "../src/sim/game";
 import { DEFAULT_TUNING } from "../src/sim/tuning";
 import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
-import { ALL_LEVELS } from "../src/app/campaign";
+import { ALL_LEVELS, allFiveStars } from "../src/app/campaign";
 import { dingDong } from "../src/levels/suburb/dingDong";
 import { laundryDay } from "../src/levels/suburb/laundryDay";
 import { stackIt } from "../src/levels/suburb/stackIt";
@@ -29,6 +29,8 @@ import { mailRoom } from "../src/levels/skyscraper/mailRoom";
 import { shredIt } from "../src/levels/skyscraper/shredIt";
 import { theGift, MACHINE } from "../src/levels/secret/theGift";
 import { yeOldeJob } from "../src/levels/secret/yeOldeJob";
+import { officeParty, GUESTS as PARTY_GUESTS, DOOR as PARTY_DOOR } from "../src/levels/secret/officeParty";
+import { emptySave } from "../src/app/save";
 import { fireDrill } from "../src/levels/skyscraper/fireDrill";
 import * as FD from "../src/levels/skyscraper/fireDrill";
 const EXIT_LINE = FD.DROP_X;
@@ -1077,5 +1079,43 @@ describe("The secret ending", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, yeOldeJob);
     run(g, 20, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.6, y: g.stanley.shoulder.y + Math.sin(t * 8) * 0.6 } }));
     expect(g.progress.label).toContain("♥♥♥♥♥");
+  });
+});
+
+describe("The office party", () => {
+  it("the guests dance (and stay on their feet) until they're thrown out", () => {
+    const g = play(officeParty);
+    run(g, 6);
+    const guests = g.props.filter((p) => p.kind === "guest");
+    expect(guests.length).toBe(PARTY_GUESTS.length);
+    for (const p of guests) {
+      expect(Math.cos(p.body.rotation())).toBeGreaterThan(0.7);
+      expect(p.body.translation().x).toBeLessThan(PARTY_DOOR.x);
+    }
+  });
+
+  it("everyone out the door: a party hat, and the party's over", () => {
+    const g = play(officeParty);
+    run(g, 0.5);
+    const guests = g.props.filter((p) => p.kind === "guest");
+    // The first one, given a shove out the door.
+    guests[0].body.setTranslation({ x: PARTY_DOOR.x - 0.6, y: 0.8 }, true);
+    guests[0].body.setLinvel({ x: 4, y: 0.5 }, true);
+    run(g, 1);
+    expect(g.props).not.toContain(guests[0]);
+    expect(g.progress.done).toBe(false);
+    for (const p of guests.slice(1)) p.body.setTranslation({ x: PARTY_DOOR.x + 0.4, y: 0.6 }, true);
+    run(g, 1);
+    expect(g.progress.label).toContain("Party's over");
+    run(g, 3.2);
+    expect(g.progress.done).toBe(true);
+  });
+
+  it("is on once every job has five stars", () => {
+    const save = emptySave();
+    for (const l of ALL_LEVELS) save.overtime[l.id] = { bonus: 2, best: 10 };
+    expect(allFiveStars(save)).toBe(true);
+    save.overtime[ALL_LEVELS[3].id].bonus = 1;
+    expect(allFiveStars(save)).toBe(false);
   });
 });

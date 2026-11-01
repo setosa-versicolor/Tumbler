@@ -1,3 +1,4 @@
+import type { SaveData } from "./save";
 import type { Level } from "../levels/level";
 import { dingDong } from "../levels/suburb/dingDong";
 import { laundryDay } from "../levels/suburb/laundryDay";
@@ -191,3 +192,10 @@ export const OVERTIME_MEMOS: Record<string, string[]> = {
   quake: ["MEMO: The earthquake has been downgraded to 'a Tuesday.'"],
   everything: ["MEMO: Day one as CEO: cannons, a goblin, a rabbit. Honestly? Better than my day one."],
 };
+
+/** Five stars on every job (in Overtime): the office party's on. */
+export function allFiveStars(save: SaveData): boolean {
+  return CHAPTERS.filter((c) => !c.comingSoon)
+    .flatMap((c) => c.levels)
+    .every((l) => (save.overtime[l.id]?.bonus ?? 0) >= 2);
+}

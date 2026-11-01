@@ -79,6 +79,7 @@ export type PropKind =
   | "sword"
   | "axe"
   | "spear"
+  | "guest"
   | "tray"
   | "cup"
   | "trophy"

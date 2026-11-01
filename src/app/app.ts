@@ -10,11 +10,12 @@ import { Cutscene } from "../story/cutscene";
 import { Scene } from "../story/scene";
 import { BOSS, office, type OfficeInstance } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
-import { CHAPTERS, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
+import { CHAPTERS, allFiveStars, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
-import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, quantumCard, resultsCard } from "../ui/screens";
+import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, partyEndCard, quantumCard, resultsCard } from "../ui/screens";
 import { theGift } from "../levels/secret/theGift";
+import { officeParty } from "../levels/secret/officeParty";
 import { yeOldeJob } from "../levels/secret/yeOldeJob";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
 import { sfx } from "../ui/audio";
@@ -198,6 +199,7 @@ export class App {
     // The secret ending's two scenes go on to the next part, not a score card.
     if (level.id === theGift.id) return this.timeTravel();
     if (level.id === yeOldeJob.id) return this.backToTheOffice();
+    if (level.id === officeParty.id) return this.partyOver();
     const stars = starsFor(level, time);
     const tags: string[] = [];
     if (this.game.falls === 0) tags.push(TAGS.noFalls);
@@ -235,6 +237,10 @@ export class App {
       if (overtime && level.id === FINALE && bonus >= 2) {
         next = () => this.theGift();
         label = "📞 Incoming call…";
+      } else if (overtime && bonus >= 2 && allFiveStars(this.save) && !this.save.seen.party) {
+        // That was the last five stars: there's a party.
+        next = () => this.startParty();
+        label = "🎉 You're invited…";
       }
       this.dom.overlay.replaceChildren(
         resultsCard({
@@ -267,6 +273,22 @@ export class App {
         onNext: () => this.dom.overlay.replaceChildren(labCallCard({ onNext: () => this.playSecret(theGift) })),
       }),
     );
+  }
+
+  /** Every job, five stars: the office party. */
+  private startParty() {
+    this.mode = { kind: "card" };
+    this.playSecret(officeParty, "🎉 Everyone out! (Nicely.)");
+  }
+
+  /** The last guest's out the door, and Stanley's got a party hat on. */
+  private partyOver() {
+    this.mode = { kind: "card" };
+    sfx.complete();
+    this.renderer.confetti({ x: this.game.stanley.position.x, y: this.game.stanley.position.y + 1.4 });
+    this.save.seen.party = true;
+    writeSave(this.save);
+    setTimeout(() => this.dom.overlay.replaceChildren(partyEndCard({ onBoard: () => this.showBoard() })), 1500);
   }
 
   /** Straight into one of the secret ending's scenes (no intro card, no score). */
@@ -457,6 +479,7 @@ export class App {
       .filter((s) => this.save.seen[s.id])
       .map((s) => ({ id: s.id, title: s.title }));
     if (this.save.seen.gift) rewatch.push({ id: "gift", title: "The Gift" });
+    if (allFiveStars(this.save)) rewatch.push({ id: "party", title: "The Office Party" });
     this.dom.overlay.replaceChildren(
       boardCard({
         chapters: CHAPTERS,
@@ -475,7 +498,7 @@ export class App {
           : undefined,
         onPlay: (l) => this.startLevel(l, this.boardOvertime && overtimeOpen(this.save.seen)),
         onSandbox: () => this.startLevel(SANDBOX),
-        onRewatch: (id) => (id === "gift" ? this.theGift() : this.playCutscene(id, () => this.showBoard())),
+        onRewatch: (id) => (id === "gift" ? this.theGift() : id === "party" ? this.startParty() : this.playCutscene(id, () => this.showBoard())),
         onReset: () => {
           clearSave();
           this.save = emptySave();

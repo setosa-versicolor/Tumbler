@@ -1033,6 +1033,23 @@ describe("The secret ending", () => {
     });
   }
 
+  it("he blocks with his shield, but there's a way past it", { timeout: 40000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, yeOldeJob);
+    const w = g.props.find((p) => p.kind === "sword")!;
+    const pel = () => g.stanley.rig.pelvis.translation();
+    const hold = { L: true, R: true };
+    let blocked = 0;
+    const go = (s: number, f: (t: number) => Partial<Intent>) => {
+      for (let i = 0; i < s * 120; i++) for (const e of g.step({ ...IDLE_INTENT, ...f(i / 120) })) if (e.type === "score" && e.text === "BLOCKED!") blocked++;
+    };
+    go(3, () => ({ move: pel().x > 1.9 ? -0.4 : 0 }));
+    const q = w.body.translation();
+    go(1.2, () => ({ reach: { x: q.x + w.hh - 0.05, y: q.y }, grip: hold }));
+    go(40, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.5, y: g.stanley.shoulder.y + Math.sin(t * 8) * 0.6 }, grip: hold }));
+    expect(blocked).toBeGreaterThan(2);
+    expect(g.progress.done).toBe(true);
+  });
+
   it("bare hands do nothing to him", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, yeOldeJob);
     run(g, 20, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.6, y: g.stanley.shoulder.y + Math.sin(t * 8) * 0.6 } }));

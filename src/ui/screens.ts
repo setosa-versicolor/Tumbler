@@ -381,15 +381,15 @@ const LAB_SCENE = `
   <text x="260" y="93" text-anchor="middle" font-size="2.6" fill="#c0392b">OKAYEST</text>
 </svg>`;
 
-/** A phone call, a line at a time. `lines` alternate between the two callers. */
-function callCard(kicker: string, scene: string, lines: { who: "her" | "him"; text: string }[], next: string, onNext: () => void): HTMLElement {
+/** A conversation, a line at a time: Stanley's lines on the right, everyone else's on the left. */
+function callCard(kicker: string, scene: string, lines: { who: string; text: string }[], next: string, onNext: () => void): HTMLElement {
   const sc = h("div", { class: "gift-scene" });
   sc.innerHTML = scene;
   const chat = h(
     "div",
     { class: "chat call" },
     ...lines.map((l, i) => {
-      const el = h("div", { class: `msg ${l.who === "her" ? "them" : "me"}` }, h("span", { class: "who" }, l.who === "her" ? "Mom" : "Stanley"), l.text);
+      const el = h("div", { class: `msg ${l.who === "Stanley" ? "me" : "them"}` }, h("span", { class: "who" }, l.who), l.text);
       el.style.animationDelay = `${0.6 + i * 1.1}s`;
       return el;
     }),
@@ -404,11 +404,11 @@ export function labCallCard(o: { onNext: () => void }): HTMLElement {
     "Quantum Labs · Office of the Director",
     LAB_SCENE,
     [
-      { who: "her", text: "Hello." },
-      { who: "him", text: "Mom?" },
-      { who: "her", text: "Yes, Stanley." },
-      { who: "him", text: "Dad says hi." },
-      { who: "her", text: "Thanks, Stanley. I sent you a gift." },
+      { who: "Mom", text: "Hello." },
+      { who: "Stanley", text: "Mom?" },
+      { who: "Mom", text: "Yes, Stanley." },
+      { who: "Stanley", text: "Dad says hi." },
+      { who: "Mom", text: "Thanks, Stanley. I sent you a gift." },
     ],
     "▸",
     o.onNext,
@@ -420,9 +420,9 @@ export function callbackCard(o: { onNext: () => void }): HTMLElement {
     "Back in the office. Slightly singed.",
     LAB_SCENE,
     [
-      { who: "him", text: "Hi Mom. Cool gift, but I don't think anybody will want one." },
-      { who: "her", text: "That's what your father said about you." },
-      { who: "her", text: "Love you. Bring it back by Friday." },
+      { who: "Stanley", text: "Hi Mom. Cool gift, but I don't think anybody will want one." },
+      { who: "Mom", text: "That's what your father said about you." },
+      { who: "Mom", text: "Love you. Bring it back by Friday." },
     ],
     "▸",
     o.onNext,
@@ -438,5 +438,57 @@ export function giftEndCard(o: { onBoard: () => void }): HTMLElement {
     h("p", { class: "goal" }, "Now also doing time travel. (Legally a company.)"),
     h("p", { class: "controls" }, "You found the secret ending. Gerald would be proud. Gerald is never told about this."),
     h("button", { class: "primary", click: o.onBoard }, "Job Board"),
+  );
+}
+
+const YIELD_SCENE = `
+<svg viewBox="0 0 300 150" role="img" aria-label="The courtyard: the knight kneels and offers his sword">
+  <rect width="300" height="150" fill="#8fc1e6"/>
+  <path d="M0 118 L60 90 L140 108 L220 84 L300 100 L300 150 L0 150 Z" fill="#9cc48a"/>
+  <rect x="40" y="40" width="260" height="80" fill="#a59a8a"/>
+  <g fill="#a59a8a">${Array.from({ length: 14 }, (_, i) => `<rect x="${40 + i * 19}" y="30" width="11" height="12"/>`).join("")}</g>
+  <path d="M120 44 h22 v34 l-11 -8 l-11 8 z" fill="#3b6ea8"/><text x="131" y="62" text-anchor="middle" font-size="9" font-weight="900" fill="#f2c94c">OJ</text>
+  <rect y="120" width="300" height="30" fill="#857257"/>
+  <!-- Stanley, cap on, weapon down, slightly alarmed. -->
+  <g transform="translate(70 0)">
+    <rect x="-7" y="96" width="6" height="26" fill="#3b4a7a"/><rect x="2" y="96" width="6" height="26" fill="#3b4a7a"/>
+    <rect x="-10" y="68" width="21" height="31" rx="7" fill="#37a59c"/>
+    <circle cx="0" cy="58" r="11" fill="#f2c79b"/>
+    <path d="M-11 56 Q-10 44 1 44 Q12 44 12 54 Z" fill="#e8913c"/><rect x="8" y="51" width="11" height="4" rx="2" fill="#e8913c"/>
+    <circle cx="4" cy="58" r="1.6" fill="#2a2230"/><circle cx="8" cy="58" r="1.6" fill="#2a2230"/>
+    <line x1="10" y1="80" x2="30" y2="118" stroke="#d6dbe0" stroke-width="3"/>
+  </g>
+  <!-- Ser Geraldus, on one knee, holding out his sword. Moustache visible. -->
+  <g transform="translate(190 0)">
+    <rect x="-14" y="106" width="22" height="10" rx="3" fill="#7a828c"/>
+    <rect x="-12" y="78" width="26" height="32" rx="6" fill="#9aa3ad"/>
+    <rect x="-8" y="80" width="18" height="26" fill="#c0392b"/><text x="1" y="96" text-anchor="middle" font-size="7" font-weight="900" fill="#f2c94c">OJ</text>
+    <rect x="-9" y="56" width="20" height="22" rx="7" fill="#9aa3ad"/>
+    <rect x="-8" y="64" width="18" height="3" fill="#2a2230"/>
+    <rect x="-13" y="69" width="26" height="5" rx="2.5" fill="#5f5a55"/>
+    <path d="M0 56 L16 42 L4 58 Z" fill="#e85d5d"/>
+    <line x1="-14" y1="92" x2="-52" y2="92" stroke="#d6dbe0" stroke-width="3"/>
+    <rect x="-18" y="88" width="3" height="9" fill="#e2b13c"/>
+  </g>
+  <!-- The goat. -->
+  <g transform="translate(250 0)">
+    <rect x="-12" y="104" width="24" height="12" rx="5" fill="#e8e2d4"/>
+    <circle cx="14" cy="104" r="6" fill="#e8e2d4"/><circle cx="16" cy="103" r="1" fill="#2a2230"/>
+    <rect x="-9" y="114" width="2" height="8" fill="#6b5b45"/><rect x="6" y="114" width="2" height="8" fill="#6b5b45"/>
+  </g>
+</svg>`;
+
+export function yieldCard(o: { onNext: () => void }): HTMLElement {
+  return callCard(
+    "1194 · The courtyard, moments later",
+    YIELD_SCENE,
+    [
+      { who: "Ser Geraldus", text: "I yield! Thou art… a better fit." },
+      { who: "Ser Geraldus", text: "Take my lands. My title. My goat." },
+      { who: "Stanley", text: "I just came to open a present." },
+      { who: "The goat", text: "Meh." },
+    ],
+    "Whirrrrr… ▸",
+    o.onNext,
   );
 }

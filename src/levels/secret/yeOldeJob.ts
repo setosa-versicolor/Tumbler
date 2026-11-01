@@ -18,6 +18,15 @@ export const WEAPONS: { kind: PropKind; hh: number; hw: number; y: number; damag
 export const KNIGHT_HP = 4;
 /** A swing this fast (m/s, at the business end) lands a hit. */
 const HIT_SPEED = 2.2;
+/**
+ * His shield follows the height of your weapon, but only so fast: swing high
+ * then come in low (or vice versa) and you're past it. It's down while he's
+ * swinging and getting his breath back, and it only covers his front.
+ */
+const GUARD_SPEED = 3.6;
+const SHIELD = 0.4;
+/** He turns round slowly (armour): get behind him and he's open for a moment. */
+const TURN_TIME = 0.7;
 
 const MEDIEVAL: Theme = { outdoor: true, top: "#8fc1e6", bottom: "#e9f0e6", floor: "#6b5b45", floorTop: "#857257" };
 
@@ -51,7 +60,8 @@ export const yeOldeJob: Level = {
     const knightBody = kit.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(10, 0.95));
     kit.world.createCollider(RAPIER.ColliderDesc.cuboid(0.26, 0.92).setCollisionGroups(KNIGHT_GROUPS), knightBody);
     type Phase = "halt" | "advance" | "windup" | "strike" | "recover" | "stagger" | "yield";
-    const k = { x: 10, hp: KNIGHT_HP, phase: "halt" as Phase, t: 2.2, face: -1, swing: 0, flash: 0, said: false };
+    const k = { x: 10, hp: KNIGHT_HP, phase: "halt" as Phase, t: 2.2, face: -1, swing: 0, flash: 0, said: false, guard: 1.2, turning: 0, blocks: 0, clang: 0 };
+    const guardUp = () => k.phase === "halt" || k.phase === "advance";
     let hitCooldown = 0;
     let punchCooldown = 0;
     let done = 0;
@@ -79,7 +89,20 @@ export const yeOldeJob: Level = {
         k.flash = Math.max(0, k.flash - dt);
         hitCooldown -= dt;
         punchCooldown -= dt;
-        if (k.phase !== "yield" && k.phase !== "stagger") k.face = Math.sign(sx - k.x) || -1;
+        k.clang = Math.max(0, k.clang - dt);
+        // Turning round, slowly.
+        if (k.phase !== "yield" && k.phase !== "stagger") {
+          const want = Math.sign(sx - k.x) || k.face;
+          k.turning = want !== k.face ? k.turning + dt : 0;
+          if (k.turning > TURN_TIME) {
+            k.face = want;
+            k.turning = 0;
+          }
+        }
+        // The shield goes where Stanley's weapon is (as fast as he can move it).
+        const held = weapons.find((w) => game.held.has(w.prop.body));
+        const aim = guardUp() && held ? clamp(tip(held.prop)[0].y, 0.55, 1.8) : guardUp() ? 1.2 : 0.55;
+        k.guard += clamp(aim - k.guard, -GUARD_SPEED * dt, GUARD_SPEED * dt);
 
         // Stanley's swings.
         if (k.phase !== "yield" && hitCooldown <= 0) {
@@ -87,7 +110,27 @@ export const yeOldeJob: Level = {
             if (!game.held.has(w.prop.body)) continue;
             const v = w.prop.body.linvel();
             const av = Math.abs(w.prop.body.angvel()) * w.prop.hh;
-            if (Math.hypot(v.x, v.y) + av < HIT_SPEED || !tip(w.prop).some(onKnight)) continue;
+            const point = tip(w.prop).find(onKnight);
+            if (Math.hypot(v.x, v.y) + av < HIT_SPEED || !point) continue;
+            const inFront = (point.x - k.x) * k.face > -0.05;
+            if (guardUp() && inFront && Math.abs(point.y - k.guard) < SHIELD) {
+              // Blocked: a clang off the shield, and the weapon knocked back.
+              hitCooldown = 0.35;
+              k.clang = 0.2;
+              k.blocks++;
+              const m = w.prop.body.mass();
+              w.prop.body.applyImpulse({ x: k.face * 2 * m, y: 0.6 * m }, true);
+              ev.push({ type: "impact", pos: point, strength: 6 }, { type: "score", text: "BLOCKED!", pos: { x: k.x + k.face * 0.4, y: k.guard + 0.5 } });
+              // Two in a row and he gets cocky: in he comes, shield down.
+              if (k.blocks >= 2 && k.phase === "advance") {
+                k.blocks = 0;
+                k.phase = "windup";
+                k.t = 0.65;
+                say(["Predictable!", "Is that all?", "Ha! A peasant's swing!"][Math.floor(game.rand() * 3)], ev);
+              }
+              break;
+            }
+            k.blocks = 0;
             k.hp = Math.max(0, k.hp - w.damage);
             k.flash = 0.25;
             hitCooldown = 0.4;
@@ -96,7 +139,6 @@ export const yeOldeJob: Level = {
               k.phase = "yield";
               k.t = 2.2;
               ev.push({ type: "sfx", name: "rumble", pos: { x: k.x, y: 1 } });
-              say("I yield! Thou art… a better fit.", ev);
             } else {
               k.phase = "stagger";
               k.t = 0.5;
@@ -131,6 +173,7 @@ export const yeOldeJob: Level = {
             } else k.x = clamp(k.x + k.face * 0.85 * dt, 3.4, W - 0.6);
             break;
           case "windup":
+            // (Drops the shield to swing two-handed: there's the opening.)
             k.swing = Math.min(1, k.swing + dt * 2);
             if (k.t <= 0) {
               k.phase = "strike";
@@ -167,7 +210,7 @@ export const yeOldeJob: Level = {
         return ev;
       },
       progress: () => ({
-        done: k.phase === "yield" && done > 1.8,
+        done: k.phase === "yield" && done > 1.2,
         label: k.phase === "yield" ? "Victory! Of a sort." : `Ser Geraldus ${"♥".repeat(k.hp)}${"♡".repeat(KNIGHT_HP - k.hp)}`,
       }),
       drawBack(r, game) {
@@ -180,7 +223,7 @@ export const yeOldeJob: Level = {
         }
       },
       drawMid(r) {
-        drawKnight(r, k, done);
+        drawKnight(r, k, done, guardUp());
       },
     };
   },
@@ -210,7 +253,12 @@ function drawCastle(r: Renderer, game: Game) {
   r.circle({ x: gx + 0.36, y: 0.75 }, 0.02, "#2a2230");
 }
 
-function drawKnight(r: Renderer, k: { x: number; face: number; swing: number; flash: number; phase: string; hp: number }, down: number) {
+function drawKnight(
+  r: Renderer,
+  k: { x: number; face: number; swing: number; flash: number; phase: string; hp: number; guard: number; clang: number },
+  down: number,
+  guarding: boolean,
+) {
   const x = k.x;
   const f = k.face;
   // Kneeling, once he's yielded.
@@ -236,4 +284,30 @@ function drawKnight(r: Renderer, k: { x: number; face: number; swing: number; fl
   r.line(hand, end, 0.05, "#d6dbe0");
   r.line({ x: hand.x - f * 0.05, y: hand.y - 0.1 }, { x: hand.x + f * 0.05, y: hand.y + 0.1 }, 0.04, "#8a6a4e");
   r.circle(hand, 0.07, "#7a828c");
+  // The shield: up where your weapon is, or down at his side while he swings.
+  const sx = x + f * (guarding ? 0.36 : 0.2);
+  const sy = guarding ? k.guard + y : y + 0.62;
+  const hw = guarding ? 0.17 : 0.12;
+  const face = k.clang > 0 ? "#ffffff" : "#3b6ea8";
+  r.poly(
+    [
+      { x: sx - hw, y: sy + 0.36 },
+      { x: sx + hw, y: sy + 0.36 },
+      { x: sx + hw, y: sy - 0.1 },
+      { x: sx, y: sy - 0.4 },
+      { x: sx - hw, y: sy - 0.1 },
+    ],
+    face,
+  );
+  r.poly(
+    [
+      { x: sx - hw + 0.04, y: sy + 0.32 },
+      { x: sx + hw - 0.04, y: sy + 0.32 },
+      { x: sx + hw - 0.04, y: sy - 0.08 },
+      { x: sx, y: sy - 0.34 },
+      { x: sx - hw + 0.04, y: sy - 0.08 },
+    ],
+    k.clang > 0 ? "#ffffff" : "#4f84c4",
+  );
+  r.text("OJ", { x: sx, y: sy + 0.05 }, 0.11, "#f2c94c");
 }

@@ -12,7 +12,7 @@ import { SCRIPTS } from "../story/scripts";
 import { CHAPTERS, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
-import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, quantumCard, resultsCard } from "../ui/screens";
+import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, quantumCard, resultsCard, yieldCard } from "../ui/screens";
 import { theGift } from "../levels/secret/theGift";
 import { yeOldeJob } from "../levels/secret/yeOldeJob";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
@@ -286,12 +286,27 @@ export class App {
     setTimeout(() => this.playSecret(yeOldeJob, "THE YEAR 1194. Grab a weapon."), 900);
   }
 
-  /** Back home, slightly singed, to call Mom. */
+  /** He yields (a scene in the courtyard), then home, slightly singed, to call Mom. */
   private backToTheOffice() {
     this.mode = { kind: "card" };
     sfx.complete();
     this.save.seen.gift = true;
     writeSave(this.save);
+    setTimeout(
+      () =>
+        this.dom.overlay.replaceChildren(
+          yieldCard({
+            onNext: () => {
+              this.renderer.camera.shake(14);
+              this.callMom();
+            },
+          }),
+        ),
+      900,
+    );
+  }
+
+  private callMom() {
     setTimeout(
       () =>
         this.fadeThen(() => {
@@ -301,7 +316,7 @@ export class App {
             callbackCard({ onNext: () => this.dom.overlay.replaceChildren(giftEndCard({ onBoard: () => this.showBoard() })) }),
           );
         }),
-      1600,
+      400,
     );
   }
 

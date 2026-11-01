@@ -1170,6 +1170,34 @@ describe("Day Off", () => {
     expect(hi - lo).toBeGreaterThan(1.5);
   });
 
+  it("off the high dive, the stick flips him; anywhere else, it doesn't", { timeout: 20000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
+    const pel = () => g.stanley.rig.pelvis.translation();
+    run(g, 0.5);
+    for (const b of g.stanley.rig.bodies) {
+      const t = b.translation();
+      b.setTranslation({ x: t.x - dayOff.spawn.x + DAY_OFF.PLATFORM.x0 + 0.4, y: t.y + DAY_OFF.PLATFORM.y + 0.05 }, true);
+    }
+    run(g, 1);
+    let off = false;
+    const calls: string[] = [];
+    for (let i = 0; i < 120 * 4; i++) {
+      if (pel().y < DAY_OFF.PLATFORM.y + 0.6) off = true;
+      for (const e of g.step({ ...IDLE_INTENT, move: off ? -1 : 0.8 })) if (e.type === "score") calls.push(e.text);
+    }
+    expect(calls).toContain("Flip!");
+    expect(g.progress.label).toMatch(/flips/);
+    // A jump on the floor is just a jump.
+    const h = play(dayOff);
+    run(h, 1);
+    let spin = 0;
+    run(h, 2, (t) => {
+      spin = Math.max(spin, Math.abs(h.stanley.rig.chest.angvel()));
+      return { jump: t === 0, move: 1 };
+    });
+    expect(spin).toBeLessThan(6);
+  });
+
   it("the trampoline bounces him (again and again)", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 0.5);

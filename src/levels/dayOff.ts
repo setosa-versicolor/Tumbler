@@ -2,6 +2,7 @@ import { INDOOR, type Level } from "./level";
 import { measureStack } from "./stack";
 import type { GameEvent } from "../sim/game";
 import { RAPIER } from "../physics/world";
+import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 
 const W = 28;
 /** The original room ends here; past it, the fun bit. */
@@ -21,6 +22,39 @@ export const PIT = { x0: PLATFORM.x1 + 0.35, x1: W - 0.1, wall: 0.7 };
  * next bar comes close). Hang on, let go at the right moment, catch the next.
  */
 export const TRAPEZE = { pivots: [22.4, 19.1, 15.8, 12.5], top: 8, rope: 3.6, swing: 0.45, period: 3.8, hw: 0.35 };
+/** How fast a tucked Stanley flips (rad/s) off the high dive. */
+const FLIP_SPEED = 11;
+const FLIP_CALLS = ["Flip!", "Double!", "Triple!", "Quadruple?!"];
+const fmtFlips = (n: number) => (Number.isInteger(n) ? `${n}` : `${Math.floor(n) || ""}${n % 1 >= 0.5 ? "½" : "¼"}`);
+
+/** Turn the whole of him, as one, about his middle (a tucked dive). */
+function spin(bodies: RigidBody[], w: number) {
+  let m = 0;
+  let cx = 0;
+  let cy = 0;
+  let vx = 0;
+  let vy = 0;
+  for (const b of bodies) {
+    const k = b.mass();
+    const p = b.translation();
+    const v = b.linvel();
+    m += k;
+    cx += p.x * k;
+    cy += p.y * k;
+    vx += v.x * k;
+    vy += v.y * k;
+  }
+  cx /= m;
+  cy /= m;
+  vx /= m;
+  vy /= m;
+  for (const b of bodies) {
+    const p = b.translation();
+    b.setLinvel({ x: vx - w * (p.y - cy), y: vy + w * (p.x - cx) }, true);
+    b.setAngvel(w, true);
+  }
+}
+
 /** A punching bag, hanging from the ceiling (hit it, or hang off it). */
 const BAG = { x: 16.2, top: 8, y: 2.0 };
 export const LEDGE = { x0: 10.6, x1: 13.2, y: 2.2, thick: 0.2 };
@@ -105,6 +139,12 @@ export const dayOff: Level = {
     let catches = 0;
     let holding: unknown = null;
     let bestDive = 0;
+    /** Off the high dive: the stick flips him till he lands. */
+    let diving = false;
+    let wasOnBoard = false;
+    let spun = 0;
+    let flips = 0;
+    let bestFlips = 0;
     let wasHigh = false;
     let bounceCooldown = 0;
 
@@ -148,6 +188,32 @@ export const dayOff: Level = {
         const pel = st.rig.pelvis.translation();
         const high = pel.y > PLATFORM.y + 0.5 && pel.x > PLATFORM.x0;
         if (wasHigh && !high && pel.x > BOARD.x0) bestDive = Math.max(bestDive, PLATFORM.y);
+        // Off the end of the board (from standing on it, not from a trapeze):
+        // he's diving, and the stick tucks and flips him until he lands.
+        const onBoard = high && st.balance.grounded && pel.x < BOARD.x1 + 0.1;
+        if (onBoard) wasOnBoard = true;
+        else if (wasOnBoard && !st.balance.grounded && pel.x > BOARD.x0 - 0.2) {
+          wasOnBoard = false;
+          diving = true;
+          spun = 0;
+          flips = 0;
+        } else if (!high && st.balance.grounded) wasOnBoard = false;
+        if (diving) {
+          const move = game.intent.move;
+          if (Math.abs(move) > 0.2) spin(st.rig.bodies, -Math.sign(move) * FLIP_SPEED);
+          spun += Math.abs(st.rig.chest.angvel()) * dt;
+          if (spun > (flips + 1) * Math.PI * 2 - 0.3) {
+            flips++;
+            boing.push({ type: "score", text: FLIP_CALLS[Math.min(flips, FLIP_CALLS.length) - 1], pos: { x: pel.x, y: pel.y + 0.9 } });
+          }
+          // Down: how many was that?
+          if (st.balance.grounded || pel.y < PIT.wall + 0.6) {
+            diving = false;
+            const half = Math.round((spun / Math.PI) * 2) / 4;
+            if (half >= 0.5) boing.push({ type: "score", text: `${fmtFlips(half)} ${half === 1 ? "flip" : "flips"}!`, pos: { x: pel.x, y: pel.y + 1.2 } });
+            bestFlips = Math.max(bestFlips, half);
+          }
+        }
         wasHigh = high;
 
         const n = game.props.filter((p) => {
@@ -165,7 +231,7 @@ export const dayOff: Level = {
       },
       progress: (game) => ({
         done: false,
-        label: `Basket ${inBasket} · Stack ${best.toFixed(1)}m · Smashed ${game.breaks}${catches ? ` · Trapeze ${catches}` : bestDive ? " · Dove!" : ""}`,
+        label: `Basket ${inBasket} · Stack ${best.toFixed(1)}m · Smashed ${game.breaks}${catches ? ` · Trapeze ${catches}` : bestFlips ? ` · ${fmtFlips(bestFlips)} flips` : bestDive ? " · Dove!" : ""}`,
       }),
       drawBack(r, game) {
         // The trapezes: two ropes and a bar each.

@@ -4,7 +4,9 @@ import type { GameEvent } from "../sim/game";
 import { RAPIER } from "../physics/world";
 import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 
-const W = 28;
+const W = 32;
+/** The ceiling (raised for the trapezes). */
+const H = 12;
 /** The original room ends here; past it, the fun bit. */
 const OLD_W = 16;
 /** A shelf of breakables. */
@@ -12,7 +14,7 @@ const SHELF = { x0: 16.8, x1: 18.4, y: 2.3 };
 /** The trampoline: land on it hard and up you go. */
 export const TRAMPOLINE = { x0: 14.0, x1: 15.6, top: 0.22 };
 /** The high dive: stairs up to a platform, and a board out over the foam pit. */
-const STAIRS = { x0: 19.2, steps: 14, run: 0.3, rise: 0.28 };
+const STAIRS = { x0: 19.2, steps: 22, run: 0.3, rise: 0.28 };
 export const PLATFORM = { x0: STAIRS.x0 + STAIRS.run * STAIRS.steps, x1: STAIRS.x0 + STAIRS.run * STAIRS.steps + 0.9, y: STAIRS.rise * STAIRS.steps };
 const BOARD = { x0: PLATFORM.x1, x1: PLATFORM.x1 + 1.3 };
 export const PIT = { x0: PLATFORM.x1 + 0.35, x1: W - 0.1, wall: 0.7 };
@@ -21,11 +23,24 @@ export const PIT = { x0: PLATFORM.x1 + 0.35, x1: W - 0.1, wall: 0.7 };
  * on its own (neighbours in opposite directions, so at the end of a swing the
  * next bar comes close). Hang on, let go at the right moment, catch the next.
  */
-export const TRAPEZE = { pivots: [22.4, 19.1, 15.8, 12.5], top: 8, rope: 3.6, swing: 0.45, period: 3.8, hw: 0.35 };
-/** How fast a tucked Stanley flips (rad/s) off the high dive. */
+export const TRAPEZE = { pivots: [24.8, 21.5, 18.2, 14.9, 11.6], top: H, rope: 5.2, swing: 0.31, period: 3.8, hw: 0.35 };
+/** How fast a tucked Stanley flips (rad/s). */
 const FLIP_SPEED = 11;
+/** Up in the air with his middle above this (off the high dive, a trapeze, a big bounce), the stick flips him. */
+export const FLIP_HEIGHT = 4;
 const FLIP_CALLS = ["Flip!", "Double!", "Triple!", "Quadruple?!"];
 const fmtFlips = (n: number) => (Number.isInteger(n) ? `${n}` : `${Math.floor(n) || ""}${n % 1 >= 0.5 ? "½" : "¼"}`);
+
+/** His centre of mass's upward speed. */
+function riseOf(bodies: RigidBody[]) {
+  let m = 0;
+  let vy = 0;
+  for (const b of bodies) {
+    m += b.mass();
+    vy += b.linvel().y * b.mass();
+  }
+  return vy / m;
+}
 
 /** Turn the whole of him, as one, about his middle (a tucked dive). */
 function spin(bodies: RigidBody[], w: number) {
@@ -56,7 +71,7 @@ function spin(bodies: RigidBody[], w: number) {
 }
 
 /** A punching bag, hanging from the ceiling (hit it, or hang off it). */
-const BAG = { x: 16.2, top: 8, y: 2.0 };
+const BAG = { x: 16.2, top: H, y: 2.0 };
 export const LEDGE = { x0: 10.6, x1: 13.2, y: 2.2, thick: 0.2 };
 const BASKET = { x0: 0, x1: 1.4, y: 2.9, lip: 0.55 };
 
@@ -67,12 +82,12 @@ export const dayOff: Level = {
   goal: "No job today. Mess around.",
   icon: "🛋️",
   par: [0, 0],
-  bounds: { w: W, h: 8 },
+  bounds: { w: W, h: H },
   spawn: { x: 2.5, y: 0 },
   theme: INDOOR,
   sandbox: true,
   build(kit) {
-    kit.enclosure(W, 8);
+    kit.enclosure(W, H);
     kit.solid((LEDGE.x0 + LEDGE.x1) / 2, LEDGE.y, (LEDGE.x1 - LEDGE.x0) / 2, LEDGE.thick / 2, "ledge");
     kit.solid((BASKET.x0 + BASKET.x1) / 2, BASKET.y, (BASKET.x1 - BASKET.x0) / 2, 0.05, "basket");
     kit.solid(BASKET.x1 - 0.05, BASKET.y + BASKET.lip / 2, 0.05, BASKET.lip / 2, "basket");
@@ -139,10 +154,11 @@ export const dayOff: Level = {
     let catches = 0;
     let holding: unknown = null;
     let bestDive = 0;
-    /** Off the high dive: the stick flips him till he lands. */
+    /** High up in the air: the stick flips him till he lands (or catches something). */
     let diving = false;
-    let wasOnBoard = false;
     let spun = 0;
+    /** How fast he may be going up, mid-dive (so a flip that clips the platform can't fling him to the ceiling). */
+    let lift = 0;
     let flips = 0;
     let bestFlips = 0;
     let wasHigh = false;
@@ -164,6 +180,7 @@ export const dayOff: Level = {
           const up = Math.min(9, Math.max(4.5, -pv.y * 1.05 + 0.8));
           for (const b of st.rig.bodies) b.setLinvel({ x: b.linvel().x, y: up }, true);
           boing.push({ type: "score", text: "BOING!", pos: { x: (TRAMPOLINE.x0 + TRAMPOLINE.x1) / 2, y: 1.2 } });
+          diving = false;
         }
         for (const p of game.props) {
           const q = p.body.translation();
@@ -188,26 +205,28 @@ export const dayOff: Level = {
         const pel = st.rig.pelvis.translation();
         const high = pel.y > PLATFORM.y + 0.5 && pel.x > PLATFORM.x0;
         if (wasHigh && !high && pel.x > BOARD.x0) bestDive = Math.max(bestDive, PLATFORM.y);
-        // Off the end of the board (from standing on it, not from a trapeze):
+        // Up in the air, high (off the board, let go of a trapeze, a big bounce):
         // he's diving, and the stick tucks and flips him until he lands.
-        const onBoard = high && st.balance.grounded && pel.x < BOARD.x1 + 0.1;
-        if (onBoard) wasOnBoard = true;
-        else if (wasOnBoard && !st.balance.grounded && pel.x > BOARD.x0 - 0.2) {
-          wasOnBoard = false;
+        const hanging = st.grips.L.holdingStatic || st.grips.R.holdingStatic || !!onBar;
+        if (!diving && !st.balance.grounded && !hanging && pel.y > FLIP_HEIGHT) {
           diving = true;
           spun = 0;
           flips = 0;
-        } else if (!high && st.balance.grounded) wasOnBoard = false;
+          lift = Math.max(0, riseOf(st.rig.bodies));
+        }
         if (diving) {
           const move = game.intent.move;
           if (Math.abs(move) > 0.2) spin(st.rig.bodies, -Math.sign(move) * FLIP_SPEED);
+          lift = Math.max(0, lift - 9.81 * dt);
+          const extra = riseOf(st.rig.bodies) - lift - 0.5;
+          if (extra > 0) for (const b of st.rig.bodies) b.setLinvel({ x: b.linvel().x, y: b.linvel().y - extra }, true);
           spun += Math.abs(st.rig.chest.angvel()) * dt;
           if (spun > (flips + 1) * Math.PI * 2 - 0.3) {
             flips++;
             boing.push({ type: "score", text: FLIP_CALLS[Math.min(flips, FLIP_CALLS.length) - 1], pos: { x: pel.x, y: pel.y + 0.9 } });
           }
           // Down: how many was that?
-          if (st.balance.grounded || pel.y < PIT.wall + 0.6) {
+          if (st.balance.grounded || hanging || pel.y < PIT.wall + 0.6) {
             diving = false;
             const half = Math.round((spun / Math.PI) * 2) / 4;
             if (half >= 0.5) boing.push({ type: "score", text: `${fmtFlips(half)} ${half === 1 ? "flip" : "flips"}!`, pos: { x: pel.x, y: pel.y + 1.2 } });
@@ -245,8 +264,8 @@ export const dayOff: Level = {
           r.line(end(-1), end(1), 0.06, "#e85d5d");
         }
         // The knocked-through wall, the new end of the room.
-        r.rect(OLD_W - 0.05, 2.3, OLD_W + 0.25, 8, "rgba(42,34,48,0.08)");
-        r.text("FUN ZONE (UNSUPERVISED)", { x: 21, y: 6.6 }, 0.22, "rgba(42,34,48,0.35)");
+        r.rect(OLD_W - 0.05, 2.3, OLD_W + 0.25, H, "rgba(42,34,48,0.08)");
+        r.text("FUN ZONE (UNSUPERVISED)", { x: 22, y: 10.6 }, 0.22, "rgba(42,34,48,0.35)");
         // Shelf bracket, the trampoline's legs and springs, the punching bag's chain.
         r.rect(SHELF.x0 + 0.1, 0, SHELF.x0 + 0.16, SHELF.y, "#7c8a99");
         r.rect(SHELF.x1 - 0.16, 0, SHELF.x1 - 0.1, SHELF.y, "#7c8a99");
@@ -265,7 +284,7 @@ export const dayOff: Level = {
         // The punching bag's chain.
         const bp = game.props.find((p) => p.kind === "box" && Math.abs(p.hh - 0.45) < 0.01 && p.color === "#c0392b");
         if (bp) r.line({ x: BAG.x, y: BAG.top }, bp.body.translation(), 0.02, "#7a828c");
-        for (let y = 1; y < 8; y++) r.text(`${y}m`, { x: 1.9, y: y - 0.06 }, 0.14, "rgba(42,34,48,0.35)", "left");
+        for (let y = 1; y < H; y++) r.text(`${y}m`, { x: 1.9, y: y - 0.06 }, 0.14, "rgba(42,34,48,0.35)", "left");
         // Ledge bracket.
         r.rect(LEDGE.x1 - 0.43, 0, LEDGE.x1 - 0.37, LEDGE.y, "#7c8a99");
         if (best > 0.3) {

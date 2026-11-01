@@ -1131,11 +1131,11 @@ describe("Day Off", () => {
       b.setTranslation({ x: t.x + 11, y: t.y }, true);
     }
     let top = 0;
-    run(g, 6, () => {
+    run(g, 9, () => {
       top = Math.max(top, g.stanley.rig.pelvis.translation().y);
       return { move: 0.8 };
     });
-    run(g, 4, { move: 0.8 });
+    run(g, 5, { move: 0.8 });
     expect(top).toBeGreaterThan(DAY_OFF.PLATFORM.y + 0.5);
     expect(g.stanley.rig.pelvis.translation().x).toBeGreaterThan(DAY_OFF.PIT.x0);
   });
@@ -1150,8 +1150,10 @@ describe("Day Off", () => {
     run(g, 1);
     const first = () => {
       let at = { x: 0, y: 0 };
+      let d = Infinity;
       g.world.forEachRigidBody((b) => {
-        if (b.isKinematic() && Math.abs(b.translation().x - DAY_OFF.TRAPEZE.pivots[0]) < 2.5) at = b.translation();
+        const e = Math.abs(b.translation().x - DAY_OFF.TRAPEZE.pivots[0]);
+        if (b.isKinematic() && e < d) [at, d] = [b.translation(), e];
       });
       return at;
     };
@@ -1168,9 +1170,13 @@ describe("Day Off", () => {
       return { reach: { x: g.stanley.shoulder.x, y: g.stanley.shoulder.y + 1 }, grip: hold };
     });
     expect(hi - lo).toBeGreaterThan(1.5);
+    // Let go up there, and the stick flips him on the way down.
+    const calls: string[] = [];
+    for (let i = 0; i < 120 * 3; i++) for (const e of g.step({ ...IDLE_INTENT, move: -1 })) if (e.type === "score") calls.push(e.text);
+    expect(calls).toContain("Flip!");
   });
 
-  it("off the high dive, the stick flips him; anywhere else, it doesn't", { timeout: 20000 }, () => {
+  it("high in the air, the stick flips him; on the floor, it doesn't", { timeout: 20000 }, () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     const pel = () => g.stanley.rig.pelvis.translation();
     run(g, 0.5);

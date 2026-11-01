@@ -76,7 +76,7 @@ describe("Overtime twists", () => {
   });
 
   it("startle the rabbit and you'll slip on what it leaves", () => {
-    const g = withTwist("rabbit");
+    const g = withTwist("rabbit", dayOff, 2);
     // Charge back and forth past the rabbit.
     const ev = collect(g, 12, (t) => ({ move: Math.sin(t * 1.2) > 0 ? 1 : -1 }));
     expect(ev.some((e) => e.type === "sfx" && e.name === "poop")).toBe(true);

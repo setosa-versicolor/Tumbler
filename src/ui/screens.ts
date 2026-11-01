@@ -87,6 +87,38 @@ export function resultsCard(o: {
   );
 }
 
+/** "Are you sure?", in its own pop-up, before wiping the save. */
+export function confirmReset(onConfirm: () => void) {
+  const close = () => {
+    backdrop.remove();
+    removeEventListener("keydown", onKey);
+  };
+  const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+  const backdrop = h(
+    "div",
+    { class: "confirm-backdrop", click: (e) => e.target === backdrop && close() },
+    h(
+      "div",
+      { class: "card confirm", role: "alertdialog", "aria-modal": "true" },
+      h("div", { class: "big-icon" }, "⚠️"),
+      h("h1", {}, "Erase all progress?"),
+      h(
+        "p",
+        { class: "warn" },
+        "Every star, every best time, every Overtime bonus and every job you've unlocked will be lost, for good. Stanley starts over on his first day. This can't be undone.",
+      ),
+      h(
+        "div",
+        { class: "row" },
+        h("button", { class: "secondary", click: close }, "Keep my progress"),
+        h("button", { class: "primary danger", click: () => (close(), onConfirm()) }, "Erase everything"),
+      ),
+    ),
+  );
+  addEventListener("keydown", onKey);
+  document.body.append(backdrop);
+}
+
 export function boardCard(o: {
   chapters: Chapter[];
   save: SaveData;
@@ -134,13 +166,7 @@ export function boardCard(o: {
     return h("section", { class: "chapter" }, h("h2", {}, `${ci + 1}. ${c.title}`), h("div", { class: "jobs" }, ...jobs));
   });
   const reset = h("button", { class: "link danger" }, "Reset progress");
-  reset.addEventListener("click", () => {
-    if (reset.dataset.armed) o.onReset();
-    else {
-      reset.dataset.armed = "1";
-      reset.textContent = "Tap again to erase everything";
-    }
-  });
+  reset.addEventListener("click", () => confirmReset(o.onReset));
   return h(
     "div",
     { class: "card board" },

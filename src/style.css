@@ -314,6 +314,19 @@ button.link {
   text-decoration: underline;
 }
 button.link.danger { color: #b0503c; }
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 16, 28, 0.6);
+}
+.card.confirm { width: min(360px, 100%); text-align: center; }
+button.primary.danger { background: #c0392b; box-shadow: 0 4px 0 #8e2a1f; min-width: 0; }
+.card.confirm .warn { margin: 6px 0 16px; font-size: 15px; line-height: 1.45; color: #4a3f52; }
 
 /* ------------------------------------------------------- tuning panel --- */
 

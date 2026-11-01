@@ -72,8 +72,12 @@ export const officeParty: Level = {
           if (g.gone) continue;
           const b = g.prop.body;
           const q = b.translation();
-          // Out the door: gone, with a parting word.
-          if (q.x > DOOR.x + 0.25) {
+          // Out the door (their leading end well through it, so feet first, lying
+          // down, counts too: there's no room past the door for a long guest's middle):
+          // gone, with a parting word.
+          const a = b.rotation();
+          const reach = q.x + Math.abs(Math.cos(a)) * g.hw + Math.abs(Math.sin(a)) * g.hh;
+          if (reach > DOOR.x + 0.55) {
             g.gone = true;
             left--;
             ev.push({ type: "score", text: g.bye, pos: { x: DOOR.x - 0.6, y: 2.6 } });

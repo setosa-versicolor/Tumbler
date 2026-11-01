@@ -1112,6 +1112,17 @@ describe("The office party", () => {
     expect(g.progress.done).toBe(true);
   });
 
+  it("a tall guest goes out lying down, feet first", () => {
+    const g = play(officeParty);
+    run(g, 0.5);
+    const knight = g.props.find((p) => p.tag === "knight")!;
+    knight.body.setRotation(Math.PI / 2, true);
+    knight.body.setTranslation({ x: PARTY_DOOR.x - 1.4, y: 0.32 }, true);
+    knight.body.setLinvel({ x: 5, y: 0 }, true);
+    run(g, 1.5);
+    expect(g.props).not.toContain(knight);
+  });
+
   it("is on once every job has five stars", () => {
     const save = emptySave();
     for (const l of ALL_LEVELS) save.overtime[l.id] = { bonus: 2, best: 10 };

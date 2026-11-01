@@ -9,13 +9,13 @@ import { clamp } from "../../sim/math";
 const W = 14;
 /** The weapon rack, on the left: everything lying hilt-out, towards Stanley. */
 export const RACK = { x: 0.35 };
-/** How hard each weapon hits (Ser Geraldus can take four). */
+/** How hard each weapon hits (Ser Geraldus can take five). */
 export const WEAPONS: { kind: PropKind; hh: number; hw: number; y: number; damage: number; density: number }[] = [
   { kind: "sword", hh: 0.45, hw: 0.035, y: 1.05, damage: 1, density: 8 },
   { kind: "axe", hh: 0.4, hw: 0.035, y: 1.45, damage: 2, density: 14 },
   { kind: "spear", hh: 0.65, hw: 0.025, y: 1.85, damage: 1, density: 6 },
 ];
-export const KNIGHT_HP = 4;
+export const KNIGHT_HP = 5;
 /** A swing this fast (m/s, at the business end) lands a hit. */
 const HIT_SPEED = 2.2;
 /**
@@ -25,6 +25,8 @@ const HIT_SPEED = 2.2;
  */
 const GUARD_SPEED = 3.6;
 const SHIELD = 0.4;
+/** How long he winds up a swing (his shield's down meanwhile). */
+const WINDUP = 0.55;
 /** He turns round slowly (armour): get behind him and he's open for a moment. */
 const TURN_TIME = 0.7;
 
@@ -125,7 +127,7 @@ export const yeOldeJob: Level = {
               if (k.blocks >= 2 && k.phase === "advance") {
                 k.blocks = 0;
                 k.phase = "windup";
-                k.t = 0.65;
+                k.t = WINDUP;
                 say(["Predictable!", "Is that all?", "Ha! A peasant's swing!"][Math.floor(game.rand() * 3)], ev);
               }
               break;
@@ -133,15 +135,17 @@ export const yeOldeJob: Level = {
             k.blocks = 0;
             k.hp = Math.max(0, k.hp - w.damage);
             k.flash = 0.25;
-            hitCooldown = 0.4;
+            hitCooldown = 0.45;
             ev.push({ type: "impact", pos: { x: k.x, y: 1.3 }, strength: 9 }, { type: "score", text: w.damage > 1 ? "CLANG!!" : "CLANG!", pos: { x: k.x, y: 2.1 } });
             if (k.hp <= 0) {
               k.phase = "yield";
               k.t = 2.2;
               ev.push({ type: "sfx", name: "rumble", pos: { x: k.x, y: 1 } });
-            } else {
-              k.phase = "stagger";
-              k.t = 0.5;
+            } else if (k.phase !== "windup" && k.phase !== "strike") {
+              // Hit him and he swings straight back (and a swing once started
+              // is coming anyway): trade blows, or get out of the way.
+              k.phase = "windup";
+              k.t = WINDUP;
               if (k.hp === 2) say("Have at thee!", ev);
             }
             break;
@@ -167,14 +171,16 @@ export const yeOldeJob: Level = {
             if (k.t <= 0) k.phase = "advance";
             break;
           case "advance":
-            if (Math.abs(sx - k.x) < 1.15 && st.balance.posture === "up") {
+            if (Math.abs(sx - k.x) < 1.3 && st.balance.posture === "up") {
               k.phase = "windup";
-              k.t = 0.65;
+              k.t = WINDUP;
             } else k.x = clamp(k.x + k.face * 0.85 * dt, 3.4, W - 0.6);
             break;
           case "windup":
-            // (Drops the shield to swing two-handed: there's the opening.)
+            // (Drops the shield to swing two-handed: there's the opening.) And
+            // he steps in as he winds up: backing off is how you dodge it.
             k.swing = Math.min(1, k.swing + dt * 2);
+            if (Math.abs(sx - k.x) > 0.7) k.x = clamp(k.x + k.face * 1.1 * dt, 3.4, W - 0.6);
             if (k.t <= 0) {
               k.phase = "strike";
               k.t = 0.15;
@@ -182,14 +188,14 @@ export const yeOldeJob: Level = {
             break;
           case "strike":
             k.swing = -1;
-            if (Math.abs(sx - k.x) < 1.45 && st.balance.posture === "up") {
+            if (Math.abs(sx - k.x) < 1.6 && st.balance.posture === "up") {
               wallop(game, k.face);
               ev.push({ type: "ouch", text: "WHACK!", pos: { x: sx, y: 2.2 } });
               k.t = 0;
             }
             if (k.t <= 0) {
               k.phase = "recover";
-              k.t = 1.1;
+              k.t = 0.75;
             }
             break;
           case "recover":
@@ -199,7 +205,11 @@ export const yeOldeJob: Level = {
           case "stagger":
             k.swing = 0;
             k.x = clamp(k.x - k.face * 1.4 * dt, 3.4, W - 0.6);
-            if (k.t <= 0) k.phase = "advance";
+            // …and straight back at you.
+            if (k.t <= 0) {
+              k.phase = Math.abs(sx - k.x) < 1.6 ? "windup" : "advance";
+              k.t = WINDUP;
+            }
             break;
           case "yield":
             k.swing = 0;

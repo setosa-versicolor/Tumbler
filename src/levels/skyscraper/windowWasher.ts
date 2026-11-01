@@ -47,6 +47,8 @@ const WIPE_SPEED = 0.35;
 const WIPE_TIME = 0.5;
 /** One dip lasts this many seconds of wiping. */
 const WET_SECONDS = 7;
+/** Seconds of scrubbing the cracked pane takes before it goes. */
+const CRACK_TIME = 0.7;
 /** A dry blade drags dirt along, leaving a smear every so often. */
 const SMEAR_EVERY = 0.12;
 
@@ -110,6 +112,8 @@ export const windowWasher: Level = {
     const handWasIn = { L: "", R: "" } as Record<"L" | "R", string>;
     let taught = false;
     let shattered = false;
+    /** How near the cracked pane is to going (0 to 1). */
+    let stress = 0;
     /** Bits of glass falling, and papers blowing out of the office behind. */
     const shards: { x: number; y: number; vx: number; vy: number; a: number; paper: boolean }[] = [];
 
@@ -184,15 +188,17 @@ export const windowWasher: Level = {
         }
         const moved = lastBlade ? Math.hypot(b.x - lastBlade.x, b.y - lastBlade.y - vy * dt) : 0;
         lastBlade = b;
-        // The cracked pane: wipe it (or smack it) and it's gone.
+        // The cracked pane: scrub at it and the cracks spread (with a creak by
+        // way of warning) until it goes. A brush in passing, or a hand on the
+        // ▲▼ buttons in front of it, won't do it.
         const inCrack = (p: Vec) => p.x > CRACKED.x0 && p.x < CRACKED.x1 && p.y > CRACKED.y0 && p.y < CRACKED.y1;
         if (!shattered) {
-          const hands = [game.stanley.rig.arms.L.hand, game.stanley.rig.arms.R.hand];
-          const smack = hands.some((h) => {
-            const v = h.linvel();
-            return inCrack(h.translation()) && Math.hypot(v.x, v.y - vy) > 2.5;
-          });
-          if (smack || (moved / dt > WIPE_SPEED && inCrack(b) && game.held.has(squeegee.body))) {
+          if (moved / dt > WIPE_SPEED && inCrack(b) && game.held.has(squeegee.body)) {
+            const before = stress;
+            stress += dt / CRACK_TIME;
+            if (before < 0.4 && stress >= 0.4) ev.push({ type: "score", text: "*creak*", pos: { x: (CRACKED.x0 + CRACKED.x1) / 2, y: CRACKED.y1 - 0.4 } });
+          }
+          if (stress >= 1) {
             shattered = true;
             game.breaks++;
             const c = { x: (CRACKED.x0 + CRACKED.x1) / 2, y: (CRACKED.y0 + CRACKED.y1) / 2 };
@@ -326,9 +332,11 @@ export const windowWasher: Level = {
         const k = CRACKED;
         if (!shattered) {
           const hit = { x: k.x0 + 0.5, y: k.y0 + 1.3 };
-          for (let i = 0; i < 9; i++) {
+          // The cracks reach further the more it's been scrubbed at.
+          const grow = 1 + stress * 1.6;
+          for (let i = 0; i < 9 + Math.floor(stress * 6); i++) {
             const a = i * 0.7 + 0.3;
-            const len = 0.35 + ((i * 37) % 5) * 0.12;
+            const len = (0.35 + ((i * 37) % 5) * 0.12) * grow;
             const mid = { x: hit.x + Math.cos(a) * len * 0.5 + 0.04, y: hit.y + Math.sin(a) * len * 0.5 };
             r.line(hit, mid, 0.012, "rgba(255,255,255,0.85)");
             r.line(mid, { x: hit.x + Math.cos(a + 0.15) * len, y: hit.y + Math.sin(a + 0.15) * len }, 0.01, "rgba(255,255,255,0.75)");

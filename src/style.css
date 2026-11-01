@@ -595,3 +595,39 @@ button.link.danger { color: #b0503c; }
   .gift .chat.call .msg, .gift button.primary { animation: none; opacity: 1; }
 }
 .gift .msg.me .who { color: rgba(255, 255, 255, 0.85); }
+
+/* Speech in a scene (not a phone): a bubble over whoever's talking. */
+.scene-stage { position: relative; margin: 10px 0 12px; }
+.scene-stage .gift-scene svg { width: 100%; margin: 0; }
+.scene-stage .speech {
+  position: absolute;
+  /* (translate, not transform: the pop-in animation uses transform) */
+  translate: -50% -100%;
+  max-width: 46%;
+  width: max-content;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+}
+.scene-stage .speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-bottom: 0;
+  border-top-color: #ffffff;
+}
+@keyframes speech-out { to { opacity: 0; visibility: hidden; } }
+@media (max-height: 500px) {
+  .scene-stage .speech { font-size: 12px; }
+  .scene-stage { width: min(100%, calc(42vh * 2)); margin: 6px auto 8px; }
+}

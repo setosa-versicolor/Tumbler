@@ -479,16 +479,30 @@ const YIELD_SCENE = `
 </svg>`;
 
 export function yieldCard(o: { onNext: () => void }): HTMLElement {
-  return callCard(
-    "1194 · The courtyard, moments later",
-    YIELD_SCENE,
-    [
-      { who: "Ser Geraldus", text: "I yield! Thou art… a better fit." },
-      { who: "Ser Geraldus", text: "Take my lands. My title. My goat." },
-      { who: "Stanley", text: "I just came to open a present." },
-      { who: "The goat", text: "Meh." },
-    ],
-    "Whirrrrr… ▸",
-    o.onNext,
+  // A scene, not a call: speech bubbles over whoever's talking, one after another.
+  const lines: { text: string; x: number; y: number }[] = [
+    { text: "I yield! Thou art… a better fit.", x: 63, y: 30 },
+    { text: "Take my lands. My title. My goat.", x: 63, y: 30 },
+    { text: "I just came to open a present.", x: 24, y: 26 },
+    { text: "Meh.", x: 88, y: 62 },
+  ];
+  const sc = h("div", { class: "gift-scene" });
+  sc.innerHTML = YIELD_SCENE;
+  const stage = h(
+    "div",
+    { class: "scene-stage" },
+    sc,
+    ...lines.map((l, i) => {
+      const el = h("div", { class: "speech" }, l.text);
+      el.style.left = `${l.x}%`;
+      el.style.top = `${l.y}%`;
+      const at = 0.5 + i * 1.8;
+      // Each one pops up, and (but the last) gives way to the next.
+      el.style.animation = i < lines.length - 1 ? `pop 0.3s ${at}s both, speech-out 0.2s ${at + 1.8}s forwards` : `pop 0.3s ${at}s both`;
+      return el;
+    }),
   );
+  const btn = h("button", { class: "primary", click: o.onNext }, "Whirrrrr… ▸");
+  btn.style.animationDelay = `${0.5 + lines.length * 1.8}s`;
+  return h("div", { class: "card gift" }, h("div", { class: "kicker" }, "1194 · The courtyard, moments later"), stage, btn);
 }

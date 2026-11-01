@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#37a59c"/>
+  <!-- Stanley, mid-tumble: head tipped, cap on, eyes wide. -->
+  <g transform="translate(250 280) rotate(-14)">
+    <circle r="150" fill="#f2c79b"/>
+    <path d="M -153 -22 A 153 153 0 0 1 153 -22 Z" fill="#f08a3c"/>
+    <rect x="0" y="-42" width="232" height="30" rx="8" fill="#f08a3c"/>
+    <ellipse cx="27" cy="18" rx="26" ry="31" fill="#fff"/>
+    <ellipse cx="83" cy="18" rx="26" ry="31" fill="#fff"/>
+    <circle cx="35" cy="10" r="11" fill="#2a2230"/>
+    <circle cx="91" cy="10" r="11" fill="#2a2230"/>
+    <ellipse cx="62" cy="88" rx="16" ry="20" fill="#2a2230"/>
+  </g>
+</svg>

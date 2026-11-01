@@ -29,9 +29,26 @@ export function mountTuningPanel(root: HTMLElement, tuning: Tuning, onResetRoom:
   const inputs = new Map<keyof Tuning, { input: HTMLInputElement; out: HTMLOutputElement }>();
   const fmt = (v: number, step: number) => (step >= 1 ? v.toFixed(0) : step >= 0.1 ? v.toFixed(1) : v.toFixed(2));
 
+  // Share the game with a friend, by text.
+  const share = document.createElement("a");
+  share.className = "share";
+  share.textContent = "💬 Text it to a friend";
+  const url = location.origin + location.pathname;
+  share.href = `sms:?&body=${encodeURIComponent(`Play Tumbler: you're Stanley, the clumsiest temp at Odd Jobs Ltd. ${url}`)}`;
+  panel.append(share);
+
   const title = document.createElement("h2");
   title.textContent = "Tuning";
   panel.append(title);
+
+  // The settings are good as they are: locked until you insist.
+  const lockRow = document.createElement("div");
+  lockRow.className = "lock";
+  const lockButton = document.createElement("button");
+  const lockNote = document.createElement("p");
+  lockRow.append(lockButton, lockNote);
+  panel.append(lockRow);
+  let locked = true;
 
   for (const r of TUNING_RANGES) {
     const row = document.createElement("label");
@@ -56,11 +73,15 @@ export function mountTuningPanel(root: HTMLElement, tuning: Tuning, onResetRoom:
     inputs.set(r.key, { input, out });
   }
 
-  const buttons = document.createElement("div");
-  buttons.className = "buttons";
-  const defaults = document.createElement("button");
-  defaults.textContent = "Defaults";
-  defaults.addEventListener("click", () => {
+  const setLocked = (on: boolean) => {
+    locked = on;
+    for (const { input } of inputs.values()) input.disabled = on;
+    panel.classList.toggle("locked", on);
+    lockButton.textContent = on ? "🔒 Unlock" : "Reset to Defaults";
+    lockNote.textContent = on ? "You can change everything. But you probably shouldn't." : "We warned you.";
+  };
+  lockButton.addEventListener("click", () => {
+    if (locked) return setLocked(false);
     Object.assign(tuning, DEFAULT_TUNING);
     for (const r of TUNING_RANGES) {
       const el = inputs.get(r.key)!;
@@ -69,10 +90,14 @@ export function mountTuningPanel(root: HTMLElement, tuning: Tuning, onResetRoom:
     }
     saveTuning(tuning);
   });
+  setLocked(true);
+
+  const buttons = document.createElement("div");
+  buttons.className = "buttons";
   const reset = document.createElement("button");
   reset.textContent = "Reset room";
   reset.addEventListener("click", onResetRoom);
-  buttons.append(defaults, reset);
+  buttons.append(reset);
   panel.append(buttons);
 
   // The error log: what went wrong on this device, ready to copy and send.
@@ -101,13 +126,18 @@ export function mountTuningPanel(root: HTMLElement, tuning: Tuning, onResetRoom:
   clear.textContent = "Clear log";
   clear.addEventListener("click", clearErrorLog);
   logButtons.append(copy, clear);
-  panel.prepend(logTitle, logBox, logButtons);
+  panel.append(logTitle, logBox, logButtons);
 
   const toggle = document.createElement("button");
   toggle.className = "gear";
   toggle.setAttribute("aria-label", "Tuning");
   toggle.textContent = "⚙";
-  toggle.addEventListener("click", () => (panel.hidden = !panel.hidden));
+  // Every time it's opened, it's locked again.
+  const flip = () => {
+    if (panel.hidden) setLocked(true);
+    panel.hidden = !panel.hidden;
+  };
+  toggle.addEventListener("click", flip);
 
   const showLog = () => {
     const entries = errorLog();
@@ -122,5 +152,5 @@ export function mountTuningPanel(root: HTMLElement, tuning: Tuning, onResetRoom:
   onErrorLogChange(showLog);
 
   root.append(toggle, panel);
-  return { toggle: () => (panel.hidden = !panel.hidden) };
+  return { toggle: flip };
 }

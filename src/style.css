@@ -355,6 +355,32 @@ button.link.danger { color: #b0503c; }
 .panel .row input { grid-column: 1 / -1; width: 100%; }
 .panel output { font-variant-numeric: tabular-nums; color: #8a5a2a; }
 .panel .buttons { display: flex; gap: 8px; margin-top: 4px; }
+.panel .share {
+  display: block;
+  margin: 0 0 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #2e9b5a;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+.panel .lock { margin-bottom: 10px; text-align: center; }
+.panel .lock button {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: #2a2230;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.panel:not(.locked) .lock button { background: #e85d5d; }
+.panel .lock p { margin: 6px 0 0; font-size: 12px; font-style: italic; color: #6a5a4a; }
+.panel.locked .row { opacity: 0.45; }
+.panel .row input:disabled { cursor: not-allowed; }
 .panel .buttons button {
   flex: 1;
   padding: 8px;

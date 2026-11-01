@@ -1204,6 +1204,32 @@ describe("Day Off", () => {
     expect(spin).toBeLessThan(6);
   });
 
+  it("the button on the pit wall takes Stanley (not foam) back up to the high dive", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
+    run(g, 0.5);
+    const B = DAY_OFF.LIFT_BUTTON;
+    // A foam block dropped on it does nothing.
+    const cube = g.props.find((p) => p.body.translation().x > DAY_OFF.PIT.x0)!;
+    cube.body.setTranslation({ x: B.x, y: B.y + 0.3 }, true);
+    run(g, 0.5);
+    expect(g.stanley.rig.pelvis.translation().y).toBeLessThan(2);
+    // Stanley in the pit, reaching for it: up he goes.
+    for (const b of g.stanley.rig.bodies) {
+      const t = b.translation();
+      b.setTranslation({ x: t.x - dayOff.spawn.x + B.x + 0.7, y: t.y + 0.9 }, true);
+    }
+    let top = 0;
+    run(g, 2, () => {
+      top = Math.max(top, g.stanley.rig.pelvis.translation().y);
+      return { reach: B, grip: { L: false, R: false } };
+    });
+    expect(top).toBeGreaterThan(DAY_OFF.PLATFORM.y + 0.5);
+    // And he arrives standing, still up there.
+    run(g, 1.5);
+    expect(g.stanley.balance.posture).toBe("up");
+    expect(g.stanley.rig.pelvis.translation().y).toBeGreaterThan(DAY_OFF.PLATFORM.y + 0.5);
+  });
+
   it("the trampoline bounces him (again and again)", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 0.5);

@@ -18,6 +18,8 @@ const STAIRS = { x0: 19.2, steps: 22, run: 0.3, rise: 0.28 };
 export const PLATFORM = { x0: STAIRS.x0 + STAIRS.run * STAIRS.steps, x1: STAIRS.x0 + STAIRS.run * STAIRS.steps + 0.9, y: STAIRS.rise * STAIRS.steps };
 const BOARD = { x0: PLATFORM.x1, x1: PLATFORM.x1 + 1.3 };
 export const PIT = { x0: PLATFORM.x1 + 0.35, x1: W - 0.1, wall: 0.7 };
+/** On the pit's left wall, above the foam: Stanley touches it, and he's back up on the high dive. */
+export const LIFT_BUTTON = { x: PIT.x0 + 0.16, y: 1.45, r: 0.15 };
 /**
  * Trapezes, from the high dive back over the room to the ledge: each swings
  * on its own (neighbours in opposite directions, so at the end of a swing the
@@ -163,6 +165,7 @@ export const dayOff: Level = {
     let bestFlips = 0;
     let wasHigh = false;
     let bounceCooldown = 0;
+    let liftLit = 0;
 
     let inBasket = 0;
     let stack = 0;
@@ -200,6 +203,21 @@ export const dayOff: Level = {
           boing.push({ type: "score", text: catches > 1 ? "Catch!" : "Hup!", pos: { x: q.x, y: q.y + 0.6 } });
         }
         holding = onBar;
+
+        // The button on the pit wall (Stanley's touch only; foam blocks don't count): back to the top.
+        liftLit = Math.max(0, liftLit - dt);
+        if (liftLit === 0 && st.rig.bodies.some((b) => {
+          const q = b.translation();
+          return Math.hypot(q.x - LIFT_BUTTON.x, q.y - LIFT_BUTTON.y) < LIFT_BUTTON.r + 0.13;
+        })) {
+          liftLit = 1;
+          st.teleport({ x: PLATFORM.x0 + 0.35, y: PLATFORM.y });
+          // (On his feet, ready to go again.)
+          st.balance.posture = "up";
+          st.balance.stability = 1;
+          diving = false;
+          boing.push({ type: "score", text: "Going up!", pos: { x: PLATFORM.x0 + 0.4, y: PLATFORM.y + 1.6 } });
+        }
 
         // Diving: how high was he when he went off the board?
         const pel = st.rig.pelvis.translation();
@@ -294,6 +312,12 @@ export const dayOff: Level = {
       },
       drawFront(r) {
         r.rect(PIT.x0 - 0.06, 0, PIT.x0 + 0.06, PIT.wall, "#e85d5d");
+        // The back-to-the-top button: on a post up the pit's left wall.
+        r.rect(PIT.x0 - 0.04, PIT.wall, PIT.x0 + 0.04, LIFT_BUTTON.y, "#7c8a99");
+        r.circle(LIFT_BUTTON, LIFT_BUTTON.r + 0.03, "#2a2230");
+        r.circle(LIFT_BUTTON, LIFT_BUTTON.r, liftLit > 0 ? "#ffe066" : "#5dd5c8");
+        r.text("↑", { x: LIFT_BUTTON.x, y: LIFT_BUTTON.y - 0.08 }, 0.2, "#2a2230", "center", 700);
+        r.text("TO THE TOP", { x: LIFT_BUTTON.x + 0.05, y: LIFT_BUTTON.y + LIFT_BUTTON.r + 0.1 }, 0.1, "rgba(42,34,48,0.6)");
         r.rect(BASKET.x0, BASKET.y, BASKET.x1, BASKET.y + BASKET.lip, "rgba(185,138,79,0.92)");
         r.text("BASKET", { x: 0.7, y: BASKET.y + 0.2 }, 0.16, "rgba(255,255,255,0.9)");
       },

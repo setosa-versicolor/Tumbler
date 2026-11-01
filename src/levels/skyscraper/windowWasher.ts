@@ -47,8 +47,8 @@ const WIPE_SPEED = 0.35;
 const WIPE_TIME = 0.5;
 /** One dip lasts this many seconds of wiping. */
 const WET_SECONDS = 7;
-/** Seconds of scrubbing the cracked pane takes before it goes. */
-const CRACK_TIME = 0.7;
+/** Seconds of wiping the cracked pane takes before it goes (about one stroke across it). */
+const CRACK_TIME = 0.12;
 /** A dry blade drags dirt along, leaving a smear every so often. */
 const SMEAR_EVERY = 0.12;
 

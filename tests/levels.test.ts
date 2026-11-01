@@ -822,7 +822,7 @@ describe("Window Washer", () => {
     expect(g.progress.done).toBe(true);
   });
 
-  it("the cracked pane survives a brush, but scrub at it and it shatters (a breakage)", () => {
+  it("the cracked pane survives the blade catching its edge, but one wipe across it shatters it (a breakage)", () => {
     const { g } = setup();
     const sq = g.props.find((p) => p.kind === "squeegee")!.body;
     run(g, 0.5);
@@ -835,12 +835,12 @@ describe("Window Washer", () => {
       sq.setRotation(0, true);
       return {};
     };
-    // A quick pass across it, on the way to something else.
-    run(g, 0.25, (t) => at(k.x0 + 0.1 + t * 4.8));
+    // The blade just catching its edge, on the way to something else.
+    run(g, 0.06, (t) => at(k.x0 + 0.05 + t * 4));
     run(g, 0.5, () => at(k.x0 - 1));
     expect(g.breaks).toBe(0);
-    // Scrubbing back and forth at it.
-    run(g, 1.5, (t) => at(k.x0 + 0.7 + Math.sin(t * 12) * 0.4));
+    // One wipe across it.
+    run(g, 0.4, (t) => at(k.x0 + 0.1 + t * 3));
     expect(g.breaks).toBe(1);
   });
 

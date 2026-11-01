@@ -15,6 +15,12 @@ const STAIRS = { x0: 19.2, steps: 14, run: 0.3, rise: 0.28 };
 export const PLATFORM = { x0: STAIRS.x0 + STAIRS.run * STAIRS.steps, x1: STAIRS.x0 + STAIRS.run * STAIRS.steps + 0.9, y: STAIRS.rise * STAIRS.steps };
 const BOARD = { x0: PLATFORM.x1, x1: PLATFORM.x1 + 1.3 };
 export const PIT = { x0: PLATFORM.x1 + 0.35, x1: W - 0.1, wall: 0.7 };
+/**
+ * Trapezes, from the high dive back over the room to the ledge: each swings
+ * on its own (neighbours in opposite directions, so at the end of a swing the
+ * next bar comes close). Hang on, let go at the right moment, catch the next.
+ */
+export const TRAPEZE = { pivots: [22.4, 19.1, 15.8, 12.5], top: 8, rope: 3.6, swing: 0.45, period: 3.8, hw: 0.35 };
 /** A punching bag, hanging from the ceiling (hit it, or hang off it). */
 const BAG = { x: 16.2, top: 8, y: 2.0 };
 export const LEDGE = { x0: 10.6, x1: 13.2, y: 2.2, thick: 0.2 };
@@ -87,6 +93,17 @@ export const dayOff: Level = {
       const fx = PIT.x0 + 0.25 + (i % 10) * ((PIT.x1 - PIT.x0 - 0.4) / 10);
       kit.box(fx, 0.15 + Math.floor(i / 10) * 0.3, 0.13, 0.13, { kind: "box", density: 0.4, friction: 0.7, color: foam[i % foam.length] });
     }
+    // The trapezes: bars moved along their swing (so they keep time), which
+    // carry Stanley like any handhold while he's hanging on.
+    const bars = TRAPEZE.pivots.map((px, i) => {
+      const body = kit.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(px, TRAPEZE.top - TRAPEZE.rope));
+      kit.world.createCollider(RAPIER.ColliderDesc.cuboid(TRAPEZE.hw, 0.035).setFriction(1), body);
+      body.userData = { handhold: true };
+      return { px, body, phase: i % 2 ? Math.PI : 0 };
+    });
+    const swingAt = (t: number, phase: number) => TRAPEZE.swing * Math.sin((2 * Math.PI * t) / TRAPEZE.period + phase);
+    let catches = 0;
+    let holding: unknown = null;
     let bestDive = 0;
     let wasHigh = false;
     let bounceCooldown = 0;
@@ -113,6 +130,20 @@ export const dayOff: Level = {
           const v = p.body.linvel();
           if (q.x > TRAMPOLINE.x0 && q.x < TRAMPOLINE.x1 && q.y - p.hh < TRAMPOLINE.top + 0.05 && v.y < -1) p.body.setLinvel({ x: v.x, y: -v.y * 0.85 }, true);
         }
+        // The trapezes swing.
+        for (const b of bars) {
+          const a = swingAt(game.time + dt, b.phase);
+          b.body.setNextKinematicTranslation({ x: b.px + Math.sin(a) * TRAPEZE.rope, y: TRAPEZE.top - Math.cos(a) * TRAPEZE.rope });
+          b.body.setNextKinematicRotation(a);
+        }
+        const onBar = [st.grips.L.held, st.grips.R.held].find((h) => h && bars.some((b) => b.body === h)) ?? null;
+        if (onBar && onBar !== holding) {
+          catches++;
+          const q = (onBar as { translation(): { x: number; y: number } }).translation();
+          boing.push({ type: "score", text: catches > 1 ? "Catch!" : "Hup!", pos: { x: q.x, y: q.y + 0.6 } });
+        }
+        holding = onBar;
+
         // Diving: how high was he when he went off the board?
         const pel = st.rig.pelvis.translation();
         const high = pel.y > PLATFORM.y + 0.5 && pel.x > PLATFORM.x0;
@@ -134,9 +165,19 @@ export const dayOff: Level = {
       },
       progress: (game) => ({
         done: false,
-        label: `Basket ${inBasket} · Stack ${best.toFixed(1)}m · Smashed ${game.breaks}${bestDive ? " · Dove!" : ""}`,
+        label: `Basket ${inBasket} · Stack ${best.toFixed(1)}m · Smashed ${game.breaks}${catches ? ` · Trapeze ${catches}` : bestDive ? " · Dove!" : ""}`,
       }),
       drawBack(r, game) {
+        // The trapezes: two ropes and a bar each.
+        for (const b of bars) {
+          const p = b.body.translation();
+          const a = b.body.rotation();
+          const end = (s: number) => ({ x: p.x + Math.cos(a) * TRAPEZE.hw * s, y: p.y + Math.sin(a) * TRAPEZE.hw * s });
+          const top = (s: number) => ({ x: b.px + s * TRAPEZE.hw * 0.8, y: TRAPEZE.top });
+          r.line(top(-1), end(-1), 0.018, "#c9b8a0");
+          r.line(top(1), end(1), 0.018, "#c9b8a0");
+          r.line(end(-1), end(1), 0.06, "#e85d5d");
+        }
         // The knocked-through wall, the new end of the room.
         r.rect(OLD_W - 0.05, 2.3, OLD_W + 0.25, 8, "rgba(42,34,48,0.08)");
         r.text("FUN ZONE (UNSUPERVISED)", { x: 21, y: 6.6 }, 0.22, "rgba(42,34,48,0.35)");

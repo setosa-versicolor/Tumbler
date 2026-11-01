@@ -1140,6 +1140,36 @@ describe("Day Off", () => {
     expect(g.stanley.rig.pelvis.translation().x).toBeGreaterThan(DAY_OFF.PIT.x0);
   });
 
+  it("from the high dive he can catch a trapeze and swing on it", { timeout: 20000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
+    run(g, 0.5);
+    for (const b of g.stanley.rig.bodies) {
+      const t = b.translation();
+      b.setTranslation({ x: t.x - dayOff.spawn.x + DAY_OFF.PLATFORM.x0 - 0.3, y: t.y + DAY_OFF.PLATFORM.y + 0.05 }, true);
+    }
+    run(g, 1);
+    const first = () => {
+      let at = { x: 0, y: 0 };
+      g.world.forEachRigidBody((b) => {
+        if (b.isKinematic() && Math.abs(b.translation().x - DAY_OFF.TRAPEZE.pivots[0]) < 2.5) at = b.translation();
+      });
+      return at;
+    };
+    const hold = { L: true, R: true };
+    for (let k = 0; k < 8 && !g.progress.label?.includes("Trapeze"); k++) run(g, 0.5, (t) => ({ jump: t === 0 && k % 2 === 0, reach: first(), grip: hold }));
+    expect(g.progress.label).toContain("Trapeze 1");
+    // Hanging on, he's carried along the swing.
+    let lo = Infinity;
+    let hi = -Infinity;
+    run(g, DAY_OFF.TRAPEZE.period, () => {
+      const x = g.stanley.rig.pelvis.translation().x;
+      lo = Math.min(lo, x);
+      hi = Math.max(hi, x);
+      return { reach: { x: g.stanley.shoulder.x, y: g.stanley.shoulder.y + 1 }, grip: hold };
+    });
+    expect(hi - lo).toBeGreaterThan(1.5);
+  });
+
   it("the trampoline bounces him (again and again)", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 0.5);

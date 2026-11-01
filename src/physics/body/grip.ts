@@ -123,7 +123,8 @@ export class Grip {
     world.intersectionsWithShape(h, 0, this.shape, (c) => {
       const b = c.parent();
       if (b && (b === this.noRegrab || b === this.setDown)) return true;
-      if (!b?.isDynamic() && h.y < minStaticY) return true;
+      // (A handhold, like a trapeze bar, can be grabbed at any height.)
+      if (!b?.isDynamic() && h.y < minStaticY && !(b?.userData as { handhold?: boolean } | undefined)?.handhold) return true;
       const score = b?.isDynamic() ? 1 + b.mass() : 0;
       if (score > best) {
         best = score;

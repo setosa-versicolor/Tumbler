@@ -10,6 +10,7 @@ import { stackIt } from "../src/levels/suburb/stackIt";
 import { pizzaUp } from "../src/levels/suburb/pizzaUp";
 import { office } from "../src/story/office";
 import { dayOff } from "../src/levels/dayOff";
+import * as DAY_OFF from "../src/levels/dayOff";
 import { Cutscene } from "../src/story/cutscene";
 import { BARKS, ONBOARDING, REVIEW_1, REVIEW_2, REVIEW_3, REVIEW_4, SIGN_OFF } from "../src/story/scripts";
 import { crateExpectations } from "../src/levels/docks/crateExpectations";
@@ -1117,5 +1118,37 @@ describe("The office party", () => {
     expect(allFiveStars(save)).toBe(true);
     save.overtime[ALL_LEVELS[3].id].bonus = 1;
     expect(allFiveStars(save)).toBe(false);
+  });
+});
+
+describe("Day Off", () => {
+  it("up the stairs, off the high dive, and into the foam pit", { timeout: 20000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
+    run(g, 0.5);
+    // From just past the old room (the stacking boxes are in the way otherwise).
+    for (const b of g.stanley.rig.bodies) {
+      const t = b.translation();
+      b.setTranslation({ x: t.x + 11, y: t.y }, true);
+    }
+    let top = 0;
+    run(g, 6, () => {
+      top = Math.max(top, g.stanley.rig.pelvis.translation().y);
+      return { move: 0.8 };
+    });
+    run(g, 4, { move: 0.8 });
+    expect(top).toBeGreaterThan(DAY_OFF.PLATFORM.y + 0.5);
+    expect(g.stanley.rig.pelvis.translation().x).toBeGreaterThan(DAY_OFF.PIT.x0);
+  });
+
+  it("the trampoline bounces him (again and again)", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
+    run(g, 0.5);
+    for (const b of g.stanley.rig.bodies) {
+      const t = b.translation();
+      b.setTranslation({ x: t.x + (DAY_OFF.TRAMPOLINE.x0 + DAY_OFF.TRAMPOLINE.x1) / 2 - dayOff.spawn.x, y: t.y + 1.5 }, true);
+    }
+    let boings = 0;
+    for (let i = 0; i < 120 * 3; i++) for (const e of g.step(IDLE_INTENT)) if (e.type === "score" && e.text === "BOING!") boings++;
+    expect(boings).toBeGreaterThan(1);
   });
 });

@@ -86,7 +86,8 @@ describe("Stanley's body", () => {
   it("gets back up after being knocked down", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);
     run(g, 1);
-    for (const b of g.stanley.rig.bodies) b.applyImpulse({ x: b.mass() * 7, y: 0 }, true);
+    // Knocked toward the open floor (not into the boxes, where he might end up leaning on one).
+    for (const b of g.stanley.rig.bodies) b.applyImpulse({ x: -b.mass() * 5, y: 0 }, true);
     run(g, 0.3);
     expect(g.stanley.balance.posture).not.toBe("up");
     run(g, 4);
@@ -116,7 +117,7 @@ describe("Stanley's body", () => {
       }
     }
     const p = g.stanley.position;
-    expect(p.x > 0 && p.x < 16 && p.y > 0 && p.y < 8).toBe(true);
+    expect(p.x > 0 && p.x < dayOff.bounds.w && p.y > 0 && p.y < 8).toBe(true);
   });
   it("can climb onto the ledge", () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, dayOff);

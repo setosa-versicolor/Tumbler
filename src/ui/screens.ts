@@ -312,3 +312,131 @@ export function endCard(o: { onBoard: () => void }): HTMLElement {
     h("button", { class: "primary", click: o.onBoard }, "Job Board"),
   );
 }
+
+// ---------------------------------------------------------- the gift ---
+// The secret ending (Executive Action, in Overtime, all five stars).
+
+const QUANTUM_SCENE = `
+<svg viewBox="0 0 300 190" role="img" aria-label="Quantum Labs: a gleaming glass tower">
+  <defs>
+    <linearGradient id="qsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1640"/><stop offset="1" stop-color="#4b3b8a"/></linearGradient>
+    <linearGradient id="qglass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fe8ff"/><stop offset="1" stop-color="#4f7fd8"/></linearGradient>
+  </defs>
+  <rect width="300" height="190" fill="url(#qsky)"/>
+  <circle cx="40" cy="30" r="1.2" fill="#fff"/><circle cx="90" cy="18" r="1" fill="#fff"/><circle cx="250" cy="40" r="1.4" fill="#fff"/><circle cx="210" cy="14" r="1" fill="#fff"/>
+  <rect x="0" y="150" width="300" height="40" fill="#151127"/>
+  <!-- The tower: glass, a spire, rings of light orbiting it. -->
+  <path d="M120 150 L130 40 L150 18 L170 40 L180 150 Z" fill="url(#qglass)"/>
+  <path d="M150 18 L150 150" stroke="rgba(255,255,255,0.35)" stroke-width="1"/>
+  <line x1="150" y1="18" x2="150" y2="2" stroke="#c9f4ff" stroke-width="2"/>
+  <circle cx="150" cy="2" r="3" fill="#ffffff" class="q-blink"/>
+  <ellipse cx="150" cy="80" rx="58" ry="10" fill="none" stroke="#7ff5d5" stroke-width="2" class="q-ring"/>
+  <ellipse cx="150" cy="110" rx="70" ry="12" fill="none" stroke="#c58be8" stroke-width="2" class="q-ring q-ring2"/>
+  <!-- The sign, and a smaller sign. -->
+  <rect x="98" y="122" width="104" height="16" rx="3" fill="#0d0b1e"/>
+  <text x="150" y="134" text-anchor="middle" font-size="11" font-weight="800" fill="#7ff5d5" letter-spacing="2">QUANTUM LABS</text>
+  <rect x="210" y="132" width="68" height="18" rx="2" fill="#f4f1ea"/>
+  <text x="244" y="140" text-anchor="middle" font-size="5" fill="#2a2230">DAYS SINCE LAST</text>
+  <text x="244" y="147" text-anchor="middle" font-size="5" fill="#2a2230">TEMPORAL INCIDENT: <tspan font-weight="900" fill="#c0392b">0</tspan></text>
+  <line x1="244" y1="150" x2="244" y2="158" stroke="#9aa0a8" stroke-width="2"/>
+</svg>`;
+
+export function quantumCard(o: { onNext: () => void }): HTMLElement {
+  const scene = h("div", { class: "gift-scene" });
+  scene.innerHTML = QUANTUM_SCENE;
+  return h(
+    "div",
+    { class: "card gift" },
+    h("div", { class: "kicker" }, "Meanwhile, somewhere considerably more impressive"),
+    scene,
+    h("button", { class: "primary", click: o.onNext }, "▸"),
+  );
+}
+
+const LAB_SCENE = `
+<svg viewBox="0 0 300 150" role="img" aria-label="A lab: a woman in a lab coat answers the phone">
+  <rect width="300" height="150" fill="#e9eef5"/>
+  <rect y="118" width="300" height="32" fill="#c9d4dd"/>
+  <!-- A glowing tube with a hamster in a tiny helmet, a monitor, a chalkboard. -->
+  <rect x="18" y="40" width="34" height="78" rx="14" fill="#bff3ff" stroke="#7fc8f8" stroke-width="2" class="q-glow"/>
+  <circle cx="35" cy="96" r="9" fill="#d9a066"/><path d="M27 92 Q35 80 43 92 Z" fill="#9aa0a8"/><circle cx="38" cy="95" r="1.2" fill="#2a2230"/>
+  <rect x="70" y="30" width="70" height="44" rx="4" fill="#1b1640"/>
+  <path d="M76 60 Q90 36 104 58 T132 48" stroke="#7ff5d5" stroke-width="2" fill="none"/>
+  <text x="105" y="70" text-anchor="middle" font-size="5" fill="#c58be8">E = mc² (ish)</text>
+  <!-- Her desk. -->
+  <rect x="150" y="96" width="130" height="8" fill="#6b5646"/>
+  <rect x="160" y="104" width="6" height="14" fill="#6b5646"/><rect x="266" y="104" width="6" height="14" fill="#6b5646"/>
+  <!-- Mom: lab coat, glasses, a neat grey-streaked bun, phone to her ear. -->
+  <rect x="198" y="62" width="44" height="40" rx="10" fill="#ffffff" stroke="#c9d4dd"/>
+  <path d="M214 62 L220 74 L226 62 Z" fill="#5d9de8"/>
+  <circle cx="220" cy="46" r="14" fill="#eebd92"/>
+  <path d="M206 44 Q208 30 220 30 Q234 30 234 44 Q226 36 206 44 Z" fill="#6b4a3a"/>
+  <circle cx="231" cy="30" r="6" fill="#6b4a3a"/><path d="M228 27 Q232 26 234 30" stroke="#c9ccd1" stroke-width="1.2" fill="none"/>
+  <circle cx="214" cy="47" r="4" fill="none" stroke="#2a2230" stroke-width="1.2"/><circle cx="225" cy="47" r="4" fill="none" stroke="#2a2230" stroke-width="1.2"/>
+  <path d="M216 55 Q220 57 224 55" stroke="#6b2a2a" stroke-width="1.2" fill="none"/>
+  <rect x="232" y="40" width="5" height="12" rx="1.5" fill="#2a2230" transform="rotate(15 234 46)"/>
+  <line x1="240" y1="70" x2="236" y2="50" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <!-- A mug: 'WORLD'S OKAYEST SON' (a gift). -->
+  <rect x="254" y="86" width="12" height="10" rx="2" fill="#f4f4f4"/>
+  <text x="260" y="93" text-anchor="middle" font-size="2.6" fill="#c0392b">OKAYEST</text>
+</svg>`;
+
+/** A phone call, a line at a time. `lines` alternate between the two callers. */
+function callCard(kicker: string, scene: string, lines: { who: "her" | "him"; text: string }[], next: string, onNext: () => void): HTMLElement {
+  const sc = h("div", { class: "gift-scene" });
+  sc.innerHTML = scene;
+  const chat = h(
+    "div",
+    { class: "chat call" },
+    ...lines.map((l, i) => {
+      const el = h("div", { class: `msg ${l.who === "her" ? "them" : "me"}` }, h("span", { class: "who" }, l.who === "her" ? "Mom" : "Stanley"), l.text);
+      el.style.animationDelay = `${0.6 + i * 1.1}s`;
+      return el;
+    }),
+  );
+  const btn = h("button", { class: "primary", click: onNext }, next);
+  btn.style.animationDelay = `${0.6 + lines.length * 1.1}s`;
+  return h("div", { class: "card gift call-card" }, h("div", { class: "kicker" }, kicker), h("div", { class: "call-body" }, sc, chat), btn);
+}
+
+export function labCallCard(o: { onNext: () => void }): HTMLElement {
+  return callCard(
+    "Quantum Labs · Office of the Director",
+    LAB_SCENE,
+    [
+      { who: "her", text: "Hello." },
+      { who: "him", text: "Mom?" },
+      { who: "her", text: "Yes, Stanley." },
+      { who: "him", text: "Dad says hi." },
+      { who: "her", text: "Thanks, Stanley. I sent you a gift." },
+    ],
+    "▸",
+    o.onNext,
+  );
+}
+
+export function callbackCard(o: { onNext: () => void }): HTMLElement {
+  return callCard(
+    "Back in the office. Slightly singed.",
+    LAB_SCENE,
+    [
+      { who: "him", text: "Hi Mom. Cool gift, but I don't think anybody will want one." },
+      { who: "her", text: "That's what your father said about you." },
+      { who: "her", text: "Love you. Bring it back by Friday." },
+    ],
+    "▸",
+    o.onNext,
+  );
+}
+
+export function giftEndCard(o: { onBoard: () => void }): HTMLElement {
+  return h(
+    "div",
+    { class: "card intro end" },
+    h("div", { class: "big-icon" }, "⏳"),
+    h("h1", {}, "Odd Jobs Ltd."),
+    h("p", { class: "goal" }, "Now also doing time travel. (Legally a company.)"),
+    h("p", { class: "controls" }, "You found the secret ending. Gerald would be proud. Gerald is never told about this."),
+    h("button", { class: "primary", click: o.onBoard }, "Job Board"),
+  );
+}

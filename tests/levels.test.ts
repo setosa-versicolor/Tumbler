@@ -27,6 +27,8 @@ import { windowWasher } from "../src/levels/skyscraper/windowWasher";
 import * as WW from "../src/levels/skyscraper/windowWasher";
 import { mailRoom } from "../src/levels/skyscraper/mailRoom";
 import { shredIt } from "../src/levels/skyscraper/shredIt";
+import { theGift, MACHINE } from "../src/levels/secret/theGift";
+import { yeOldeJob } from "../src/levels/secret/yeOldeJob";
 import { fireDrill } from "../src/levels/skyscraper/fireDrill";
 import * as FD from "../src/levels/skyscraper/fireDrill";
 const EXIT_LINE = FD.DROP_X;
@@ -1004,5 +1006,36 @@ describe("Robustness", () => {
       run(g, 0.05);
     }
     expect(g!.stanley.balance.posture).toBe("up");
+  });
+});
+
+describe("The secret ending", () => {
+  it("walking up to the time machine and touching it opens the present", { timeout: 15000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, theGift);
+    const pel = () => g.stanley.rig.pelvis.translation();
+    run(g, 6, () => ({ move: pel().x < MACHINE.x0 - 0.8 ? 0.5 : 0 }));
+    run(g, 1.5, { reach: { x: MACHINE.x0, y: 1.2 } });
+    expect(g.progress.done).toBe(true);
+  });
+
+  for (const kind of ["sword", "axe"] as const) {
+    it(`Stanley can take the ${kind} off the rack and beat Ser Geraldus with it`, { timeout: 30000 }, () => {
+      const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, yeOldeJob);
+      const w = g.props.find((p) => p.kind === kind)!;
+      const pel = () => g.stanley.rig.pelvis.translation();
+      const hold = { L: true, R: true };
+      run(g, 3, () => ({ move: pel().x > 1.9 ? -0.4 : 0 }));
+      const q = w.body.translation();
+      run(g, 1.2, { reach: { x: q.x + w.hh - 0.05, y: q.y }, grip: hold });
+      expect(g.held.has(w.body)).toBe(true);
+      run(g, 25, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.5, y: g.stanley.shoulder.y + Math.sin(t * 8) * 0.6 }, grip: hold }));
+      expect(g.progress.done).toBe(true);
+    });
+  }
+
+  it("bare hands do nothing to him", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, yeOldeJob);
+    run(g, 20, (t) => ({ reach: { x: g.stanley.shoulder.x + 0.6, y: g.stanley.shoulder.y + Math.sin(t * 8) * 0.6 } }));
+    expect(g.progress.label).toContain("♥♥♥♥");
   });
 });

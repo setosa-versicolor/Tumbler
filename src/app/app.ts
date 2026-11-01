@@ -12,7 +12,9 @@ import { SCRIPTS } from "../story/scripts";
 import { CHAPTERS, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
-import { boardCard, chapterCard, endCard, golfCard, introCard, pressCard, resultsCard } from "../ui/screens";
+import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, quantumCard, resultsCard } from "../ui/screens";
+import { theGift } from "../levels/secret/theGift";
+import { yeOldeJob } from "../levels/secret/yeOldeJob";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
 import { sfx } from "../ui/audio";
 import { logError } from "./errorLog";
@@ -190,6 +192,9 @@ export class App {
     if (this.mode.kind !== "play") return;
     const time = (this.game.doneAt ?? this.game.time) - this.mode.start;
     const level = this.game.level;
+    // The secret ending's two scenes go on to the next part, not a score card.
+    if (level.id === theGift.id) return this.timeTravel();
+    if (level.id === yeOldeJob.id) return this.backToTheOffice();
     const stars = starsFor(level, time);
     const tags: string[] = [];
     if (this.game.falls === 0) tags.push(TAGS.noFalls);
@@ -222,7 +227,12 @@ export class App {
       if (this.mode.kind !== "celebrate") return;
       this.mode = { kind: "results" };
       const memos = (overtime ? OVERTIME_MEMOS[LEVEL_TWISTS[level.id]] : MEMOS[level.id]) ?? ["MEMO: Great hustle!"];
-      const { next, label } = this.nextAfter(level);
+      let { next, label } = this.nextAfter(level);
+      // Five stars on the final job in Overtime: somebody's calling.
+      if (overtime && level.id === FINALE && bonus >= 2) {
+        next = () => this.theGift();
+        label = "📞 Incoming call…";
+      }
       this.dom.overlay.replaceChildren(
         resultsCard({
           level,
@@ -242,6 +252,57 @@ export class App {
       const ding = overtime ? (bonus ? 3 + bonus : 0) : stars;
       for (let i = 0; i < ding; i++) setTimeout(() => sfx.star(i), 250 + i * 180);
     }, 1300);
+  }
+
+  // --------------------------------------------------------- the gift ---
+
+  /** The secret ending: Quantum Labs, a phone call, and a present. */
+  private theGift() {
+    this.mode = { kind: "card" };
+    this.dom.overlay.replaceChildren(
+      quantumCard({
+        onNext: () => this.dom.overlay.replaceChildren(labCallCard({ onNext: () => this.playSecret(theGift) })),
+      }),
+    );
+  }
+
+  /** Straight into one of the secret ending's scenes (no intro card, no score). */
+  private playSecret(level: Level, title?: string) {
+    this.fadeThen(() => {
+      this.overtime = false;
+      this.load(level);
+      this.mode = { kind: "play", start: 0 };
+      const at = this.game.stanley.position;
+      this.renderer.popup(title ?? level.goal, { x: at.x + 1.2, y: at.y + 1.4 }, "#2a2230");
+    });
+  }
+
+  /** In he goes: a whirr, a flash, and it's 1194. */
+  private timeTravel() {
+    this.mode = { kind: "card" };
+    sfx.complete();
+    this.renderer.camera.shake(14);
+    this.renderer.confetti({ x: this.game.stanley.position.x, y: this.game.stanley.position.y + 1 });
+    setTimeout(() => this.playSecret(yeOldeJob, "THE YEAR 1194. Grab a weapon."), 900);
+  }
+
+  /** Back home, slightly singed, to call Mom. */
+  private backToTheOffice() {
+    this.mode = { kind: "card" };
+    sfx.complete();
+    this.save.seen.gift = true;
+    writeSave(this.save);
+    setTimeout(
+      () =>
+        this.fadeThen(() => {
+          this.load(theGift);
+          this.mode = { kind: "card" };
+          this.dom.overlay.replaceChildren(
+            callbackCard({ onNext: () => this.dom.overlay.replaceChildren(giftEndCard({ onBoard: () => this.showBoard() })) }),
+          );
+        }),
+      1600,
+    );
   }
 
   private nextAfter(level: Level): { next: () => void; label: string } {
@@ -365,6 +426,7 @@ export class App {
     const rewatch = Object.values(SCRIPTS)
       .filter((s) => this.save.seen[s.id])
       .map((s) => ({ id: s.id, title: s.title }));
+    if (this.save.seen.gift) rewatch.push({ id: "gift", title: "The Gift" });
     this.dom.overlay.replaceChildren(
       boardCard({
         chapters: CHAPTERS,
@@ -383,7 +445,7 @@ export class App {
           : undefined,
         onPlay: (l) => this.startLevel(l, this.boardOvertime && overtimeOpen(this.save.seen)),
         onSandbox: () => this.startLevel(SANDBOX),
-        onRewatch: (id) => this.playCutscene(id, () => this.showBoard()),
+        onRewatch: (id) => (id === "gift" ? this.theGift() : this.playCutscene(id, () => this.showBoard())),
         onReset: () => {
           clearSave();
           this.save = emptySave();

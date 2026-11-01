@@ -1015,6 +1015,51 @@ export class Renderer {
         ctx.fillRect(-w, -h * 0.15, w * 2, h * 0.3);
         break;
       }
+      case "sword":
+      case "axe":
+      case "spear": {
+        // Weapons, held by the hilt (local -y, canvas +h); the business end is
+        // up the other way (canvas -h).
+        const grip = p.kind === "sword" ? 0.3 : 1;
+        ctx.fillStyle = "#8a6a4e";
+        ctx.fillRect(-w, h - h * 2 * grip, w * 2, h * 2 * grip);
+        if (p.kind === "sword") {
+          ctx.fillStyle = "#d6dbe0";
+          ctx.beginPath();
+          ctx.moveTo(-w * 1.6, h * 0.4);
+          ctx.lineTo(w * 1.6, h * 0.4);
+          ctx.lineTo(w * 1.6, -h * 0.85);
+          ctx.lineTo(0, -h * 1.05);
+          ctx.lineTo(-w * 1.6, -h * 0.85);
+          ctx.closePath();
+          ctx.fill();
+          outline();
+          ctx.fillStyle = "#e2b13c";
+          ctx.fillRect(-w * 4, h * 0.36, w * 8, h * 0.1);
+          ctx.beginPath();
+          ctx.arc(0, h, w * 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.kind === "axe") {
+          ctx.fillStyle = "#c9ccd1";
+          ctx.beginPath();
+          ctx.moveTo(w, -h * 0.95);
+          ctx.quadraticCurveTo(0.26 * sc, -h * 1.05, 0.24 * sc, -h * 0.72);
+          ctx.quadraticCurveTo(0.26 * sc, -h * 0.4, w, -h * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          outline();
+        } else {
+          ctx.fillStyle = "#c9ccd1";
+          ctx.beginPath();
+          ctx.moveTo(-w * 2.4, -h * 0.82);
+          ctx.lineTo(0, -h - 0.16 * sc);
+          ctx.lineTo(w * 2.4, -h * 0.82);
+          ctx.closePath();
+          ctx.fill();
+          outline();
+        }
+        break;
+      }
       case "squeegee": {
         // A yellow handle, with the rubber blade across the top end (local +y,
         // which is -y on the canvas). The blade's colour says wet, dry or dirty.

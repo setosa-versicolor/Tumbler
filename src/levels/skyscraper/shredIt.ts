@@ -7,9 +7,9 @@ const DESK = { x0: 1.8, x1: 3.4, top: 0.75 };
 const SHREDDER = { x0: 8.6, x1: 9.5, top: 0.95 };
 const MOUTH = { x0: SHREDDER.x0 + 0.05, y0: SHREDDER.top - 0.05, x1: SHREDDER.x1 - 0.05, y1: SHREDDER.top + 0.25 };
 const FAN = { x0: 5.0, x1: 7.2, y0: 0.4, y1: 2.6, push: -5 };
-const NEEDED = 5;
+const NEEDED = 4;
 
-/** Skyscraper job 3: shred five sheets of paper. Paper flutters. There's a fan. */
+/** Skyscraper job 3: shred four sheets of paper. Paper flutters. There's a fan. */
 export const shredIt: Level = {
   id: "shred-it",
   title: "Shred It",

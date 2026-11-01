@@ -25,7 +25,7 @@ export const pinReset: Level = {
   title: "Pin Reset",
   goal: `Stand ${NEEDED} pins back up on the pin deck.`,
   icon: "🎳",
-  par: [35, 80],
+  par: [42, 80],
   bounds: { w: 13.5, h: 4.6 },
   spawn: { x: 1.5, y: 0 },
   target: { x: (DECK.x0 + DECK.x1) / 2, y: 0.8 },

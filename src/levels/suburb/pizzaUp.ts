@@ -11,7 +11,7 @@ const HOLD = 0.6;
 export const pizzaUp: Level = {
   id: "pizza-up",
   title: "Pizza Up",
-  goal: "Deliver the pizza to 4B. Flat, please.",
+  goal: "Carry the pizza up to 4B and put it down flat on their welcome mat.",
   icon: "🍕",
   par: [20, 45],
   bounds: { w: 14, h: 7 },
@@ -69,8 +69,20 @@ export const pizzaUp: Level = {
           r.circle(hole, 0.05, "#f4f4f4");
           r.circle(toward(hole, game.stanley.rig.head.translation(), 0.02), 0.022, "#2a2230");
         }
-        r.rect(MAT.x0, LANDING_Y, MAT.x1, LANDING_Y + 0.03, "#5d8a52");
-        r.text("WELCOME", { x: (MAT.x0 + MAT.x1) / 2, y: LANDING_Y + 0.08 }, 0.12, "rgba(255,255,255,0.8)");
+        // The welcome mat (where the pizza goes), and a note from 4B about it.
+        const mx = (MAT.x0 + MAT.x1) / 2;
+        r.rect(MAT.x0, LANDING_Y, MAT.x1, LANDING_Y + 0.06, "#5d8a52");
+        r.text("WELCOME", { x: mx, y: LANDING_Y + 0.1 }, 0.12, "rgba(255,255,255,0.85)");
+        if (settled < HOLD) {
+          const y = LANDING_Y + 0.25;
+          const c = "rgba(217,69,60,0.75)";
+          r.dashed({ x: mx - 0.32, y }, { x: mx + 0.32, y }, c);
+          r.dashed({ x: mx - 0.32, y: y - 0.12 }, { x: mx - 0.32, y }, c);
+          r.dashed({ x: mx + 0.32, y: y - 0.12 }, { x: mx + 0.32, y }, c);
+        }
+        r.rect(mx - 0.55, LANDING_Y + 1.05, mx + 0.55, LANDING_Y + 1.55, "#fff7c2");
+        r.text("PIZZA HERE ↓", { x: mx, y: LANDING_Y + 1.33 }, 0.13, "#d9453c");
+        r.text("on the mat. flat.", { x: mx, y: LANDING_Y + 1.15 }, 0.09, "#5b3a2a", "center", 600);
         r.rect(6.4, 3.0, 7.4, 3.8, "#cfa66a");
         r.rect(6.5, 3.1, 7.3, 3.7, "#8fc1d9");
         r.circle({ x: 10.5, y: 5.6 }, 0.18, "#fff3b0");

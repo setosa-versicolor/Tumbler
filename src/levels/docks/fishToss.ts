@@ -10,6 +10,8 @@ const NEEDED = 4;
 /** A backboard behind the bin: make the distance and the fish drops in. */
 export const BOARD = { x: BIN.x1 + 0.06, y0: DOCK_Y + BIN.depth, y1: DOCK_Y + 2.6 };
 const GULL = { x: 9.9, y: DOCK_Y + 1.3 };
+/** How far the fish crate sits up off the dock (just a little). */
+const CRATE_LIFT = 0.1;
 /** Chance per second a held fish slips, plus more when Stanley's moving. */
 const SLIP_BASE = 0.3;
 const SLIP_MOVING = 0.9;
@@ -30,7 +32,9 @@ export const fishToss: Level = {
     kit.solid(3.25, DOCK_Y / 2, 3.25, DOCK_Y / 2, "dock");
     kit.water(6.5, 8.0, 0.75);
     kit.solid(11, DOCK_Y / 2, 3, DOCK_Y / 2, "dock");
-    kit.basket(0.6, 2.0, DOCK_Y, 0.35);
+    // The crate sits on a low pallet: a little less of a stoop to reach in.
+    kit.solid(1.3, DOCK_Y + CRATE_LIFT / 2, 0.7, CRATE_LIFT / 2, "dock", { hidden: true });
+    kit.basket(0.6, 2.0, DOCK_Y + CRATE_LIFT, 0.35);
     kit.basket(BIN.x0, BIN.x1, DOCK_Y, BIN.depth);
     // A dead (unbouncy) board, so a fish that hits it drops straight down.
     kit.solid(BOARD.x, (BOARD.y0 + BOARD.y1) / 2, 0.06, (BOARD.y1 - BOARD.y0) / 2, "post", { hidden: true, friction: 0.9 });
@@ -39,7 +43,7 @@ export const fishToss: Level = {
     const fish: Prop[] = [];
     for (let i = 0; i < 6; i++) {
       fish.push(
-        kit.box(0.95 + (i % 3) * 0.45, DOCK_Y + 0.12 + Math.floor(i / 3) * 0.14, 0.2, 0.055, {
+        kit.box(0.95 + (i % 3) * 0.45, DOCK_Y + CRATE_LIFT + 0.12 + Math.floor(i / 3) * 0.14, 0.2, 0.055, {
           kind: "fish",
           density: 8,
           friction: 0.15,
@@ -111,7 +115,9 @@ export const fishToss: Level = {
         // Ice bin front and the crate of fish.
         r.rect(BIN.x0, DOCK_Y, BIN.x1, DOCK_Y + BIN.depth - 0.05, "rgba(225,240,248,0.93)");
         r.text("ICE", { x: (BIN.x0 + BIN.x1) / 2, y: DOCK_Y + 0.3 }, 0.18, "#5d9de8");
-        r.rect(0.6, DOCK_Y, 2.0, DOCK_Y + 0.14, "rgba(185,137,90,0.95)");
+        r.rect(0.65, DOCK_Y, 1.95, DOCK_Y + CRATE_LIFT, "#7a5a3a");
+        for (const x of [0.75, 1.3, 1.85]) r.rect(x - 0.06, DOCK_Y, x + 0.06, DOCK_Y + CRATE_LIFT, "#5f4630");
+        r.rect(0.6, DOCK_Y + CRATE_LIFT, 2.0, DOCK_Y + CRATE_LIFT + 0.14, "rgba(185,137,90,0.95)");
         drawGull(r, gull.found ? gull.age : -1);
       },
     };

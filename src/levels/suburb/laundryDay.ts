@@ -10,7 +10,7 @@ const SOCK_COLORS = ["#f4f4f4", "#e85d5d", "#5d9de8", "#f2c94c", "#7bc96f", "#c5
 export const laundryDay: Level = {
   id: "laundry-day",
   title: "Laundry Day",
-  goal: `Get ${NEEDED} socks into the laundry basket.`,
+  goal: `Socks everywhere: the colorful things on the floor and the bed. Get ${NEEDED} into the laundry basket on the dresser.`,
   icon: "🧦",
   par: [23, 35],
   bounds: { w: 12, h: 6 },
@@ -38,13 +38,16 @@ export const laundryDay: Level = {
         return p.x > BASKET.x0 && p.x < BASKET.x1 && p.y > BASKET.y && p.y < BASKET.y + BASKET.depth + 0.3;
       }).length;
     let last = 0;
+    /** Until a sock's been picked up: little arrows saying "that's a sock". */
+    let handled = false;
 
     return {
       progress: () => {
         const n = Math.min(inBasket(), NEEDED);
         return { done: n >= NEEDED, label: `Socks ${n}/${NEEDED}` };
       },
-      update: () => {
+      update: (game) => {
+        if (!handled && socks.some((s) => game.held.has(s.body))) handled = true;
         const n = inBasket();
         const ev = n > last ? [{ type: "score" as const, text: "SWISH!", pos: { x: (BASKET.x0 + BASKET.x1) / 2, y: 2 } }] : [];
         last = n;
@@ -78,7 +81,18 @@ export const laundryDay: Level = {
         drawSleepingCat(r, game.time);
         drawWeddingPhoto(r);
       },
-      drawFront(r) {
+      drawFront(r, game) {
+        // Till a sock's been picked up: a bobbing pointer over each loose one.
+        if (!handled) {
+          const bob = Math.sin(game.time * 4) * 0.05;
+          for (const sk of socks) {
+            const q = sk.body.translation();
+            if (q.x > BASKET.x0 - 0.2) continue;
+            const y = q.y + 0.3 + bob;
+            r.poly([{ x: q.x - 0.07, y: y + 0.1 }, { x: q.x + 0.07, y: y + 0.1 }, { x: q.x, y }], "#2a2230");
+            r.text("sock", { x: q.x, y: y + 0.17 }, 0.12, "#2a2230");
+          }
+        }
         // Basket weave in front of anything inside it.
         r.rect(BASKET.x0, BASKET.y, BASKET.x1, BASKET.y + BASKET.depth - 0.05, "rgba(185,138,79,0.92)");
         for (let i = 1; i < 4; i++) {

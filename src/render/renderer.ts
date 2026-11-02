@@ -671,11 +671,36 @@ export class Renderer {
         body(3);
         label("PIZZA", "#d9453c", h * 1.5);
         break;
-      case "sock":
-        body(h);
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.fillRect(-w, -h, w * 0.3, h * 2);
+      case "sock": {
+        // Lying on its side, toe to the right: the leg, the heel's bump, a
+        // rounded darker toe, and a ribbed cuff. (Drawn a touch bigger than
+        // it is, so it reads as a sock.)
+        ctx.scale(1.18, 1.18);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-w, -h);
+        ctx.lineTo(w * 0.55, -h);
+        ctx.arc(w * 0.55, 0, h, -Math.PI / 2, Math.PI / 2);
+        ctx.lineTo(-w, h);
+        ctx.closePath();
+        ctx.fill();
+        // Heel: a bump out the bottom, a little way from the toe.
+        ctx.beginPath();
+        ctx.arc(w * 0.12, h * 0.6, h * 0.62, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(42,34,48,0.2)";
+        ctx.beginPath();
+        ctx.arc(w * 0.55, 0, h, -Math.PI / 2, Math.PI / 2);
+        ctx.lineTo(w * 0.45, h);
+        ctx.lineTo(w * 0.45, -h);
+        ctx.fill();
+        // Cuff, with ribbing.
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fillRect(-w, -h, w * 0.32, h * 2);
+        ctx.fillStyle = "rgba(42,34,48,0.18)";
+        for (const k of [0.1, 0.2]) ctx.fillRect(-w + w * k, -h, w * 0.035, h * 2);
         break;
+      }
       case "gnome":
         ctx.fillStyle = "#3b6ea8";
         ctx.beginPath();

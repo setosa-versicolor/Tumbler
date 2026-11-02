@@ -476,7 +476,8 @@ export function callbackCard(o: { onNext: () => void }): HTMLElement {
   );
 }
 
-export function giftEndCard(o: { onBoard: () => void }): HTMLElement {
+/** `onParty`: every star's been earned and the party hasn't happened yet, so that's next. */
+export function giftEndCard(o: { onBoard: () => void; onParty?: () => void }): HTMLElement {
   return h(
     "div",
     { class: "card intro end" },
@@ -484,7 +485,7 @@ export function giftEndCard(o: { onBoard: () => void }): HTMLElement {
     h("h1", {}, "Odd Jobs Ltd."),
     h("p", { class: "goal" }, "Now also doing time travel. (Legally a company.)"),
     h("p", { class: "controls" }, "You found the secret ending. Gerald would be proud. Gerald is never told about this."),
-    h("button", { class: "primary", click: o.onBoard }, "Job Board"),
+    o.onParty ? h("button", { class: "primary", click: o.onParty }, "🎉 You're invited…") : h("button", { class: "primary", click: o.onBoard }, "Job Board"),
   );
 }
 

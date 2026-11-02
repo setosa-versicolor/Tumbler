@@ -367,7 +367,16 @@ export class App {
           this.load(theGift);
           this.mode = { kind: "card" };
           this.dom.overlay.replaceChildren(
-            callbackCard({ onNext: () => this.dom.overlay.replaceChildren(giftEndCard({ onBoard: () => this.showBoard() })) }),
+            callbackCard({
+              onNext: () =>
+                this.dom.overlay.replaceChildren(
+                  giftEndCard({
+                    onBoard: () => this.showBoard(),
+                    // If that was the last of the stars too: home, call Mom, then the party.
+                    onParty: allFiveStars(this.save) && !this.save.seen.party ? () => this.startParty() : undefined,
+                  }),
+                ),
+            }),
           );
         }),
       400,

@@ -45,7 +45,7 @@ export function titleCard(o: { touch: boolean; onStart: () => void }): HTMLEleme
     h(
       "p",
       { class: "controls" },
-      o.touch ? "🔊 Sound on · Best played sideways · Your progress saves on this phone." : "🔊 Sound on · Your progress saves in this browser.",
+      o.touch ? "🔊 Sound on · Your progress saves on this phone." : "🔊 Sound on · Your progress saves in this browser.",
     ),
   );
 }

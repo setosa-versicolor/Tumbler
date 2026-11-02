@@ -134,6 +134,7 @@ export class App {
   // ------------------------------------------------------------ flow ---
 
   private load(level: Level) {
+    document.body.classList.remove("titling");
     this.trail = [];
     const twist = this.overtime && !level.sandbox ? twistFor(level.id) : null;
     const old = this.game;

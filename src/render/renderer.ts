@@ -134,10 +134,14 @@ export class Renderer {
     this.ctx = canvas.getContext("2d")!;
   }
 
+  /** The canvas's on-screen size when the drawing buffer was last fitted to it. */
+  private fitted = { w: 0, h: 0, dpr: 0 };
+
   resize() {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = this.canvas.clientWidth;
     const h = this.canvas.clientHeight;
+    this.fitted = { w, h, dpr: this.dpr };
     this.canvas.width = Math.round(w * this.dpr);
     this.canvas.height = Math.round(h * this.dpr);
     this.camera.resize(w, h);
@@ -317,6 +321,12 @@ export class Renderer {
   // --------------------------------------------------------------- frame ---
 
   draw(game: Game, dt: number) {
+    // Keep the drawing buffer the same shape as the canvas on screen. A phone
+    // turning sideways (or Safari's toolbars sliding away) changes the canvas
+    // without always sending a resize event in time, and a stale buffer gets
+    // stretched to fit: everything squashed.
+    const f = this.fitted;
+    if (this.canvas.clientWidth !== f.w || this.canvas.clientHeight !== f.h || Math.min(window.devicePixelRatio || 1, 2) !== f.dpr) this.resize();
     const { ctx, camera: cam } = this;
     this.time += dt;
     const sh = cam.offset;

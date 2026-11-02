@@ -13,7 +13,7 @@ import { SCRIPTS } from "../story/scripts";
 import { CHAPTERS, allFiveStars, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
-import { boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, partyEndCard, quantumCard, resultsCard } from "../ui/screens";
+import { h, titleCard, boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, partyEndCard, quantumCard, resultsCard } from "../ui/screens";
 import { theGift } from "../levels/secret/theGift";
 import { officeParty } from "../levels/secret/officeParty";
 import { yeOldeJob } from "../levels/secret/yeOldeJob";
@@ -68,6 +68,10 @@ export class App {
   readonly input: Input;
   game!: Game;
   mode: Mode = { kind: "card" };
+  /** The title page has been shown this session. */
+  private titled = false;
+  /** The two-thumb guide (first Ding Dong, on a phone): which thumbs have been used. */
+  private guide = { el: null as HTMLElement | null, move: false, reach: false, done: false };
   save: SaveData;
   private acc = 0;
   /** The last couple of seconds of motion, for the error log if the physics blows up. */
@@ -103,6 +107,18 @@ export class App {
 
   /** Pick up where the player left off. */
   start() {
+    // Brand new: a title page first, so nothing starts until they're ready.
+    const first = CHAPTERS[0];
+    if (first.intro && !this.save.seen[first.intro] && !this.titled) {
+      this.titled = true;
+      this.load(first.levels[0]);
+      this.mode = { kind: "card" };
+      document.body.classList.add("titling");
+      this.dom.overlay.replaceChildren(
+        titleCard({ touch: this.input.touch, onStart: () => (sfx.click(), document.body.classList.remove("titling"), this.start()) }),
+      );
+      return;
+    }
     for (const ch of CHAPTERS) {
       if (ch.comingSoon) break;
       if (ch.intro && !this.save.seen[ch.intro]) return this.playCutscene(ch.intro, () => this.startLevel(ch.levels[0]));
@@ -765,8 +781,10 @@ export class App {
     skip.hidden = !cut;
     menu.hidden = cut;
     const firstTime = !this.save.jobs["ding-dong"];
-    hint.textContent =
-      (m.kind === "play" && firstTime) || m.kind === "sandbox"
+    const guiding = this.touchGuide(m.kind === "play" && firstTime && g.level.id === "ding-dong" && this.input.touch);
+    hint.textContent = guiding
+      ? ""
+      : (m.kind === "play" && firstTime) || m.kind === "sandbox"
         ? this.input.touch
           ? "Left thumb: run, flick up to jump, pull down to duck · Right thumb: drag to reach, hold to grab"
           : "A/D run · W jump · S duck · Mouse points hands · Hold left/right click to grab · R restart"
@@ -775,6 +793,43 @@ export class App {
           : m.kind === "play" && this.input.touch && window.innerHeight > window.innerWidth
             ? "↻ Turn your phone sideways for a bigger view"
             : "";
+  }
+
+  /**
+   * On a phone, the first time through Ding Dong: the screen split in two,
+   * left thumb to move, right thumb for the hands. Each half ticks off once
+   * used; when both have been, it fades away. Returns whether it's showing.
+   */
+  private touchGuide(wanted: boolean): boolean {
+    const gd = this.guide;
+    if (!gd.el) {
+      const half = (side: "move" | "hands", icon: string, label: string, how: string) =>
+        h("div", { class: `half ${side}` }, h("div", { class: "thumb" }, icon), h("div", { class: "label" }, label), h("div", { class: "how" }, how));
+      gd.el = h(
+        "div",
+        { class: "touch-guide", hidden: "" },
+        half("move", "◀ ▶", "Move", "Slide to run · flick up to jump · pull down to duck"),
+        half("hands", "✋", "Hands", "Drag to reach · hold still to grab"),
+      );
+      // Just over the game, under the top bar and buttons.
+      this.dom.canvas.after(gd.el);
+    }
+    const show = wanted && !gd.done;
+    if (show) {
+      const { move, reach } = this.input.sticks();
+      if (move) gd.move = true;
+      if (reach) gd.reach = true;
+      gd.el.querySelector(".move")!.classList.toggle("used", gd.move);
+      gd.el.querySelector(".hands")!.classList.toggle("used", gd.reach);
+      if (gd.move && gd.reach) {
+        gd.done = true;
+        gd.el.classList.add("leaving");
+        setTimeout(() => (gd.el!.hidden = true), 1200);
+        return true;
+      }
+    }
+    if (!gd.el.classList.contains("leaving")) gd.el.hidden = !show;
+    return show || gd.el.classList.contains("leaving") && !gd.el.hidden;
   }
 
   private drawSticks() {

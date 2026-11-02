@@ -29,6 +29,27 @@ const starRow5 = (regular: number, bonus: number, cls = "stars") =>
 
 const fmt = (s: number) => `${s.toFixed(1)}s`;
 
+/** The very first thing a new player sees: what this is, and a button to begin when they're ready. */
+export function titleCard(o: { touch: boolean; onStart: () => void }): HTMLElement {
+  return h(
+    "div",
+    { class: "card title" },
+    h("img", { class: "title-icon", src: "icon.svg", alt: "" }),
+    h("h1", {}, "Tumbler"),
+    h(
+      "p",
+      { class: "pitch" },
+      "You're Stanley, the newest temp at Odd Jobs Ltd. The jobs are simple. Your body is not on board.",
+    ),
+    h("button", { class: "primary", click: o.onStart }, "Start ▸"),
+    h(
+      "p",
+      { class: "controls" },
+      o.touch ? "🔊 Sound on · Best played sideways · Your progress saves on this phone." : "🔊 Sound on · Your progress saves in this browser.",
+    ),
+  );
+}
+
 export function introCard(o: {
   kicker: string;
   level: Level;

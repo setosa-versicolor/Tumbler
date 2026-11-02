@@ -634,3 +634,49 @@ button.primary.danger { background: #c0392b; box-shadow: 0 4px 0 #8e2a1f; min-wi
   .gift .chat.call .msg, .gift button.primary { animation: none; opacity: 1; }
 }
 .gift .msg.me .who { color: rgba(255, 255, 255, 0.85); }
+
+/* ------------------------------------------------------- title page --- */
+
+.card.title { text-align: center; width: min(400px, 100%); }
+.card.title .title-icon { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); }
+.card.title h1 { margin: 10px 0 6px; font-size: 38px; letter-spacing: -1px; }
+.card.title .pitch { margin: 0 0 16px; font-size: 16px; line-height: 1.45; color: #4a3f52; }
+@media (max-height: 460px) {
+  .card.title .title-icon { width: 56px; height: 56px; border-radius: 14px; }
+  .card.title h1 { margin: 4px 0; font-size: 30px; }
+  .card.title .pitch { margin-bottom: 10px; font-size: 15px; }
+}
+
+/* ------------------------------------------- two-thumb guide (phone) --- */
+
+.touch-guide {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+  transition: opacity 1s;
+}
+.touch-guide[hidden] { display: none; }
+.touch-guide.leaving { opacity: 0; }
+.touch-guide .half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 70px 16px 40px;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  transition: background 0.4s;
+}
+.touch-guide .move { background: rgba(55, 165, 156, 0.28); border-right: 2px dashed rgba(255, 255, 255, 0.7); }
+.touch-guide .hands { background: rgba(240, 138, 60, 0.26); }
+.touch-guide .thumb { font-size: 40px; font-weight: 900; letter-spacing: 6px; }
+body.titling #topbar { visibility: hidden; }
+.touch-guide .label { font-size: 26px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+.touch-guide .how { max-width: 240px; font-size: 15px; font-weight: 700; line-height: 1.35; }
+.touch-guide .used { background: rgba(255, 255, 255, 0.06); }
+.touch-guide .used .thumb, .touch-guide .used .how { opacity: 0.35; }
+.touch-guide .used .label::after { content: " ✓"; }

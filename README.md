@@ -16,6 +16,7 @@ A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body
 - **Something breakable in the way** in every job (a planter, a vase, a lamp). Knock it over, stand on it, or carefully carry it aside: it breaks regardless, and Gerald bills it to your mother.
 - **Stars** for speed, bonus tags (No Falls, Speed Demon, Clumsy Professional, Collateral Damage) and a memo from the boss on every score card.
 - **Job board** (☰) with your stars, unlocked jobs, cutscene rewatch and the **Day Off** sandbox (the original test room).
+- **Day Off** has a trampoline, a high dive and a line of trapezes, the last one a big swinger. There's a window high up the far wall. The sign asks you not to swing into it.
 - **Restart** (↺ or R) puts you straight back into the job.
 - **Progress saves in your browser** (stars, best times, cutscenes watched), and the game reopens on your next job.
 

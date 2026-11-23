@@ -52,6 +52,8 @@ export class Stanley {
   private tripCooldown = 0;
   /** 0..1: how flattened Stanley currently is (cannonballs). Drawn, not simulated. */
   squash = 0;
+  /** Sent flying on purpose (a springboard, say): going down doesn't count as a fall. Cleared once he's back up. */
+  stunt = false;
 
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);

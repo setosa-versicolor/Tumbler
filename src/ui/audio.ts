@@ -118,6 +118,43 @@ export const sfx = {
     tone(520, 160, 0.18, "square", 0.08);
     burst(0.12, 300, 0.4, 120);
   },
+  /** A pane of glass going: a bright crash, a thump, and a long shower of tinkles. */
+  glass: (big: boolean) => {
+    burst(big ? 0.5 : 0.35, 5200, big ? 0.7 : 0.5, 1800, 0.5);
+    burst(0.18, 260, big ? 0.6 : 0.35, 90);
+    const n = big ? 12 : 7;
+    for (let i = 0; i < n; i++) {
+      const f = 2600 + Math.random() * 3400;
+      tone(f, f * 0.92, 0.1 + Math.random() * 0.08, "sine", 0.045, 0.04 + i * 0.045 + Math.random() * 0.05);
+    }
+  },
+  /** Boards giving way: a woody crack and a clatter. */
+  splinter: () => {
+    burst(0.12, 900, 0.7, 300, 1.2);
+    burst(0.3, 220, 0.5, 90, 0.7);
+    for (let i = 0; i < 4; i++) tone(320 + Math.random() * 200, 160, 0.06, "square", 0.05, 0.08 + i * 0.06);
+  },
+  /** Glass that isn't quite ready to go. */
+  crack: () => {
+    burst(0.06, 4200, 0.4, 2600, 1.5);
+    tone(3200, 2400, 0.05, "sine", 0.05);
+  },
+  /** A launch pad going off: spring and whoosh. */
+  launch: () => {
+    tone(180, 720, 0.25, "triangle", 0.16);
+    burst(0.35, 500, 0.4, 2200, 0.7);
+  },
+  alarm: () => {
+    for (let i = 0; i < 4; i++) tone(i % 2 ? 660 : 880, i % 2 ? 660 : 880, 0.16, "square", 0.05, i * 0.17);
+  },
+  /** A crane winding something up. */
+  winch: () => {
+    for (let i = 0; i < 10; i++) tone(140 + i * 8, 120 + i * 8, 0.07, "sawtooth", 0.03, i * 0.09);
+  },
+  plop: () => {
+    tone(320, 140, 0.1, "triangle", 0.1);
+    burst(0.08, 300, 0.2, 150);
+  },
   rumble: () => burst(0.9, 90, 0.35, 60, 0.4),
   poop: () => tone(180, 90, 0.12, "sine", 0.12),
   gust: () => burst(1.6, 500, 0.25, 900, 0.3),

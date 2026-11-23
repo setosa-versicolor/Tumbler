@@ -3,6 +3,7 @@ import { measureStack } from "./stack";
 import type { GameEvent } from "../sim/game";
 import { RAPIER } from "../physics/world";
 import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
+import { Panes } from "./smash";
 
 const W = 32;
 /** The ceiling (raised for the trapezes). */
@@ -25,7 +26,19 @@ export const LIFT_BUTTON = { x: PIT.x0 + 0.16, y: 1.45, r: 0.15 };
  * on its own (neighbours in opposite directions, so at the end of a swing the
  * next bar comes close). Hang on, let go at the right moment, catch the next.
  */
-export const TRAPEZE = { pivots: [24.8, 21.5, 18.2, 14.9, 11.6], top: H, rope: 5.2, swing: 0.31, period: 3.8, hw: 0.35 };
+export const TRAPEZE = { pivots: [24.8, 21.5, 18.2, 14.9, 11.6, 8.3], top: H, rope: 5.2, swing: 0.31, period: 3.8, hw: 0.35 };
+/**
+ * ...and at the end of the line, a bigger one: a longer rope and a much
+ * bigger swing, out over the room toward the window up the far wall. Its
+ * swing meets the last ordinary bar's at the same height, so it's caught
+ * the same way.
+ */
+export const BIG_TRAPEZE = { pivot: 3.65, rope: 5.71, swing: 0.522 };
+/**
+ * A big window high up the left-hand wall. What's behind it? Nobody's
+ * said. Let go of the big trapeze at the right moment and find out.
+ */
+export const WINDOW = { y0: 3.45, y1: 7.4 };
 /** How fast a tucked Stanley flips (rad/s). */
 const FLIP_SPEED = 11;
 /** Up in the air with his middle above this (off the high dive, a trapeze, a big bounce), the stick flips him. */
@@ -89,7 +102,19 @@ export const dayOff: Level = {
   theme: INDOOR,
   sandbox: true,
   build(kit) {
-    kit.enclosure(W, H);
+    // The room, with a gap in the left-hand wall for the window.
+    {
+      const T = 0.5;
+      kit.solid(W / 2, -T, W / 2 + T * 2, T, "floor");
+      kit.solid(W + T, H / 2 + 2, T, H / 2 + 2 + T, "wall");
+      kit.solid(W / 2, H + T, W / 2 + T * 2, T, "wall");
+      kit.solid(-T, (WINDOW.y0 - T) / 2, T, (WINDOW.y0 + T) / 2, "wall");
+      kit.solid(-T, (WINDOW.y1 + H + 4 + T) / 2, T, (H + 4 + T - WINDOW.y1) / 2, "wall");
+    }
+    const panes = new Panes(kit);
+    // Stanley only has to hit it (he's come off a trapeze: he's not hitting it gently).
+    const window = panes.add(-0.25, (WINDOW.y0 + WINDOW.y1) / 2, 0.25, (WINDOW.y1 - WINDOW.y0) / 2, { bodySpeed: 0.8, propSpeed: 5 });
+    let warped = false;
     kit.solid((LEDGE.x0 + LEDGE.x1) / 2, LEDGE.y, (LEDGE.x1 - LEDGE.x0) / 2, LEDGE.thick / 2, "ledge");
     kit.solid((BASKET.x0 + BASKET.x1) / 2, BASKET.y, (BASKET.x1 - BASKET.x0) / 2, 0.05, "basket");
     kit.solid(BASKET.x1 - 0.05, BASKET.y + BASKET.lip / 2, 0.05, BASKET.lip / 2, "basket");
@@ -146,13 +171,17 @@ export const dayOff: Level = {
     }
     // The trapezes: bars moved along their swing (so they keep time), which
     // carry Stanley like any handhold while he's hanging on.
-    const bars = TRAPEZE.pivots.map((px, i) => {
-      const body = kit.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(px, TRAPEZE.top - TRAPEZE.rope));
+    const rigs = [
+      ...TRAPEZE.pivots.map((px) => ({ px, rope: TRAPEZE.rope, swing: TRAPEZE.swing, big: false })),
+      { px: BIG_TRAPEZE.pivot, rope: BIG_TRAPEZE.rope, swing: BIG_TRAPEZE.swing, big: true },
+    ];
+    const bars = rigs.map((t, i) => {
+      const body = kit.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(t.px, TRAPEZE.top - t.rope));
       kit.world.createCollider(RAPIER.ColliderDesc.cuboid(TRAPEZE.hw, 0.035).setFriction(1), body);
       body.userData = { handhold: true };
-      return { px, body, phase: i % 2 ? Math.PI : 0 };
+      return { ...t, body, phase: i % 2 ? Math.PI : 0 };
     });
-    const swingAt = (t: number, phase: number) => TRAPEZE.swing * Math.sin((2 * Math.PI * t) / TRAPEZE.period + phase);
+    const swingAt = (t: number, phase: number, swing: number) => swing * Math.sin((2 * Math.PI * t) / TRAPEZE.period + phase);
     let catches = 0;
     let holding: unknown = null;
     let bestDive = 0;
@@ -192,8 +221,8 @@ export const dayOff: Level = {
         }
         // The trapezes swing.
         for (const b of bars) {
-          const a = swingAt(game.time + dt, b.phase);
-          b.body.setNextKinematicTranslation({ x: b.px + Math.sin(a) * TRAPEZE.rope, y: TRAPEZE.top - Math.cos(a) * TRAPEZE.rope });
+          const a = swingAt(game.time + dt, b.phase, b.swing);
+          b.body.setNextKinematicTranslation({ x: b.px + Math.sin(a) * b.rope, y: TRAPEZE.top - Math.cos(a) * b.rope });
           b.body.setNextKinematicRotation(a);
         }
         const onBar = [st.grips.L.held, st.grips.R.held].find((h) => h && bars.some((b) => b.body === h)) ?? null;
@@ -253,6 +282,13 @@ export const dayOff: Level = {
         }
         wasHigh = high;
 
+        // The window: smash it, and through he goes.
+        boing.push(...panes.update(game, dt));
+        if (window.broken && !warped && [st.rig.head, st.rig.chest, st.rig.pelvis].some((b) => b.translation().x < -0.12 && b.translation().y > WINDOW.y0 - 0.2)) {
+          warped = true;
+          boing.push({ type: "warp", to: "smash-room" });
+        }
+
         const n = game.props.filter((p) => {
           const q = p.body.translation();
           return q.x > BASKET.x0 && q.x < BASKET.x1 && q.y > BASKET.y && q.y < BASKET.y + BASKET.lip + 0.3;
@@ -279,8 +315,22 @@ export const dayOff: Level = {
           const top = (s: number) => ({ x: b.px + s * TRAPEZE.hw * 0.8, y: TRAPEZE.top });
           r.line(top(-1), end(-1), 0.018, "#c9b8a0");
           r.line(top(1), end(1), 0.018, "#c9b8a0");
-          r.line(end(-1), end(1), 0.06, "#e85d5d");
+          r.line(end(-1), end(1), 0.06, b.big ? "#f2c94c" : "#e85d5d");
         }
+        // The window, up the left-hand wall: a frame, and whatever that warm light is behind it.
+        r.rect(-0.55, WINDOW.y0 - 0.12, 0.1, WINDOW.y1 + 0.12, "#7a5a40");
+        r.rect(-0.5, WINDOW.y0, 0.02, WINDOW.y1, window.broken ? "#2a2230" : "#f6c98a");
+        if (!window.broken) {
+          r.rect(-0.5, WINDOW.y0, 0.02, WINDOW.y1, "rgba(120,190,225,0.55)");
+          r.rect(-0.5, (WINDOW.y0 + WINDOW.y1) / 2 - 0.03, 0.02, (WINDOW.y0 + WINDOW.y1) / 2 + 0.03, "#7a5a40");
+        }
+        // Warm light spilling in through it, across the wall.
+        if (!window.broken) r.poly([{ x: 0, y: WINDOW.y1 }, { x: 0, y: WINDOW.y0 }, { x: 2.6, y: WINDOW.y0 - 1.6 }, { x: 3.6, y: WINDOW.y1 - 1.2 }], "rgba(255,226,150,0.16)");
+        panes.draw(r, game.time);
+        const sign = { x: 1.55, y: WINDOW.y0 + 0.75 };
+        r.rect(sign.x - 0.82, sign.y - 0.24, sign.x + 0.82, sign.y + 0.24, "rgba(255,255,255,0.85)");
+        r.text("PLEASE DO NOT SWING", { x: sign.x, y: sign.y + 0.08 }, 0.1, "#c0392b", "center", 800);
+        r.text("INTO THE WINDOW", { x: sign.x, y: sign.y - 0.09 }, 0.1, "#c0392b", "center", 800);
         // The knocked-through wall, the new end of the room.
         r.rect(OLD_W - 0.05, 2.3, OLD_W + 0.25, H, "rgba(42,34,48,0.08)");
         r.text("FUN ZONE (UNSUPERVISED)", { x: 22, y: 10.6 }, 0.22, "rgba(42,34,48,0.35)");

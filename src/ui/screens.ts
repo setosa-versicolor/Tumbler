@@ -145,6 +145,9 @@ export function boardCard(o: {
   save: SaveData;
   sandbox: Level;
   rewatch: { id: string; title: string }[];
+  /** Secret places found so far (and the stars there). */
+  secrets?: { level: Level; stars: number }[];
+  onSecret?: (level: Level) => void;
   onPlay: (level: Level) => void;
   onSandbox: () => void;
   onRewatch: (id: string) => void;
@@ -209,6 +212,15 @@ export function boardCard(o: {
         "div",
         { class: "jobs" },
         h("button", { class: "job", click: o.onSandbox }, h("span", { class: "job-icon" }, o.sandbox.icon), h("span", { class: "job-title" }, o.sandbox.title), h("span", { class: "job-new" }, "Free play")),
+        ...(o.secrets ?? []).map((s) =>
+          h(
+            "button",
+            { class: "job", click: () => o.onSecret?.(s.level) },
+            h("span", { class: "job-icon" }, s.level.icon),
+            h("span", { class: "job-title" }, s.level.title),
+            s.stars ? starRow(s.stars, "stars small") : h("span", { class: "job-new" }, "Secret"),
+          ),
+        ),
         ...o.rewatch.map((r) => h("button", { class: "job", click: () => o.onRewatch(r.id) }, h("span", { class: "job-icon" }, "🎬"), h("span", { class: "job-title" }, r.title), h("span", { class: "job-new" }, "Rewatch"))),
       ),
     ),

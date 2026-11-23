@@ -17,6 +17,7 @@ import { h, titleCard, boardCard, callbackCard, chapterCard, endCard, giftEndCar
 import { theGift } from "../levels/secret/theGift";
 import { officeParty } from "../levels/secret/officeParty";
 import { yeOldeJob } from "../levels/secret/yeOldeJob";
+import { smashRoom } from "../levels/secret/smashRoom";
 import { STAFF_CHEERS, STAFF_SPOTS } from "../levels/finale/executiveAction";
 import { sfx } from "../ui/audio";
 import { logError } from "./errorLog";
@@ -28,6 +29,10 @@ const FINALE = "executive-action";
 const CHEER_GAP = 2400;
 const TRIP_WORDS = ["Whoa!", "Wha—", "Oof!", "Hup—no!", "Yikes!"];
 const BREAK_WORDS = ["CRASH!", "Oops.", "Whoops!", "…Sorry.", "SMASH!", "Uh-oh."];
+/** Slow motion while Stanley goes through a pane himself (a different value from the job-done slow-mo, so neither cancels the other). */
+const SMASH_WARP = 0.32;
+const SMASH_WORDS = ["SMASH!", "KRSSSH!", "CRASH!", "SHATTER!", "KA-TINKLE!"];
+const THROUGH_WORDS = ["THROUGH!", "HEAD FIRST!", "NO REGRETS!", "WHEEE—", "CRASH!"];
 const BREAK_BILLS = [
   "Billed to your mother.",
   "Deducted from your pay, which is now negative.",
@@ -233,6 +238,7 @@ export class App {
       if (bonus === 0) tags.push(`★4 needs under ${level.par[0]}s`);
       else if (bonus === 1) tags.push("★5: break nothing");
     }
+    const smashed = this.game.progress.label;
     const { newBest } = overtime ? recordOvertime(this.save, level.id, bonus, time, stars) : recordJob(this.save, level.id, stars, time, tags);
     writeSave(this.save);
 
@@ -265,12 +271,17 @@ export class App {
           stars,
           time,
           newBest,
-          tags,
+          // In the Smash Room, the damage is the point: say how much (on the card, not in the save).
+          tags: level.id === smashRoom.id && smashed ? [`🔨 ${smashed}`, ...tags] : tags,
           memo:
             memos[Math.floor(Math.random() * memos.length)] +
-            (this.game.breaks > 0 ? ` Breakages: ${this.game.breaks}. ${BREAK_BILLS[Math.floor(Math.random() * BREAK_BILLS.length)]}` : ""),
+            (level.id === smashRoom.id
+              ? ""
+              : this.game.breaks > 0
+                ? ` Breakages: ${this.game.breaks}. ${BREAK_BILLS[Math.floor(Math.random() * BREAK_BILLS.length)]}`
+                : ""),
           nextLabel: label,
-          onRetry: () => this.startLevel(level, overtime),
+          onRetry: () => (level.id === smashRoom.id ? this.playSmashRoom() : this.startLevel(level, overtime)),
           onNext: next,
           overtime: overtime ? { regular: this.save.jobs[level.id]?.stars ?? 0, bonus } : undefined,
         }),
@@ -306,6 +317,22 @@ export class App {
     this.save.seen.party = true;
     writeSave(this.save);
     setTimeout(() => this.dom.overlay.replaceChildren(partyEndCard({ onBoard: () => this.showBoard() })), 1500);
+  }
+
+  /** Through the window in Day Off: there's a whole other room back there. */
+  private discover() {
+    if (this.mode.kind !== "sandbox") return;
+    const first = !this.save.seen[smashRoom.id];
+    this.save.seen[smashRoom.id] = true;
+    writeSave(this.save);
+    this.warp = 0.25;
+    this.renderer.camera.shake(12);
+    setTimeout(() => this.playSmashRoom(first ? "You found the Smash Room!" : "SMASH ROOM"), 650);
+  }
+
+  /** The Smash Room: straight in, through the window. */
+  playSmashRoom(title = "SMASH ROOM") {
+    this.playSecret(smashRoom, title);
   }
 
   /** Straight into one of the secret ending's scenes (no intro card, no score). */
@@ -384,6 +411,7 @@ export class App {
   }
 
   private nextAfter(level: Level): { next: () => void; label: string } {
+    if (level.id === smashRoom.id) return { next: () => this.startLevel(SANDBOX), label: "Back to Day Off ▸" };
     if (this.overtime) {
       const all = CHAPTERS.flatMap((c) => c.levels);
       const following = all[all.indexOf(level) + 1];
@@ -506,12 +534,15 @@ export class App {
       .map((s) => ({ id: s.id, title: s.title }));
     if (this.save.seen.gift) rewatch.push({ id: "gift", title: "The Gift" });
     if (allFiveStars(this.save)) rewatch.push({ id: "party", title: "The Office Party" });
+    const secrets = this.save.seen[smashRoom.id] ? [{ level: smashRoom, stars: this.save.jobs[smashRoom.id]?.stars ?? 0 }] : [];
     this.dom.overlay.replaceChildren(
       boardCard({
         chapters: CHAPTERS,
         save: this.save,
         sandbox: SANDBOX,
         rewatch,
+        secrets,
+        onSecret: () => this.playSmashRoom(),
         overtime: overtimeOpen(this.save.seen)
           ? {
               on: this.boardOvertime,
@@ -643,7 +674,7 @@ export class App {
 
   /** Straight back into a level after a reload (see main.ts). */
   resume(levelId: string, overtime: boolean) {
-    const level = CHAPTERS.flatMap((c) => c.levels).find((l) => l.id === levelId);
+    const level = [...CHAPTERS.flatMap((c) => c.levels), smashRoom].find((l) => l.id === levelId);
     if (!level) return this.start();
     this.overtime = overtime;
     this.load(level);
@@ -743,6 +774,11 @@ export class App {
           else if (ev.name === "rumble") sfx.rumble();
           else if (ev.name === "poop") sfx.poop();
           else if (ev.name === "gust") sfx.gust();
+          else if (ev.name === "crack") sfx.crack();
+          else if (ev.name === "launch") sfx.launch();
+          else if (ev.name === "alarm") sfx.alarm();
+          else if (ev.name === "winch") sfx.winch();
+          else if (ev.name === "plop") sfx.plop();
           break;
         case "trip":
           sfx.trip();
@@ -753,6 +789,26 @@ export class App {
           r.popup(BREAK_WORDS[Math.floor(Math.random() * BREAK_WORDS.length)], { x: ev.pos.x, y: ev.pos.y + 0.6 }, "#c0392b");
           r.camera.shake(7);
           r.dust(ev.pos, 1.2);
+          break;
+        case "smash": {
+          const words = ev.big ? THROUGH_WORDS : SMASH_WORDS;
+          if (ev.material === "wood") sfx.splinter();
+          else sfx.glass(ev.big);
+          r.popup(words[Math.floor(Math.random() * words.length)], { x: ev.pos.x, y: ev.pos.y + 0.7 }, ev.big ? "#f08a3c" : "#3b6ea8");
+          r.camera.shake(ev.big ? 12 : 8);
+          r.dust(ev.pos, 1.5);
+          // Going through it himself: a moment of slow motion, to enjoy it.
+          if (ev.big && (this.mode.kind === "play" || this.mode.kind === "sandbox")) {
+            this.warp = SMASH_WARP;
+            r.camera.punch = Math.max(r.camera.punch, 0.06);
+            setTimeout(() => {
+              if (this.warp === SMASH_WARP) this.warp = 1;
+            }, 420);
+          }
+          break;
+        }
+        case "warp":
+          if (ev.to === smashRoom.id) this.discover();
           break;
         case "complete":
           this.complete();

@@ -22,6 +22,10 @@ export type GameEvent =
   | { type: "ouch"; text: string; pos: Vec }
   /** A sound cue with no other effect (a cannon firing, a rumble). */
   | { type: "sfx"; name: string; pos?: Vec }
+  /** A pane of glass (or a boarded-up wall) smashed. `big`: Stanley went through it himself. */
+  | { type: "smash"; pos: Vec; material: string; big: boolean }
+  /** Off to another level entirely (through a window, say). */
+  | { type: "warp"; to: string }
   | { type: "complete" };
 
 /** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
@@ -167,7 +171,8 @@ export class Game {
     for (const b of this.buttons) if (b.update(DT)) events.push({ type: "press" });
 
     const posture = this.stanley.balance.posture;
-    if (posture === "down" && this.lastPosture !== "down") {
+    if (posture === "up") this.stanley.stunt = false;
+    if (posture === "down" && this.lastPosture !== "down" && !this.stanley.stunt) {
       this.falls++;
       events.push({ type: "fall", pos: this.stanley.rig.head.translation() });
     }

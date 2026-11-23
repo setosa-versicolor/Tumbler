@@ -138,6 +138,11 @@ export const MEMOS: Record<string, string[]> = {
     "MEMO: A statue is being commissioned. Of the file.",
     "MEMO: From the desk of the CEO: …that's you now. Well done.",
   ],
+  "smash-room": [
+    "MEMO: Everything in the Smash Room was already paid for. It's been paid for again. By you. Somehow.",
+    "MEMO: Facilities would like to know how you got in there. Facilities would also like a new window.",
+    "MEMO: That is the most productive I have ever seen you. Please don't tell anyone where you were.",
+  ],
   "pizza-up": [
     "MEMO: Pizza was 'technically' delivered. Great hustle!",
     "MEMO: Reminder that the stairs are not a shortcut.",

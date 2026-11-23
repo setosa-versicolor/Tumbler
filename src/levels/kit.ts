@@ -87,7 +87,9 @@ export type PropKind =
   | "parcel"
   | "paper"
   | "dummy"
-  | "file";
+  | "file"
+  | "brick"
+  | "wreckingball";
 
 export interface Prop {
   kind: PropKind;

@@ -1173,6 +1173,37 @@ export class Renderer {
           ctx.fill();
         }
         break;
+      case "wreckingball":
+        // Heavy iron, a shine on top, the shackle the chain hooks into.
+        ctx.fillStyle = "#5f6670";
+        ctx.fillRect(-w * 0.14, -w * 1.22, w * 0.28, w * 0.3);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        ctx.beginPath();
+        ctx.arc(-w * 0.3, -w * 0.35, w * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.3)";
+        ctx.lineWidth = Math.max(1.5, w * 0.06);
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 0.75, 0.4, 2.2);
+        ctx.stroke();
+        break;
+      case "brick":
+        // Red brick, a bit of mortar, three holes.
+        body(Math.min(w, h) * 0.12);
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(-w, -h, w * 2, h * 0.35);
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        for (const dx of [-0.5, 0, 0.5]) {
+          ctx.beginPath();
+          ctx.arc(dx * w, 0, Math.min(w, h) * 0.22, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
       case "tray":
         body(h);
         // Raised lips at each end.

@@ -4,6 +4,7 @@ import type { GameEvent } from "../sim/game";
 import { RAPIER } from "../physics/world";
 import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 import { Panes } from "./smash";
+import { wrapAngle } from "../sim/math";
 
 const W = 32;
 /** The ceiling (raised for the trapezes). */
@@ -39,6 +40,8 @@ export const BIG_TRAPEZE = { pivot: 3.65, rope: 5.71, swing: 0.522 };
  * said. Let go of the big trapeze at the right moment and find out.
  */
 export const WINDOW = { y0: 3.45, y1: 7.4 };
+/** How fast he rolls back upright when he reaches to grab mid-dive (rad/s). */
+const RIGHTING_SPEED = 9;
 /** How fast a tucked Stanley flips (rad/s). */
 const FLIP_SPEED = 11;
 /** Up in the air with his middle above this (off the high dive, a trapeze, a big bounce), the stick flips him. */
@@ -263,11 +266,17 @@ export const dayOff: Level = {
         }
         if (diving) {
           const move = game.intent.move;
-          if (Math.abs(move) > 0.2) spin(st.rig.bodies, -Math.sign(move) * FLIP_SPEED);
+          // Hands out to grab (grip held): no flipping. He rolls back upright
+          // instead, hands up, ready to catch the next bar. Let go of grip to flip.
+          const reaching = game.intent.grip.L || game.intent.grip.R;
+          if (reaching) {
+            const tilt = wrapAngle(st.rig.chest.rotation());
+            if (Math.abs(tilt) > 0.05) spin(st.rig.bodies, Math.max(-RIGHTING_SPEED, Math.min(RIGHTING_SPEED, -tilt * 8)));
+          } else if (Math.abs(move) > 0.2) spin(st.rig.bodies, -Math.sign(move) * FLIP_SPEED);
           lift = Math.max(0, lift - 9.81 * dt);
           const extra = riseOf(st.rig.bodies) - lift - 0.5;
           if (extra > 0) for (const b of st.rig.bodies) b.setLinvel({ x: b.linvel().x, y: b.linvel().y - extra }, true);
-          spun += Math.abs(st.rig.chest.angvel()) * dt;
+          if (!reaching) spun += Math.abs(st.rig.chest.angvel()) * dt;
           if (spun > (flips + 1) * Math.PI * 2 - 0.3) {
             flips++;
             boing.push({ type: "score", text: FLIP_CALLS[Math.min(flips, FLIP_CALLS.length) - 1], pos: { x: pel.x, y: pel.y + 0.9 } });

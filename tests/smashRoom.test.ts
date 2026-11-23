@@ -262,6 +262,18 @@ describe("Day Off's window", () => {
     expect(ev.some((e) => e.type === "warp" && e.to === "smash-room")).toBe(true);
   });
 
+  it("mid-air, holding grip stops the flipping and rolls him upright to catch the next bar", () => {
+    const g = play(dayOff);
+    run(g, 0.5);
+    g.stanley.teleport({ x: 12, y: 6 });
+    // Flipping (no grip)...
+    run(g, 0.25, { move: -1 });
+    // ...then reach to grab: no more flips, and he comes upright.
+    const ev = run(g, 0.4, { move: -1, grip: { L: true, R: true } });
+    expect(ev.some((e) => e.type === "score" && /Flip|Double/.test(e.text))).toBe(false);
+    expect(Math.abs(Math.atan2(Math.sin(g.stanley.rig.chest.rotation()), Math.cos(g.stanley.rig.chest.rotation())))).toBeLessThan(0.4);
+  });
+
   it("walking about in Day Off never finds it by accident", () => {
     const g = play(dayOff);
     const ev = run(g, 6, { move: -1 });

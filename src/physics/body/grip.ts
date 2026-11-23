@@ -19,6 +19,9 @@ const HELD_TOOL_GROUPS = groups(G_PROP, 0);
 /** How strongly a dangling thing's swing is damped while it's held. */
 const DANGLE_DAMPING = 10;
 
+/** How far (m) a handed-over grip slides toward its new spot each step. */
+const HANDOVER_SLIDE = 0.018;
+
 /** How far a grip can be yanked before it slips. */
 const SLIP_DISTANCE = 0.22;
 
@@ -92,8 +95,12 @@ export class Grip {
       return;
     }
     if (this.joint && this.slide) {
-      this.slide = { x: this.slide.x * 0.8, y: this.slide.y * 0.8 };
+      // (A hand-over slides at a steady pace: snapping 80cm in a few steps would yank Stanley off his feet, and off the bar.)
+      const len = Math.hypot(this.slide.x, this.slide.y);
+      const k = this.steady ? Math.max(0, len - HANDOVER_SLIDE) / len : 0.8;
+      this.slide = { x: this.slide.x * k, y: this.slide.y * k };
       if (Math.hypot(this.slide.x, this.slide.y) < 0.005) this.slide = null;
+      if (!this.slide) this.steady = false;
       this.joint.setAnchor1(this.slide ?? { x: 0, y: 0 });
       return;
     }
@@ -165,7 +172,20 @@ export class Grip {
     return null;
   }
 
-  private attach(world: World, col: Collider, target: RigidBody, other: Grip) {
+  /**
+   * Let go of whatever's held and take hold of `target` at the world point
+   * `at` instead, the hand sliding over to it over a few steps (a trapeze
+   * handing Stanley on to the next one).
+   */
+  regrab(world: World, col: Collider, target: RigidBody, other: Grip, at: Vec) {
+    this.release(world, 1, other);
+    this.attach(world, col, target, other, at);
+    this.steady = true;
+  }
+  /** Sliding over at a steady pace (a hand-over), not snapping. */
+  private steady = false;
+
+  private attach(world: World, col: Collider, target: RigidBody, other: Grip, at?: Vec) {
     const hand = this.hand.translation();
     // Trays balance on one hand, and dangly things (pins) hang from one hand.
     // A second hand would just tip or wedge them.
@@ -173,7 +193,7 @@ export class Grip {
     const dangly = (target.userData as { dangle?: boolean } | undefined)?.dangle;
     const tool = (target.userData as { tool?: boolean } | undefined)?.tool;
     if ((centre || dangly || tool) && other.held === target) return;
-    let h = (!target.isDynamic() && this.ledgeCorner(col, hand)) || hand;
+    let h = at ?? ((!target.isDynamic() && this.ledgeCorner(col, hand)) || hand);
     if (dangly) {
       // A dangly thing (a pin) is held by the tip of its top end, wherever it
       // was grabbed, so it always hangs the right way up. The grip slides there.

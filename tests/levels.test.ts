@@ -1174,12 +1174,13 @@ describe("Day Off", () => {
     // Hanging on, he's carried along the swing.
     let lo = Infinity;
     let hi = -Infinity;
-    run(g, DAY_OFF.TRAPEZE.period, () => {
+    // (Until he's swung a good way: hang on any longer and he's handed on to the next bar.)
+    for (let i = 0; i < 120 * DAY_OFF.TRAPEZE.period && hi - lo < 1.5; i++) {
       const x = g.stanley.rig.pelvis.translation().x;
       lo = Math.min(lo, x);
       hi = Math.max(hi, x);
-      return { reach: { x: g.stanley.shoulder.x, y: g.stanley.shoulder.y + 1 }, grip: hold };
-    });
+      g.step({ ...IDLE_INTENT, reach: { x: g.stanley.shoulder.x, y: g.stanley.shoulder.y + 1 }, grip: hold });
+    }
     expect(hi - lo).toBeGreaterThan(1.5);
     // Let go up there, and the stick flips him on the way down.
     const calls: string[] = [];

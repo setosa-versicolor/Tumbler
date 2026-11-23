@@ -54,6 +54,8 @@ export class Stanley {
   squash = 0;
   /** Sent flying on purpose (a springboard, say): going down doesn't count as a fall. Cleared once he's back up. */
   stunt = false;
+  /** Seconds his grip holds even if he's knocked about (just handed from one trapeze to the next). */
+  holdFast = 0;
 
   constructor(private world: World, origin: Vec) {
     this.rig = buildRig(world, origin);
@@ -192,8 +194,11 @@ export class Stanley {
 
     // Grips
     const chestY = this.rig.pelvis.translation().y + 0.35;
-    this.grips.L.update(this.world, intent.grip.L && limp > 0.2, this.grips.R, t.throwAssist, chestY);
-    this.grips.R.update(this.world, intent.grip.R && limp > 0.2, this.grips.L, t.throwAssist, chestY);
+    // (Knocked down, his hands give way; unless he's just been handed on to something and is holding fast.)
+    this.holdFast = Math.max(0, this.holdFast - dt);
+    const firm = limp > 0.2 || this.holdFast > 0;
+    this.grips.L.update(this.world, intent.grip.L && firm, this.grips.R, t.throwAssist, chestY);
+    this.grips.R.update(this.world, intent.grip.R && firm, this.grips.L, t.throwAssist, chestY);
     this.climb(intent, t, dt);
   }
 

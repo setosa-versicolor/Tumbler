@@ -8,6 +8,7 @@ import { smashRoom } from "../src/levels/secret/smashRoom";
 import { dayOff } from "../src/levels/dayOff";
 import * as DAY_OFF from "../src/levels/dayOff";
 import type { Prop } from "../src/levels/kit";
+import type { RigidBody } from "@dimforge/rapier2d-deterministic-compat";
 
 beforeAll(() => initPhysics());
 
@@ -272,6 +273,33 @@ describe("Day Off's window", () => {
     const ev = run(g, 0.4, { move: -1, grip: { L: true, R: true } });
     expect(ev.some((e) => e.type === "score" && /Flip|Double/.test(e.text))).toBe(false);
     expect(Math.abs(Math.atan2(Math.sin(g.stanley.rig.chest.rotation()), Math.cos(g.stanley.rig.chest.rotation())))).toBeLessThan(0.4);
+  });
+
+  it("hanging on, he's handed from each trapeze to the next as they swing together, all the way down the line", () => {
+    const g = play(dayOff);
+    run(g, 0.5);
+    const bars: RigidBody[] = [];
+    g.world.forEachRigidBody((b) => {
+      if ((b.userData as { handhold?: boolean } | undefined)?.handhold) bars.push(b);
+    });
+    bars.sort((a, b) => b.translation().x - a.translation().x);
+    const hold = { L: true, R: true };
+    // Hanging from the first bar.
+    const on = () => bars.indexOf((g.stanley.grips.R.held ?? g.stanley.grips.L.held) as RigidBody);
+    for (let k = 0; k < 60 && on() !== 0; k++) {
+      const bp = bars[0].translation();
+      g.stanley.teleport({ x: bp.x, y: bp.y - 2.0 });
+      g.stanley.holdFast = 0.3;
+      for (const b of g.stanley.rig.bodies) b.setLinvel(bars[0].linvel(), true);
+      run(g, 1 / 60, { reach: bars[0].translation(), grip: hold });
+    }
+    run(g, 0.2, { reach: bars[0].translation(), grip: hold });
+    expect(on()).toBe(0);
+    const hang = () => ({ reach: { x: g.stanley.shoulder.x, y: g.stanley.shoulder.y + 1 }, grip: hold });
+    run(g, DAY_OFF.TRAPEZE.period * 1.1, hang);
+    expect(on()).toBeGreaterThanOrEqual(2);
+    run(g, DAY_OFF.TRAPEZE.period * 2.2, hang);
+    expect(on()).toBe(bars.length - 1);
   });
 
   it("walking about in Day Off never finds it by accident", () => {

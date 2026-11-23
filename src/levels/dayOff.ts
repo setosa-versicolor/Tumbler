@@ -40,6 +40,8 @@ export const BIG_TRAPEZE = { pivot: 3.65, rope: 5.71, swing: 0.522 };
  * said. Let go of the big trapeze at the right moment and find out.
  */
 export const WINDOW = { y0: 3.45, y1: 7.4 };
+/** Bars this close (end to end, metres) and Stanley's handed from one to the next. */
+const HANDOVER_GAP = 0.3;
 /** How fast he rolls back upright when he reaches to grab mid-dive (rad/s). */
 const RIGHTING_SPEED = 9;
 /** How fast a tucked Stanley flips (rad/s). */
@@ -227,6 +229,27 @@ export const dayOff: Level = {
           const a = swingAt(game.time + dt, b.phase, b.swing);
           b.body.setNextKinematicTranslation({ x: b.px + Math.sin(a) * b.rope, y: TRAPEZE.top - Math.cos(a) * b.rope });
           b.body.setNextKinematicRotation(a);
+        }
+        // Hanging on one bar as the next one along (to the left) swings in alongside it:
+        // he's handed over, both hands onto the new bar.
+        {
+          const i = bars.findIndex((b) => b.body === st.grips.L.held || b.body === st.grips.R.held);
+          const next = bars[i + 1];
+          if (i >= 0 && next) {
+            const a = bars[i].body.translation();
+            const n = next.body.translation();
+            const gap = a.x - TRAPEZE.hw - (n.x + TRAPEZE.hw);
+            if (gap < HANDOVER_GAP && Math.abs(a.y - n.y) < 0.35) {
+              const r = next.body.rotation();
+              const along = (d: number) => ({ x: n.x + Math.cos(r) * d, y: n.y + Math.sin(r) * d });
+              const spot = { L: along(-0.1 * st.facing), R: along(0.1 * st.facing) };
+              st.holdFast = 0.8;
+              for (const side of ["L", "R"] as const) {
+                const g = st.grips[side];
+                if (g.held === bars[i].body || (g.held === null && game.intent.grip[side])) g.regrab(game.world, next.body.collider(0), next.body, st.grips[side === "L" ? "R" : "L"], spot[side]);
+              }
+            }
+          }
         }
         const onBar = [st.grips.L.held, st.grips.R.held].find((h) => h && bars.some((b) => b.body === h)) ?? null;
         if (onBar && onBar !== holding) {

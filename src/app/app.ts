@@ -239,6 +239,7 @@ export class App {
       else if (bonus === 1) tags.push("★5: break nothing");
     }
     const smashed = this.game.progress.label;
+    const breaks = this.game.breaks;
     const { newBest } = overtime ? recordOvertime(this.save, level.id, bonus, time, stars) : recordJob(this.save, level.id, stars, time, tags);
     writeSave(this.save);
 
@@ -250,9 +251,7 @@ export class App {
 
     // The ending plays every time the final job is done (not in Overtime, where the stars need showing).
     if (level.id === FINALE && !overtime) return this.ending();
-    setTimeout(() => {
-      this.warp = 1;
-      if (this.mode.kind !== "celebrate") return;
+    const showCard = () => {
       this.mode = { kind: "results" };
       const memos = (overtime ? OVERTIME_MEMOS[LEVEL_TWISTS[level.id]] : MEMOS[level.id]) ?? ["MEMO: Great hustle!"];
       let { next, label } = this.nextAfter(level);
@@ -264,6 +263,13 @@ export class App {
         // That was the last five stars: there's a party.
         next = () => this.startParty();
         label = "🎉 You're invited…";
+      } else if (level.id === smashRoom.id) {
+        // (Back in Day Off already, by way of the skylight.)
+        next = () => {
+          this.dom.overlay.replaceChildren();
+          this.mode = { kind: "sandbox" };
+        };
+        label = "Carry on ▸";
       }
       this.dom.overlay.replaceChildren(
         resultsCard({
@@ -277,8 +283,8 @@ export class App {
             memos[Math.floor(Math.random() * memos.length)] +
             (level.id === smashRoom.id
               ? ""
-              : this.game.breaks > 0
-                ? ` Breakages: ${this.game.breaks}. ${BREAK_BILLS[Math.floor(Math.random() * BREAK_BILLS.length)]}`
+              : breaks > 0
+                ? ` Breakages: ${breaks}. ${BREAK_BILLS[Math.floor(Math.random() * BREAK_BILLS.length)]}`
                 : ""),
           nextLabel: label,
           onRetry: () => (level.id === smashRoom.id ? this.playSmashRoom() : this.startLevel(level, overtime)),
@@ -288,7 +294,28 @@ export class App {
       );
       const ding = overtime ? (bonus ? 3 + bonus : 0) : stars;
       for (let i = 0; i < ding; i++) setTimeout(() => sfx.star(i), 250 + i * 180);
+    };
+    setTimeout(() => {
+      this.warp = 1;
+      if (this.mode.kind !== "celebrate") return;
+      // Out of the Smash Room's window: it's a long way down. The card waits till he's landed.
+      if (level.id === smashRoom.id) return this.plunge(showCard);
+      showCard();
     }, 1300);
+  }
+
+  /** Out of the Smash Room's thirtieth-floor window... and in through Day Off's skylight. Then `then`. */
+  private plunge(then: () => void) {
+    this.fadeThen(() => {
+      this.load(SANDBOX);
+      this.mode = { kind: "sandbox" };
+      this.handle(this.game.inst.arrive?.(this.game, smashRoom.id) ?? []);
+      this.renderer.camera.follow(this.game.stanley.position, 0, true);
+      const g = this.game;
+      setTimeout(() => {
+        if (this.game === g && this.mode.kind === "sandbox") then();
+      }, 3000);
+    });
   }
 
   // --------------------------------------------------------- the gift ---
@@ -758,6 +785,8 @@ export class App {
           break;
         case "surprise":
           r.note(ev.text, ev.pos);
+          // Gerald on the PA: you can hear him.
+          if (ev.id.startsWith("pa-")) for (let i = 0; i < 6; i++) setTimeout(() => sfx.blip(false), i * 70);
           break;
         case "splash":
           r.splash(ev.pos, ev.big);

@@ -54,6 +54,9 @@ const FINAL = { pane: 62.6, boxes: 63.6, boards: 65.0, window: 66.4 };
 /** Past this, he's out. */
 export const EXIT_X = 66.8;
 const CHECKPOINT = { x: 12.9, y: 0 };
+/** Gerald's PA speakers, along the wall. */
+const SPEAKERS = [3.2, 15.5, 22.0, 33.0, 44.0, 58.0];
+const SPEAKER_Y = 4.4;
 
 /** Brick chutes: one by each throwing job, topping up while that job's still to do. */
 const CHUTES = [
@@ -80,13 +83,13 @@ export const smashRoom: Level = {
     // Floors either side of the gap (with a bottom to it, out of sight), the grating, the rest.
     kit.solid((PIT.x0 - 1) / 2, -T, (PIT.x0 + 1) / 2, T, "floor");
     kit.solid((PIT.x1 + GRATE.x0) / 2, -T, (GRATE.x0 - PIT.x1) / 2, T, "floor");
-    kit.solid((GRATE.x1 + W + 1) / 2, -T, (W + 1 - GRATE.x1) / 2, T, "floor");
+    // (The floor stops at the exit window. Past it, it's a long way down.)
+    kit.solid((GRATE.x1 + FINAL.window + 0.07) / 2, -T, (FINAL.window + 0.07 - GRATE.x1) / 2, T, "floor");
     kit.solid((PIT.x0 + PIT.x1) / 2, -3.2, (PIT.x1 - PIT.x0) / 2 + 0.5, 0.2, "floor", { hidden: true });
     kit.solid((GRATE.x0 + GRATE.x1) / 2, -0.03, (GRATE.x1 - GRATE.x0) / 2, 0.03, "floor", { collides: "body" });
     kit.solid((GRATE.x0 + GRATE.x1) / 2, -2.2, (GRATE.x1 - GRATE.x0) / 2 + 0.5, 0.2, "floor", { hidden: true });
     kit.solid(-T, H / 2 + 2, T, H / 2 + 2 + T, "wall");
-    kit.solid(W + T, H / 2 + 2, T, H / 2 + 2 + T, "wall");
-    kit.solid(W / 2, H + T, W / 2 + T * 2, T, "wall");
+    kit.solid((FINAL.window - 1) / 2, H + T, (FINAL.window + 1) / 2, T, "wall");
 
     const panes = new Panes(kit);
     /** Furniture things sit on (and Stanley walks past, in front): nothing a hand can grab. */
@@ -139,7 +142,7 @@ export const smashRoom: Level = {
     const latch = panes.add(TIE.x, TIE.y, 0.13, 0.13, { propSpeed: 2.6, bodySpeed: 3 });
 
     // ---- 3. Launch pad, three panes. ----
-    TRIPLE.forEach((x) => panes.add(x, H / 2, 0.05, H / 2, { bodySpeed: 3.6 }));
+    const triple = TRIPLE.map((x) => panes.add(x, H / 2, 0.05, H / 2, { bodySpeed: 3.6 }));
     for (let i = 0; i < 6; i++) {
       const s = 0.28;
       kit.box(30.6 + (i % 3) * 0.6, s + Math.floor(i / 3) * 0.58 + 0.01, s, s, { kind: "box", density: 2, color: cardboard[i % 4] });
@@ -199,12 +202,19 @@ export const smashRoom: Level = {
     kit.fragile(FINAL.boxes + 0.3, 1.21, "vase");
     panes.add(FINAL.boards, H / 2, 0.1, H / 2, { material: "wood", bodySpeed: 3.2, propSpeed: 6 });
     panes.add(FINAL.window, H / 2, 0.07, H / 2, { bodySpeed: 3, propSpeed: 4 });
-    // Outside: a skip to land in.
-    kit.basket(67.6, 69.6, 0.04, 0.8);
 
     const chuteTimer = CHUTES.map(() => 0);
     const chuteFlash = CHUTES.map(() => 0);
     const chuteOn = [() => !wall1.broken, () => !latch.broken, () => button.presses === 0, () => !anchor.broken];
+    // Gerald, on the PA. He's been listening the whole time.
+    const said = new Set<string>();
+    const pa = (game: Game, id: string, text: string): GameEvent[] => {
+      if (said.has(id)) return [];
+      said.add(id);
+      const x = game.stanley.position.x;
+      const sp = SPEAKERS.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a));
+      return [{ type: "surprise", id: `pa-${id}`, text: `📢 ${text}`, pos: { x: sp, y: SPEAKER_Y - 0.45 } }];
+    };
     let started = false;
     let out = false;
     let padCool = 0;
@@ -277,7 +287,7 @@ export const smashRoom: Level = {
         }
         // Once it's down, mind the gap anyway.
         const pel = st.rig.pelvis.translation();
-        if (pel.y < -0.8) {
+        if (pel.y < -0.8 && pel.x > PIT.x0 - 0.5 && pel.x < PIT.x1 + 0.5) {
           st.teleport(CHECKPOINT);
           ev.push({ type: "score", text: "Again!", pos: { x: CHECKPOINT.x, y: 2.2 } });
         }
@@ -318,6 +328,17 @@ export const smashRoom: Level = {
           ball.body.setNextKinematicTranslation({ x: q.x + (park.x - q.x) * k, y: q.y + (park.y - q.y) * k });
           ball.body.setNextKinematicRotation(ball.body.rotation() * (1 - k));
         }
+
+        // The PA.
+        const t = game.time;
+        if (t > 2.4) ev.push(...pa(game, "hello", "…Hello? Is someone in the Smash Room? That's for clients."));
+        if (wall1.broken && t > 3) ev.push(...pa(game, "glass", "That sounded expensive. It wasn't. Carry on."));
+        if (game.breaks >= 3) ev.push(...pa(game, "vases", "Those vases were a gift from your mother. To the Smash Room. She's very generous."));
+        if (latch.broken) ev.push(...pa(game, "bridge", "I didn't know we had a drawbridge. I'm learning so much about this building."));
+        if (triple.every((p) => p.broken)) ev.push(...pa(game, "launch", "Head first, through three panes. HR will want a word, and the word is 'wow'."));
+        if (button.presses > 0) ev.push(...pa(game, "door", "That alarm goes straight to my phone. I've put it on silent. Again."));
+        if (released >= 0 && t - released > 1.6) ev.push(...pa(game, "ball", "For the record, I also didn't know we had a wrecking ball."));
+        if (pel.x > GRATE.x1 + 1.5) ev.push(...pa(game, "floor", "Stanley. That window is on the thirtieth floor. …Well. You've never let that stop you."));
 
         if (!out && pel.x > EXIT_X) out = true;
         return ev;
@@ -384,12 +405,24 @@ export const smashRoom: Level = {
         r.rect(BRICK_WALL.x0 - 0.05, wallTop + 0.02, wallX1 + 0.05, wallTop + 0.12, "#5f6670");
         // The grating, over the rubble bin.
         r.rect(GRATE.x0, -5, GRATE.x1, 0, "#1f1a24");
-        // Outside, through the exit.
-        r.rect(FINAL.window + 0.07, 0, W, H, "#8fd0f0");
-        r.rect(FINAL.window + 0.07, 0, W, 1.2, "#bfe6f7");
-        r.circle({ x: 68.8, y: 5.4 }, 0.45, "#fff1a8");
-        r.rect(FINAL.window + 0.07, -5, W, 0, "#6b9a45");
-        r.rect(FINAL.window + 0.07, -0.08, W, 0, "#86b955");
+        // Outside, through the exit: thirty floors up. Rooftops below, clouds going past.
+        const ox = FINAL.window + 0.07;
+        r.rect(ox, -6, W + 2, H + 2, "#8fc9ec");
+        r.rect(ox, -6, W + 2, 1.5, "#cfe9f7");
+        r.circle({ x: 69.2, y: 5.6 }, 0.45, "#fff1a8");
+        for (const [x, top, w] of [[67.0, -0.7, 0.9], [68.3, 0.4, 0.8], [69.5, -1.6, 1.1]] as const) {
+          r.rect(x, -6, x + w, top, "#7f97ad");
+          for (let wy = top - 0.35; wy > -6; wy -= 0.4) for (let wx = x + 0.12; wx < x + w - 0.1; wx += 0.24) r.rect(wx, wy, wx + 0.1, wy + 0.18, "rgba(255,241,168,0.55)");
+          r.rect(x + w * 0.3, top, x + w * 0.34, top + 0.5, "#5f6670");
+        }
+        for (let i = 0; i < 3; i++) {
+          const cx = ox + ((t * 0.25 + i * 1.4) % 4.5) - 0.3;
+          const cy = 0.6 + i * 0.9;
+          r.circle({ x: cx, y: cy }, 0.25, "rgba(255,255,255,0.85)");
+          r.circle({ x: cx + 0.3, y: cy + 0.08 }, 0.32, "rgba(255,255,255,0.85)");
+        }
+        // The building's edge, under the window.
+        r.rect(ox - 0.07, -6, ox + 0.08, 0, "#5f6670");
         r.text("EXIT", { x: FINAL.window - 0.9, y: 4.4 }, 0.3, "#37a59c", "center", 900);
         r.text("▸", { x: FINAL.window - 0.3, y: 4.4 }, 0.3, "#37a59c", "center", 900);
       },
@@ -412,9 +445,11 @@ export const smashRoom: Level = {
         // The grating's bars.
         r.rect(GRATE.x0, -0.06, GRATE.x1, 0, "#7a828c");
         for (let x = GRATE.x0 + 0.1; x < GRATE.x1; x += 0.22) r.rect(x, -0.3, x + 0.05, 0, "#5f6670");
-        // The skip, outside.
-        r.rect(67.6, 0, 69.6, 0.8, "rgba(46,125,74,0.95)");
-        r.text("SKIP", { x: 68.6, y: 0.4 }, 0.16, "rgba(255,255,255,0.8)", "center", 900);
+        // PA speakers, high on the wall.
+        for (const x of SPEAKERS) {
+          r.roundRect(x - 0.16, SPEAKER_Y - 0.12, x + 0.16, SPEAKER_Y + 0.12, 0.04, "#5f6670");
+          for (const dx of [-0.08, 0, 0.08]) r.rect(x + dx - 0.015, SPEAKER_Y - 0.08, x + dx + 0.015, SPEAKER_Y + 0.08, "#2a2230");
+        }
       },
     };
   },

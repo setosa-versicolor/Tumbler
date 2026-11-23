@@ -40,6 +40,8 @@ export const BIG_TRAPEZE = { pivot: 3.65, rope: 5.71, swing: 0.522 };
  * said. Let go of the big trapeze at the right moment and find out.
  */
 export const WINDOW = { y0: 3.45, y1: 7.4 };
+/** A skylight over the foam pit. (It's how you come back from the Smash Room.) */
+export const SKYLIGHT = { x0: 27.6, x1: 30.6 };
 /** Bars this close (end to end, metres) and Stanley's handed from one to the next. */
 const HANDOVER_GAP = 0.3;
 /** How fast he rolls back upright when he reaches to grab mid-dive (rad/s). */
@@ -120,6 +122,7 @@ export const dayOff: Level = {
     // Stanley only has to hit it (he's come off a trapeze: he's not hitting it gently).
     const window = panes.add(-0.25, (WINDOW.y0 + WINDOW.y1) / 2, 0.25, (WINDOW.y1 - WINDOW.y0) / 2, { bodySpeed: 0.8, propSpeed: 5 });
     let warped = false;
+    const skylight = panes.add((SKYLIGHT.x0 + SKYLIGHT.x1) / 2, H - 0.06, (SKYLIGHT.x1 - SKYLIGHT.x0) / 2, 0.05, { bodySpeed: 99, propSpeed: 99 });
     kit.solid((LEDGE.x0 + LEDGE.x1) / 2, LEDGE.y, (LEDGE.x1 - LEDGE.x0) / 2, LEDGE.thick / 2, "ledge");
     kit.solid((BASKET.x0 + BASKET.x1) / 2, BASKET.y, (BASKET.x1 - BASKET.x0) / 2, 0.05, "basket");
     kit.solid(BASKET.x1 - 0.05, BASKET.y + BASKET.lip / 2, 0.05, BASKET.lip / 2, "basket");
@@ -205,6 +208,21 @@ export const dayOff: Level = {
     let stack = 0;
     let best = 0;
     return {
+      arrive(game, from) {
+        if (from !== "smash-room") return [];
+        // Out of the Smash Room's thirtieth-floor window, and down, down, down... through the skylight, into the foam.
+        const st = game.stanley;
+        const x = (SKYLIGHT.x0 + SKYLIGHT.x1) / 2;
+        st.teleport({ x, y: H - 2.3 });
+        for (const b of st.rig.bodies) b.setLinvel({ x: -0.4, y: -8 }, true);
+        st.rig.chest.setAngvel(5, true);
+        st.balance.knockDown(1.2);
+        st.stunt = true;
+        return [
+          ...panes.smash(game, skylight, { x, y: H - 0.1 }, { x: 0, y: -8 }, true),
+          { type: "surprise", id: "pa-skylight", text: "📢 …And that was the skylight. Welcome back.", pos: { x: x - 1.5, y: H - 2.2 } },
+        ];
+      },
       update(game, dt) {
         // The trampoline: land on it coming down hard enough, and up you go (higher each time).
         bounceCooldown -= dt;
@@ -359,6 +377,13 @@ export const dayOff: Level = {
         // Warm light spilling in through it, across the wall.
         if (!window.broken) r.poly([{ x: 0, y: WINDOW.y1 }, { x: 0, y: WINDOW.y0 }, { x: 2.6, y: WINDOW.y0 - 1.6 }, { x: 3.6, y: WINDOW.y1 - 1.2 }], "rgba(255,226,150,0.16)");
         panes.draw(r, game.time);
+        // The skylight: sky through it (and through the hole, once it's gone).
+        r.rect(SKYLIGHT.x0 - 0.1, H - 0.14, SKYLIGHT.x1 + 0.1, H + 0.3, "#7a5a40");
+        r.rect(SKYLIGHT.x0, H - 0.1, SKYLIGHT.x1, H + 0.3, "#8fd0f0");
+        if (!skylight.broken) {
+          r.rect(SKYLIGHT.x0, H - 0.1, SKYLIGHT.x1, H + 0.3, "rgba(255,255,255,0.35)");
+          for (const f of [1 / 3, 2 / 3]) r.rect(SKYLIGHT.x0 + (SKYLIGHT.x1 - SKYLIGHT.x0) * f - 0.03, H - 0.1, SKYLIGHT.x0 + (SKYLIGHT.x1 - SKYLIGHT.x0) * f + 0.03, H + 0.3, "#7a5a40");
+        }
         const sign = { x: 1.55, y: WINDOW.y0 + 0.75 };
         r.rect(sign.x - 0.82, sign.y - 0.24, sign.x + 0.82, sign.y + 0.24, "rgba(255,255,255,0.85)");
         r.text("PLEASE DO NOT SWING", { x: sign.x, y: sign.y + 0.08 }, 0.1, "#c0392b", "center", 800);

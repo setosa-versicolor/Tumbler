@@ -38,6 +38,8 @@ export interface LevelInstance {
   drawFront?(r: Renderer, game: Game): void;
   /** A safe spot for a fragile thing (it won't break while it's here). */
   safe?(p: Prop): boolean;
+  /** Arriving from another level (crashing in from the Smash Room, say): set the scene. */
+  arrive?(game: Game, from: string): GameEvent[];
   /** Where the level's characters' heads are, for speech in a scene. */
   speakers?: Record<string, () => Vec>;
 }

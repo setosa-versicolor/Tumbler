@@ -110,6 +110,15 @@ describe("Smash Room", () => {
     expect(smashes(ev).length).toBeGreaterThan(0);
   });
 
+  it("Gerald's on the PA, and he's noticed", () => {
+    const g = play();
+    const ev = run(g, 3);
+    lob(g, { x: 6.5, y: 2.2 }, { x: SR.GLASS_WALL.x + 1, y: 2.2 }, 0.25);
+    ev.push(...run(g, 1));
+    const lines = ev.filter((e) => e.type === "surprise").map((e) => (e as { id: string }).id);
+    expect(lines).toEqual(["pa-hello", "pa-glass"]);
+  });
+
   it("a gentle lob only cracks the glass; three cracks and it goes anyway", () => {
     const g = play();
     run(g, 2);
@@ -230,6 +239,8 @@ describe("Smash Room", () => {
     expect(ev.some((e) => e.type === "score" && e.text === "LAUNCH!")).toBe(true);
     expect(smashes(ev).filter((e) => e.type === "smash" && e.big).length).toBe(3);
     expect(g.progress.done).toBe(true);
+    // ...and there's no floor out there.
+    expect(g.stanley.rig.pelvis.translation().y).toBeLessThan(-1);
   });
 });
 
@@ -300,6 +311,19 @@ describe("Day Off's window", () => {
     expect(on()).toBeGreaterThanOrEqual(2);
     run(g, DAY_OFF.TRAPEZE.period * 2.2, hang);
     expect(on()).toBe(bars.length - 1);
+  });
+
+  it("out of the Smash Room, he comes back in through the skylight and lands in the foam pit", () => {
+    const g = play(dayOff);
+    run(g, 0.2);
+    const ev = [...g.inst.arrive!(g, "smash-room"), ...run(g, 3)];
+    expect(smashes(ev).length).toBe(1);
+    expect(ev.some((e) => e.type === "surprise" && e.id === "pa-skylight")).toBe(true);
+    const p = g.stanley.rig.pelvis.translation();
+    expect(p.x).toBeGreaterThan(DAY_OFF.PIT.x0);
+    expect(p.y).toBeLessThan(2);
+    expect(g.falls).toBe(0);
+    physicsOk(g);
   });
 
   it("walking about in Day Off never finds it by accident", () => {

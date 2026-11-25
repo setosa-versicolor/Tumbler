@@ -144,6 +144,16 @@ export const sfx = {
     tone(180, 720, 0.25, "triangle", 0.16);
     burst(0.35, 500, 0.4, 2200, 0.7);
   },
+  /** One beat of the office disco: four on the floor, off-beat hats, a bass line. */
+  beat: (n: number) => {
+    const half = 60 / 118 / 2;
+    tone(150, 45, 0.18, "sine", 0.32);
+    burst(0.04, 8000, 0.08, 9000, 0.8);
+    const bass = [55, 55, 82.4, 73.4][Math.floor(n / 2) % 4];
+    tone(bass, bass, half * 0.9, "sawtooth", 0.05, half);
+    if (n % 4 === 2) burst(0.12, 1800, 0.18, 1200, 0.6);
+    if (n % 8 === 7) tone(880, 1320, 0.12, "square", 0.025, half);
+  },
   alarm: () => {
     for (let i = 0; i < 4; i++) tone(i % 2 ? 660 : 880, i % 2 ? 660 : 880, 0.16, "square", 0.05, i * 0.17);
   },

@@ -141,7 +141,7 @@ export class Button {
   /** Seconds the light stays on after a press. */
   lit = 0;
   /** How it's drawn. */
-  style: "button" | "bell" = "button";
+  style: "button" | "bell" | "custom" = "button";
   private down = false;
   private cooldown = 0;
   readonly restX: number;
@@ -153,6 +153,8 @@ export class Button {
     readonly hh: number,
     private world: World,
     private collider: Collider,
+    /** +1: pushed in towards +x (a wall on its right); -1: towards -x. */
+    readonly inward: 1 | -1 = 1,
   ) {
     this.restX = cap.translation().x;
   }
@@ -173,7 +175,7 @@ export class Button {
   }
 
   get depth() {
-    return Math.max(0, this.cap.translation().x - this.restX);
+    return Math.max(0, (this.cap.translation().x - this.restX) * this.inward);
   }
 
   /** Returns true on the step the button gets pressed. */
@@ -325,18 +327,22 @@ export class Kit {
     return prop;
   }
 
-  /** A button whose face points left, mounted on a wall whose surface is at `wallX`. */
-  button(wallX: number, y: number, hw = 0.07, hh = 0.2): Button {
-    const capX = wallX - hw - 0.02;
+  /**
+   * A button whose face points left, mounted on a wall whose surface is at
+   * `wallX` (or, with `face: "right"`, on a wall to its left).
+   */
+  button(wallX: number, y: number, hw = 0.07, hh = 0.2, face: "left" | "right" = "left"): Button {
+    const inward = face === "left" ? 1 : -1;
+    const capX = wallX - inward * (hw + 0.02);
     const cap = this.world.createRigidBody(
       RAPIER.RigidBodyDesc.dynamic().setTranslation(capX, y).setGravityScale(0).setCcdEnabled(true),
     );
     const col = this.world.createCollider(RAPIER.ColliderDesc.cuboid(hw, hh).setMass(0.4).setCollisionGroups(PROP_GROUPS), cap);
-    const jd = RAPIER.JointData.prismatic({ x: capX, y }, { x: 0, y: 0 }, { x: 1, y: 0 });
+    const jd = RAPIER.JointData.prismatic({ x: capX, y }, { x: 0, y: 0 }, { x: inward, y: 0 });
     const joint = this.world.createImpulseJoint(jd, this.room, cap, true) as PrismaticImpulseJoint;
     joint.setLimits(0, BUTTON_TRAVEL);
     joint.configureMotorPosition(0, 90, 6);
-    const b = new Button(cap, joint, hw, hh, this.world, col);
+    const b = new Button(cap, joint, hw, hh, this.world, col, inward);
     this.buttons.push(b);
     return b;
   }

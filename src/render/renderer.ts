@@ -117,12 +117,15 @@ export interface Bubble {
 
 export class Renderer {
   readonly camera = new Camera();
-  readonly ctx: CanvasRenderingContext2D;
+  /** Where drawing goes. The HD renderer points this at one layer at a time. */
+  ctx: CanvasRenderingContext2D;
   private popups: Popup[] = [];
   private particles: Particle[] = [];
   private blink = 0;
-  private dpr = 1;
-  private time = 0;
+  protected dpr = 1;
+  protected time = 0;
+  /** This frame's screen shake, in CSS pixels. */
+  protected shakeNow: Vec = { x: 0, y: 0 };
   /** Shown as a crosshair when the reach point comes from a mouse. */
   cursor: Vec | null = null;
   bubble: Bubble | null = null;
@@ -130,8 +133,28 @@ export class Renderer {
   /** Off-screen goal indicator. */
   goal: { pos: Vec; icon: string } | null = null;
 
-  constructor(private canvas: HTMLCanvasElement) {
-    this.ctx = canvas.getContext("2d")!;
+  constructor(
+    protected canvas: HTMLCanvasElement,
+    ctx?: CanvasRenderingContext2D,
+  ) {
+    this.ctx = ctx ?? canvas.getContext("2d")!;
+  }
+
+  /** Seconds of drawing so far (for animated scenery). */
+  get clock() {
+    return this.time;
+  }
+
+  /**
+   * Called as the frame moves between layers: "back" (the room), "mid" (solids,
+   * props, Stanley: what blocks light) and "front" (speech, effects, the HUD).
+   * The plain renderer draws them all on one canvas.
+   */
+  protected layer(_name: "back" | "mid" | "front") {}
+
+  /** Draw something that glows (lamps, screens, windows). The plain renderer just draws it. */
+  emit(fn: () => void) {
+    fn();
   }
 
   /** The canvas's on-screen size when the drawing buffer was last fitted to it. */
@@ -327,12 +350,15 @@ export class Renderer {
     // stretched to fit: everything squashed.
     const f = this.fitted;
     if (this.canvas.clientWidth !== f.w || this.canvas.clientHeight !== f.h || Math.min(window.devicePixelRatio || 1, 2) !== f.dpr) this.resize();
-    const { ctx, camera: cam } = this;
+    const cam = this.camera;
     this.time += dt;
     const sh = cam.offset;
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, sh.x * this.dpr, sh.y * this.dpr);
+    this.shakeNow = sh;
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, sh.x * this.dpr, sh.y * this.dpr);
+    this.layer("back");
     this.drawBackground(game);
     game.inst.drawBack?.(this, game);
+    this.layer("mid");
     for (const s of game.solids) if (!s.hidden) this.drawSolid(s, game);
     for (const b of game.buttons) {
       const p = b.cap.translation();
@@ -350,7 +376,7 @@ export class Renderer {
           b.lit > 0 ? "#ffd84a" : "#d4a53a",
         );
         this.circle({ x: p.x + swing * 1.6, y: p.y - b.hh - 0.03 }, 0.035, "#8a6a2a");
-      } else this.roundRect(p.x - b.hw, p.y - b.hh, p.x + b.hw, p.y + b.hh, 0.03, b.lit > 0 ? "#ff5a4f" : "#d6453c");
+      } else if (b.style === "button") this.roundRect(p.x - b.hw, p.y - b.hh, p.x + b.hw, p.y + b.hh, 0.03, b.lit > 0 ? "#ff5a4f" : "#d6453c");
     }
     for (const p of game.props) this.drawProp(p);
     game.inst.drawMid?.(this, game);
@@ -371,9 +397,11 @@ export class Renderer {
     this.drawStanley(game, dt);
     if (sq > 0) this.ctx.restore();
     this.drawWater(game);
+    this.layer("front");
     game.inst.drawFront?.(this, game);
     this.drawFx(dt);
     if (this.cursor) {
+      const ctx = this.ctx;
       const s = cam.toScreen(this.cursor);
       ctx.strokeStyle = "rgba(42,34,48,0.35)";
       ctx.lineWidth = 2;

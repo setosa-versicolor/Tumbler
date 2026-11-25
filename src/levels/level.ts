@@ -3,6 +3,7 @@ import type { Kit } from "./kit";
 import type { Game, GameEvent } from "../sim/game";
 import type { Renderer } from "../render/renderer";
 import type { Vec } from "../sim/math";
+import type { HDScene } from "../hd/types";
 
 export interface Theme {
   outdoor: boolean;
@@ -42,6 +43,8 @@ export interface LevelInstance {
   arrive?(game: Game, from: string): GameEvent[];
   /** Where the level's characters' heads are, for speech in a scene. */
   speakers?: Record<string, () => Vec>;
+  /** HD renderer: this frame's lights, haze and finish. Without it the HD renderer uses a soft default. */
+  hd?(game: Game, time: number): HDScene;
 }
 
 export interface Level {

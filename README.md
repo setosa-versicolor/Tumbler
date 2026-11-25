@@ -24,6 +24,12 @@ A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body
 
 **On any device:** https://setosa-versicolor.github.io/Tumbler/. Every push to `master` rebuilds and redeploys it via GitHub Actions (`.github/workflows/pages.yml`).
 
+## HD prototype
+
+Add `?hd` to the URL (https://setosa-versicolor.github.io/Tumbler/?hd) for the high-end renderer, starting with **Coffee Run** after hours: pendant lamps with soft shadows and light beams in the haze, dust in the light, a dusk skyline through the windows, a glossy floor that reflects the room, bloom, tone mapping and a colour grade. It's the same job underneath. There's a button on the left wall, over the kitchen. It says not to push it.
+
+How it works (`src/hd/`): the usual drawing is split into layers (the room, what's in it, glowing things), and WebGL2 lights them: every outline gets rounded edges and highlights, and lights march across the props-and-Stanley layer for soft shadows. Then bloom, reflection and the finish. Speech and effects stay crisp on a canvas laid over the top. A level opts in with an `hd()` hook that returns its lights; without WebGL2 it falls back to the normal game.
+
 ## Run it locally
 
 ```bash

@@ -94,8 +94,12 @@ export class App {
   /** Closes the job board, if it can be closed. */
   private boardClose: (() => void) | null = null;
 
-  constructor(private dom: Dom, private tuning: Tuning) {
-    this.renderer = new Renderer(dom.canvas);
+  constructor(
+    private dom: Dom,
+    private tuning: Tuning,
+    makeRenderer: (canvas: HTMLCanvasElement) => Renderer = (c) => new Renderer(c),
+  ) {
+    this.renderer = makeRenderer(dom.canvas);
     this.input = new Input(dom.canvas);
     this.save = loadSave();
 
@@ -806,6 +810,7 @@ export class App {
           else if (ev.name === "crack") sfx.crack();
           else if (ev.name === "launch") sfx.launch();
           else if (ev.name === "alarm") sfx.alarm();
+          else if (ev.name.startsWith("beat")) sfx.beat(Number(ev.name.slice(4)));
           else if (ev.name === "winch") sfx.winch();
           else if (ev.name === "plop") sfx.plop();
           break;

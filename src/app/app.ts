@@ -953,6 +953,7 @@ export class App {
           r.popup(BREAK_WORDS[Math.floor(Math.random() * BREAK_WORDS.length)], { x: ev.pos.x, y: ev.pos.y + 0.6 }, "#c0392b");
           r.camera.shake(7);
           r.dust(ev.pos, 1.2);
+          r.shatterFx(ev.pos, ev.kind);
           break;
         case "smash": {
           const words = ev.big ? THROUGH_WORDS : SMASH_WORDS;

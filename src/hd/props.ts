@@ -27,7 +27,7 @@ export class PropArt {
   private slosh = new WeakMap<RigidBody, Slosh>();
 
   /** Draw `p` in HD if it's one of ours; false to leave it to the plain drawing. */
-  draw(r: Renderer, p: Prop, game: Game, dt: number, glass: (fn: () => void) => void): boolean {
+  draw(r: Renderer, p: Prop, game: Game, dt: number, glass: (fn: () => void) => void, glint: (at: { x: number; y: number }) => void = () => {}): boolean {
     if (p.kind === "cup") {
       this.cup(r, p, game, dt, glass);
       return true;
@@ -38,6 +38,9 @@ export class PropArt {
     }
     if (p.kind === "shard" && CUP_SHARDS.has(p.color) && p.shape) {
       shard(r, p, glass);
+      // Now and then a shard catches the light: as it turns, or as the camera moves past it.
+      const q = p.body.translation();
+      if (p.color !== "#6b4a3a" && Math.sin(p.body.rotation() * 4 + (q.x - r.camera.x) * 3) > 0.985) glint(q);
       return true;
     }
     return false;

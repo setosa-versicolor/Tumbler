@@ -92,7 +92,7 @@ interface Popup {
   color: string;
 }
 
-interface Particle {
+export interface Particle {
   pos: Vec;
   vel: Vec;
   age: number;
@@ -100,7 +100,7 @@ interface Particle {
   size: number;
   color: string;
   spin: number;
-  shape: "star" | "confetti" | "dust" | "drop";
+  shape: "star" | "confetti" | "dust" | "drop" | "chip" | "sparkle";
 }
 
 export interface Bubble {
@@ -120,7 +120,7 @@ export class Renderer {
   /** Where drawing goes. The HD renderer points this at one layer at a time. */
   ctx: CanvasRenderingContext2D;
   private popups: Popup[] = [];
-  private particles: Particle[] = [];
+  protected particles: Particle[] = [];
   private blink = 0;
   protected dpr = 1;
   protected time = 0;
@@ -1483,14 +1483,24 @@ export class Renderer {
   // ------------------------------------------------------------------ fx ---
 
   private drawFx(dt: number) {
-    const { ctx, camera: cam } = this;
-    const sc = cam.scale;
     this.particles = this.particles.filter((p) => (p.age += dt) < p.life);
     for (const p of this.particles) {
       p.pos.x += p.vel.x * dt;
       p.pos.y += p.vel.y * dt;
-      const t = p.age / p.life;
-      const s = cam.toScreen(p.pos);
+      this.drawParticle(p, p.age / p.life, dt);
+    }
+    this.drawNotesAndPopups(dt);
+  }
+
+  /** Something fragile broke (the HD renderer adds to the mess). */
+  shatterFx(_pos: Vec, _kind: string) {}
+
+  /** One particle, `t` of the way through its life (it moves itself on by `dt`). */
+  protected drawParticle(p: Particle, t: number, dt: number) {
+    const { ctx, camera: cam } = this;
+    const sc = cam.scale;
+    const s = cam.toScreen(p.pos);
+    {
       if (p.shape === "confetti") {
         p.vel.y -= 6 * dt;
         p.vel.x *= 1 - dt * 1.5;
@@ -1512,6 +1522,11 @@ export class Renderer {
         p.vel.y -= 4 * dt;
         ctx.fillStyle = p.color;
         this.starShape(s.x, s.y, p.size * sc * (1 - t));
+      } else if (p.shape === "chip" || p.shape === "sparkle") {
+        p.vel.y -= 9.8 * dt;
+        ctx.globalAlpha = 1 - t;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
       } else {
         p.vel.y *= 1 - dt * 3;
         ctx.globalAlpha = 1 - t;
@@ -1522,6 +1537,11 @@ export class Renderer {
       }
       ctx.globalAlpha = 1;
     }
+  }
+
+  private drawNotesAndPopups(dt: number) {
+    const { ctx, camera: cam } = this;
+    const sc = cam.scale;
     this.notes = this.notes.filter((n) => (n.age += dt) < 4.5);
     for (const n of this.notes) {
       const s = cam.toScreen({ x: n.pos.x, y: n.pos.y + Math.min(n.age, 1) * 0.15 });
@@ -1559,7 +1579,7 @@ export class Renderer {
     ctx.textAlign = "left";
   }
 
-  private starShape(x: number, y: number, r: number) {
+  protected starShape(x: number, y: number, r: number) {
     const ctx = this.ctx;
     ctx.beginPath();
     for (let i = 0; i < 10; i++) {

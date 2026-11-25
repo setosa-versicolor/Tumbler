@@ -6,6 +6,9 @@ import { drawStanleyHD, type StanleyLook } from "../render/charactersHD";
 import type { Prop } from "../levels/kit";
 import { smear } from "./smear";
 import { PropArt } from "./props";
+import { drawParticleHD } from "./particles";
+import type { Particle } from "../render/renderer";
+import type { Vec } from "../sim/math";
 
 type Layer = "back" | "mid" | "front";
 
@@ -95,8 +98,49 @@ export class HDRenderer extends Renderer {
   /** Props, with a smear behind anything flying fast. */
   protected override drawProp(p: Prop) {
     smear(this, p.body.translation(), p.body.linvel(), Math.max(p.hw, p.hh) * 1.8, p.kind === "cup" ? "#c9a27e" : p.kind === "tray" ? "#c9d0d8" : p.color);
-    if (this.now && this.props.draw(this, p, this.now.game, this.now.dt, (fn) => this.glass(fn))) return;
+    if (this.now && this.props.draw(this, p, this.now.game, this.now.dt, (fn) => this.glass(fn), (at) => this.glint(at))) return;
     super.drawProp(p);
+  }
+
+  // --------------------------------------------------------- particles ---
+
+  protected override drawParticle(p: Particle, t: number, dt: number) {
+    if (!drawParticleHD(this.ctx, this.camera, p, t, dt)) super.drawParticle(p, t, dt);
+  }
+
+  /** Dust, and (for a real crash) chips of debris that bounce. */
+  override dust(pos: Vec, amount = 1) {
+    super.dust(pos, amount);
+    if (amount <= 1) return;
+    const colors = ["#6b5a4a", "#8a7a6a", "#4a4048", "#a89c8e"];
+    for (let i = 0; i < 4 * amount; i++) this.particles.push(this.bit(pos, "chip", colors[i % colors.length], 0.012 + Math.random() * 0.014, 2.6));
+  }
+
+  /** Something broke: a glass cup throws glinting splinters; anything else, chips. */
+  override shatterFx(pos: Vec, kind: string) {
+    const glassy = kind === "cup" || kind === "vase" || kind === "bottles";
+    for (let i = 0; i < (glassy ? 16 : 8); i++)
+      this.particles.push(glassy ? this.bit(pos, "sparkle", "#ffffff", 0.05 + Math.random() * 0.04, 3.5) : this.bit(pos, "chip", "#8a7a6a", 0.018, 3));
+  }
+
+  /** A moment's glint, where light catches something. */
+  glint(at: Vec) {
+    this.particles.push({ pos: { ...at }, vel: { x: 0, y: 0 }, age: 0, life: 0.14, size: 0.05, color: "#fff", spin: Math.random() * 6, shape: "sparkle" });
+  }
+
+  private bit(pos: Vec, shape: Particle["shape"], color: string, size: number, speed: number): Particle {
+    const a = Math.random() * Math.PI;
+    const v = speed * (0.4 + Math.random() * 0.6);
+    return {
+      pos: { x: pos.x + (Math.random() - 0.5) * 0.15, y: pos.y + 0.05 },
+      vel: { x: Math.cos(a) * v, y: Math.sin(a) * v },
+      age: 0,
+      life: 0.9 + Math.random() * 0.6,
+      size,
+      color,
+      spin: (Math.random() - 0.5) * 22,
+      shape,
+    };
   }
 
   /** Show or hide the HD picture. */

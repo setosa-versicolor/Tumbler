@@ -543,10 +543,9 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
       ctx.beginPath();
       ctx.arc(0, 0, R, 0, Math.PI * 2);
     };
-    const nose = () => {
-      ctx.beginPath();
-      ctx.ellipse(R * 0.93, -R * 0.2, R * 0.16, R * 0.15, 0, 0, Math.PI * 2);
-    };
+    // A button nose between the eyes, just below them.
+    const NX = R * 0.43;
+    const NY = -R * 0.3;
     const ear = () => {
       ctx.beginPath();
       ctx.ellipse(-R * 0.5, -R * 0.18, R * 0.15, R * 0.2, 0.2, 0, Math.PI * 2);
@@ -565,9 +564,8 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
       ctx.lineTo(-R * 0.18, R * 0.2);
       ctx.closePath();
     };
-    for (const p of [face, nose, hair]) outline(ctx, p);
+    for (const p of [face, hair]) outline(ctx, p);
     fill(ctx, face, STAN.skin);
-    fill(ctx, nose, STAN.skin);
     // Shade: the back of the head, and under the jaw.
     cel(ctx, face, STAN.skin, () => {
       ctx.beginPath();
@@ -581,15 +579,23 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
     outline(ctx, ear, LINE * 0.7);
     fill(ctx, ear, shade(STAN.skin, -0.05));
     line(ctx, shade(STAN.skin, -0.35), 0.007, [[-R * 0.46, R * -0.04], [-R * 0.56, -R * 0.12], [-R * 0.54, -R * 0.26], [-R * 0.45, -R * 0.29]]);
-    // Cheek, and the nose's little shadow and shine.
-    oval(ctx, R * 0.18, -R * 0.42, R * 0.2, R * 0.11, rgba("#ff7f6e", 0.3));
-    oval(ctx, R * 0.86, -R * 0.33, R * 0.09, R * 0.04, rgba("#b06a44", 0.45));
-    oval(ctx, R * 0.98, -R * 0.12, R * 0.05, R * 0.035, rgba("#ffffff", 0.55));
+    // Cheeks either side of the nose.
+    oval(ctx, R * 0.1, -R * 0.42, R * 0.19, R * 0.11, rgba("#ff7f6e", 0.3));
+    oval(ctx, R * 0.78, -R * 0.4, R * 0.12, R * 0.09, rgba("#ff7f6e", 0.22));
+    // The nose: a soft shadow under it, its shape, a line round the underside, a shine on top.
+    oval(ctx, NX + R * 0.02, NY - R * 0.1, R * 0.13, R * 0.05, rgba("#b06a44", 0.35));
+    oval(ctx, NX, NY, R * 0.14, R * 0.12, shade(STAN.skin, 0.04));
+    ctx.beginPath();
+    ctx.ellipse(NX, NY, R * 0.14, R * 0.12, 0, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.strokeStyle = shade(STAN.skin, -0.42);
+    ctx.lineWidth = 0.008;
+    ctx.stroke();
+    oval(ctx, NX + R * 0.03, NY + R * 0.04, R * 0.05, R * 0.035, rgba("#ffffff", 0.55));
 
     // Eyes (the far one a little smaller and narrower).
     for (const [ex, k] of [
-      [R * 0.2, 1],
-      [R * 0.64, 0.74],
+      [R * 0.12, 1],
+      [R * 0.72, 0.78],
     ] as const) {
       const ey = -R * 0.08;
       if (m.down) {
@@ -630,8 +636,8 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
     }
 
     // Mouth.
-    const mx = R * 0.5;
-    const my = -R * 0.6;
+    const mx = R * 0.42;
+    const my = -R * 0.62;
     if (m.down || m.air) {
       ctx.beginPath();
       ctx.ellipse(mx, my, 0.027, 0.036, 0, 0, Math.PI * 2);

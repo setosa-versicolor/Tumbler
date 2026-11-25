@@ -1,7 +1,7 @@
 import "./style.css";
 import { initPhysics } from "./physics/world";
 import { App } from "./app/app";
-import { ALL_LEVELS } from "./app/campaign";
+import { ALL_LEVELS, levelById } from "./app/campaign";
 import { office } from "./story/office";
 import { loadTuning, mountTuningPanel } from "./ui/tuningPanel";
 import { unlockAudio } from "./ui/audio";
@@ -19,8 +19,9 @@ async function boot() {
   await initPhysics();
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
   const tuning = loadTuning();
-  // ?hd: straight into Coffee Run with the graphics already turned up.
-  const hd = new URLSearchParams(location.search).has("hd");
+  // ?hd: straight into a job with the graphics already turned up (Coffee Run, or ?hd=fire-drill).
+  const params = new URLSearchParams(location.search);
+  const hd = params.has("hd") ? (levelById(params.get("hd") || coffeeRunHD.id) ?? coffeeRunHD) : null;
   const app = new App(
     {
       canvas: $("#game"),
@@ -36,7 +37,7 @@ async function boot() {
       fade: $("#fade"),
     },
     tuning,
-    hd ? [coffeeRunHD.id] : [],
+    hd ? [hd.id] : [],
   );
   const panel = mountTuningPanel($("#ui"), tuning, () => app.restart());
   window.addEventListener("keydown", (e) => {
@@ -60,7 +61,7 @@ async function boot() {
     resume = null;
   }
   if (resume) app.resume(resume.level, resume.overtime);
-  else if (hd) app.startLevel(coffeeRunHD);
+  else if (hd) app.startLevel(hd);
   else app.start();
   let reloading = false;
   let last = performance.now();

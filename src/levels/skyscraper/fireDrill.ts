@@ -1,4 +1,4 @@
-import { OFFICE, type Level } from "../level";
+import { OFFICE, type Level, type LevelInstance } from "../level";
 import type { Prop } from "../kit";
 import { Curio, inRect } from "../curio";
 import type { Game, GameEvent } from "../../sim/game";
@@ -8,9 +8,9 @@ import { G_FLOOR, G_PROP, G_WORLD, groups } from "../../physics/groups";
 /** The extinguisher, when nobody's holding it, doesn't get kicked about by Stanley's feet. */
 const UNDERFOOT_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP);
 
-const W = 15;
-const EXIT_X = 12.8;
-const ASSEMBLY = { x0: 13.2, x1: W };
+export const W = 15;
+export const EXIT_X = 12.8;
+export const ASSEMBLY = { x0: 13.2, x1: W };
 const NEEDED = 3;
 /** The space heater, in the way between the mannequins and the exit. */
 export const HEATER = { x: 10.3, hw: 0.2, hh: 0.45 };
@@ -38,7 +38,19 @@ const SPRAY_RANGE = 2.6;
 /** Foamed flames stay damp (not growing, not catching) this long. */
 const DAMP = 2.5;
 
-interface Puff {
+/** The fire as it stands (for the HD renderer's lights and flames). */
+export interface FireState {
+  cells: { x: number; heat: number; damp: number }[];
+  smoke: Puff[];
+  /** Has the heater gone over (is there a fire, or a smoulder, at all)? */
+  ignited(): boolean;
+  /** Seconds until a smoulder catches again. */
+  smoulder(): number;
+  /** Something else putting the fire out (sprinklers), run alongside the extinguishers each step. */
+  hose?: (dt: number) => void;
+}
+
+export interface Puff {
   x: number;
   y: number;
   vx: number;
@@ -112,7 +124,8 @@ export const fireDrill: Level = {
       for (const c of cells) if (Math.abs(c.x - HEATER.x) < 0.45) c.heat = Math.max(c.heat, heat);
     };
 
-    return {
+    const inst: LevelInstance & { fire: FireState } = {
+      fire: { cells, smoke, ignited: () => ignited, smoulder: () => smoulder },
       update(game, dt) {
         const ev: GameEvent[] = [];
 
@@ -186,6 +199,7 @@ export const fireDrill: Level = {
             cell.damp = DAMP;
           }
         }
+        inst.fire.hose?.(dt);
         if (wasBurning && !burning()) {
           smoulder = SMOULDER;
           ev.push({ type: "score", text: "Fire's out! For now.", pos: { x: HEATER.x, y: 2.0 } });
@@ -303,9 +317,12 @@ export const fireDrill: Level = {
       },
       drawBack(r, game) {
         // Alarm light, exit sign, the extinguisher cabinet, cubicles; outside, the assembly point.
+        // (In HD, the alarm and the outside are drawn with the lighting.)
         const on = Math.floor(game.time * 3) % 2 === 0;
-        r.circle({ x: 6.5, y: 4.2 }, 0.16, on ? "#ff5a4f" : "#8a3a3a");
-        if (on) r.circle({ x: 6.5, y: 4.2 }, 0.5, "rgba(255,90,79,0.15)");
+        if (!r.hd) {
+          r.circle({ x: 6.5, y: 4.2 }, 0.16, on ? "#ff5a4f" : "#8a3a3a");
+          if (on) r.circle({ x: 6.5, y: 4.2 }, 0.5, "rgba(255,90,79,0.15)");
+        }
         r.rect(EXIT_X - 0.9, 2.5, EXIT_X - 0.15, 2.85, "#2e9b5a");
         r.text("EXIT →", { x: EXIT_X - 0.52, y: 2.67 }, 0.12, "#fff");
         // A stripe on the floor: extinguishers past this line get put down.
@@ -322,7 +339,7 @@ export const fireDrill: Level = {
         for (const x of [2.8, 4.6, 6.4]) r.rect(x, 0, x + 1.2, 1.15, "rgba(122,130,140,0.3)");
         // Scorch marks where it's been burning.
         if (ignited) r.roundRect(FIRE.x0, 0, FIRE.x1, 0.02, 0.01, "rgba(40,30,30,0.6)");
-        r.rect(EXIT_X + 0.1, 0, W, 4.6, "#cfe0ec");
+        if (!r.hd) r.rect(EXIT_X + 0.1, 0, W, 4.6, "#cfe0ec");
         r.rect(ASSEMBLY.x0, 0, ASSEMBLY.x1, 0.04, "#2e9b5a");
         r.rect(13.8, 0, 13.86, 1.8, "#5f6670");
         r.rect(13.5, 1.5, 14.8, 2.0, "#2e9b5a");
@@ -339,8 +356,9 @@ export const fireDrill: Level = {
         r.circle({ x: CORD.x1 + 0.18, y: 0.04 }, 0.015, "#2a2230");
         // Foam on the floor, then the flames, then the spray, then smoke.
         for (const f of foam) r.circle({ x: f.x, y: 0.02 }, f.r, "rgba(255,255,255,0.85)");
+        // (In HD, the flames glow: they're drawn with the lighting.)
         for (const c of cells) {
-          if (c.heat <= 0) continue;
+          if (c.heat <= 0 || r.hd) continue;
           const h = flameH(c.heat);
           const flick = Math.sin(game.time * 13 + c.x * 7) * 0.08;
           const tip: Vec = { x: c.x + flick, y: h + flick };
@@ -352,5 +370,6 @@ export const fireDrill: Level = {
         for (const p of smoke) r.circle(p, 0.12 + p.age * 0.15, `rgba(90,90,96,${Math.max(0, 0.22 - p.age * 0.06)})`);
       },
     };
+    return inst;
   },
 };

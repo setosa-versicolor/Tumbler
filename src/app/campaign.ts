@@ -16,7 +16,7 @@ import { coffeeRunHD } from "../hd/coffeeRunHD";
 import { windowWasher } from "../levels/skyscraper/windowWasher";
 import { mailRoom } from "../levels/skyscraper/mailRoom";
 import { shredIt } from "../levels/skyscraper/shredIt";
-import { fireDrill } from "../levels/skyscraper/fireDrill";
+import { fireDrillHD } from "../hd/fireDrillHD";
 import { executiveAction } from "../levels/finale/executiveAction";
 
 export interface Chapter {
@@ -35,7 +35,7 @@ export const CHAPTERS: Chapter[] = [
   { id: "suburb", title: "The Suburb", intro: "onboarding", review: "review-1", levels: [dingDong, laundryDay, stackIt, pizzaUp] },
   { id: "docks", title: "The Docks", review: "review-2", levels: [crateExpectations, fishToss, rollOut, crowsNest] },
   { id: "downtown", title: "Downtown", review: "review-3", levels: [movingDay, hangThePainting, pinReset, coffeeRunHD] },
-  { id: "skyscraper", title: "The Skyscraper", review: "review-4", levels: [windowWasher, mailRoom, shredIt, fireDrill] },
+  { id: "skyscraper", title: "The Skyscraper", review: "review-4", levels: [windowWasher, mailRoom, shredIt, fireDrillHD] },
   { id: "corner-office", title: "The Corner Office", levels: [executiveAction] },
 ];
 

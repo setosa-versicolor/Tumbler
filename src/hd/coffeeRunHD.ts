@@ -4,6 +4,7 @@ import type { Game, GameEvent } from "../sim/game";
 import { coffeeRun } from "../levels/downtown/coffeeRun";
 import { Liquid } from "../levels/liquid";
 import type { HDLight, HDScene } from "./types";
+import { COFFEE, drawCity, drawLiquid, drawShine, hash, near, UPGRADE_TIME } from "./shared";
 
 const W = 14;
 const H = 4.6;
@@ -25,16 +26,10 @@ const BALL_UP = H + 0.4;
 const BALL_DOWN = 3.45;
 /** Disco tempo. */
 const BPM = 118;
-/** Seconds the graphics take to turn up (the wipe across the room, the lamps coming on). */
-export const UPGRADE_TIME = 2.4;
+export { UPGRADE_TIME };
 
 type Mode = "normal" | "blackout" | "disco" | "restore";
 
-/** Pseudo-random but fixed, for the skyline. */
-const hash = (n: number) => {
-  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-};
 
 /** HSV (0–1) to linear-ish RGB. */
 function hue(h: number): [number, number, number] {
@@ -43,57 +38,6 @@ function hue(h: number): [number, number, number] {
     return 1 - Math.max(0, Math.min(k, 4 - k, 1));
   };
   return [f(5), f(3), f(1)];
-}
-/** The skyline is drawn once, a band of towers at a time, then slid about behind the glass. */
-const SKY_U0 = -3;
-const SKY_U1 = 17;
-const SKY_H = 1.7;
-const SKY_PX = 110;
-interface Band {
-  k: number;
-  canvas: HTMLCanvasElement;
-  beacons: { x: number; y: number }[];
-}
-let bands: Band[] | null = null;
-function skyline(): Band[] {
-  if (bands) return bands;
-  const specs = [
-    { k: 0.08, h: 0.75, col: "#2b2850", win: 0.22 },
-    { k: 0.16, h: 1.25, col: "#1d1a36", win: 0.4 },
-    { k: 0.26, h: 1.6, col: "#120f22", win: 0.62 },
-  ];
-  bands = specs.map((spec, bi) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round((SKY_U1 - SKY_U0) * SKY_PX);
-    canvas.height = Math.round(SKY_H * SKY_PX);
-    const ctx = canvas.getContext("2d")!;
-    const X = (u: number) => (u - SKY_U0) * SKY_PX;
-    const Y = (y: number) => (SKY_H - y) * SKY_PX;
-    const beacons: Band["beacons"] = [];
-    let u = SKY_U0;
-    let i = 0;
-    while (u < SKY_U1) {
-      const seed = i * 1.37 + bi * 91;
-      const w = 0.28 + hash(seed) * 0.42;
-      const top = spec.h * (0.35 + hash(seed + 1) * 0.65);
-      ctx.fillStyle = spec.col;
-      ctx.fillRect(X(u), Y(top), w * SKY_PX, top * SKY_PX);
-      if (hash(seed + 4) > 0.6) ctx.fillRect(X(u + w * 0.45), Y(top + 0.18), 0.05 * SKY_PX, 0.18 * SKY_PX);
-      for (let wy = top - 0.08; wy > 0.04; wy -= 0.085) {
-        for (let wx = u + 0.04; wx < u + w - 0.04; wx += 0.07) {
-          const hs = hash(wx * 13.1 + wy * 7.3 + seed);
-          if (hs > spec.win) continue;
-          ctx.fillStyle = hs < 0.1 ? "rgba(160,200,255,0.85)" : "rgba(255,206,120,0.9)";
-          ctx.fillRect(X(wx), Y(wy), 0.035 * SKY_PX, 0.035 * SKY_PX);
-        }
-      }
-      if (spec.h > 1.2 && hash(seed + 9) > 0.7) beacons.push({ x: u + w / 2, y: SILL + top + 0.02 });
-      u += w + 0.03 + hash(seed + 2) * 0.12;
-      i++;
-    }
-    return { k: spec.k, canvas, beacons };
-  });
-  return bands;
 }
 
 const css = (c: [number, number, number], a = 1) => `rgba(${(c[0] * 255) | 0},${(c[1] * 255) | 0},${(c[2] * 255) | 0},${a})`;
@@ -225,52 +169,6 @@ export const coffeeRunHD: Level = {
 
     // ------------------------------------------------------------ art ---
 
-    /** The city at dusk, through the glass: drifts a little against the room as the camera moves. */
-    const drawCity = (r: Renderer, time: number) => {
-      const ctx = r.ctx;
-      const cam = r.camera;
-      for (const [x0, x1] of WINDOWS) {
-        const a = cam.toScreen({ x: x0, y: HEAD });
-        const b = cam.toScreen({ x: x1, y: SILL });
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(a.x, a.y, b.x - a.x, b.y - a.y);
-        ctx.clip();
-        const sky = ctx.createLinearGradient(0, a.y, 0, b.y);
-        sky.addColorStop(0, "#141a3a");
-        sky.addColorStop(0.45, "#4a3a72");
-        sky.addColorStop(0.8, "#c9677a");
-        sky.addColorStop(1, "#f6a65e");
-        ctx.fillStyle = sky;
-        ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
-        // A few stars, and the moon over the long window.
-        for (let i = 0; i < 24; i++) {
-          const sx = x0 + hash(i * 3.1 + x0) * (x1 - x0);
-          const sy = HEAD - hash(i * 7.7 + x0) * 0.8;
-          r.circle({ x: sx, y: sy }, 0.008 + 0.006 * Math.sin(time * 2 + i), "rgba(255,255,240,0.8)");
-        }
-        if (x1 - x0 > 2) {
-          r.circle({ x: x0 + 3.1, y: HEAD - 0.45 }, 0.2, "#fff4d8");
-          r.circle({ x: x0 + 3.1, y: HEAD - 0.45 }, 0.32, "rgba(255,244,216,0.15)");
-        }
-        // Three bands of towers, nearer ones sliding more against the room.
-        for (const band of skyline()) {
-          const shift = (cam.x - 7) * band.k;
-          const p0 = cam.toScreen({ x: SKY_U0 + shift, y: SILL + SKY_H });
-          const p1 = cam.toScreen({ x: SKY_U1 + shift, y: SILL });
-          ctx.drawImage(band.canvas, p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
-          // Aircraft warning lights blinking on the tall ones.
-          for (const [i, l] of band.beacons.entries()) {
-            if (Math.sin(time * 2.4 + i * 1.9) > 0.6) r.circle({ x: l.x + shift, y: l.y }, 0.022, "#ff4a3a");
-          }
-        }
-        // Glass: faint diagonal sheen.
-        ctx.globalAlpha = 0.07;
-        for (let gx = x0 - 1; gx < x1; gx += 0.9) r.poly([{ x: gx, y: SILL }, { x: gx + 0.25, y: SILL }, { x: gx + 0.95, y: HEAD }, { x: gx + 0.7, y: HEAD }], "#ffffff");
-        ctx.globalAlpha = 1;
-        ctx.restore();
-      }
-    };
 
     const drawBack = (r: Renderer, game: Game) => {
       // Plain graphics: the usual office, and the sign by the button.
@@ -305,7 +203,7 @@ export const coffeeRunHD: Level = {
         r.rect(x0 - 0.08, SILL - 0.06, x1 + 0.08, HEAD + 0.08, "#3d434d");
         r.rect(x0, SILL, x1, HEAD, "#0c0e16");
       }
-      r.emit(() => drawCity(r, time));
+      r.emit(() => drawCity(r, WINDOWS, SILL, HEAD, time));
       for (const [x0, x1] of WINDOWS) {
         const panes = Math.max(1, Math.round((x1 - x0) / 1.1));
         for (let i = 1; i < panes; i++) {
@@ -456,119 +354,9 @@ export const coffeeRunHD: Level = {
       }
     };
 
-    /** Spilled coffee: drops in flight, and puddles where it's landed. */
-    const drawCoffee = (r: Renderer) => {
-      const ctx = r.ctx;
-      const sc = r.camera.scale;
-      const time = r.clock;
-      // Puddles: a pool lying on the surface, seen from a little above, with a wet shine.
-      for (const p of coffee.puddles) {
-        const depth = puddleDepth(p);
-        const c = r.camera.toScreen({ x: p.x, y: p.y - depth * 0.55 });
-        const rx = p.w * sc;
-        const ry = depth * sc * 0.5;
-        ctx.save();
-        ctx.translate(c.x, c.y);
-        // A wobbly outline, so it isn't a perfect ellipse.
-        ctx.beginPath();
-        for (let i = 0; i <= 24; i++) {
-          const t = (i / 24) * Math.PI * 2;
-          const k = 1 + 0.07 * Math.sin(t * 3 + p.x * 9) + 0.04 * Math.sin(t * 5 + p.x * 3);
-          ctx.lineTo(Math.cos(t) * rx * k, Math.sin(t) * ry * k);
-        }
-        ctx.closePath();
-        const g = ctx.createLinearGradient(0, -ry, 0, ry);
-        g.addColorStop(0, "#4a2512");
-        g.addColorStop(0.6, "#6e3c1c");
-        g.addColorStop(1, "#8a5430");
-        ctx.fillStyle = g;
-        ctx.fill();
-        ctx.strokeStyle = "rgba(196,140,92,0.9)";
-        ctx.lineWidth = Math.max(1, 0.006 * sc);
-        ctx.stroke();
-        ctx.restore();
-        // A ripple now and then where drops land.
-        if (coffee.drops.length) {
-          const ph = (time * 1.3 + p.x) % 1;
-          r.ring({ x: p.x + Math.sin(time + p.x) * p.w * 0.4, y: p.y - depth * 0.55 }, 0.02 + ph * p.w * 0.3, `rgba(160,110,70,${0.4 * (1 - ph)})`, 0.004);
-        }
-      }
-      if (!coffee.drops.length) return;
-      // Drops: round blobs stretched along their path, so close ones run together into a stream.
-      ctx.lineCap = "round";
-      ctx.strokeStyle = "#3d2010";
-      ctx.lineWidth = 0.042 * sc;
-      ctx.beginPath();
-      for (const d of coffee.drops) {
-        const a = r.camera.toScreen(d);
-        const b = r.camera.toScreen({ x: d.x - d.vx * 0.02, y: d.y - d.vy * 0.02 });
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x + 0.01, b.y);
-      }
-      ctx.stroke();
-      // Lighter, milky core and a glint, for a bit of depth.
-      ctx.strokeStyle = "#6b3f22";
-      ctx.lineWidth = 0.022 * sc;
-      ctx.beginPath();
-      for (const d of coffee.drops) {
-        const a = r.camera.toScreen({ x: d.x - 0.004, y: d.y + 0.004 });
-        const b = r.camera.toScreen({ x: d.x - d.vx * 0.012 - 0.004, y: d.y - d.vy * 0.012 + 0.004 });
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x + 0.01, b.y);
-      }
-      ctx.stroke();
-      ctx.fillStyle = "rgba(255,236,210,0.6)";
-      for (const d of coffee.drops) {
-        const a = r.camera.toScreen({ x: d.x - 0.007, y: d.y + 0.008 });
-        ctx.fillRect(a.x, a.y, Math.max(1, 0.006 * sc), Math.max(1, 0.006 * sc));
-      }
-    };
 
-    /** How deep a puddle looks (it's drawn lying on the floor, seen from a little above). */
-    const puddleDepth = (p: { y: number; w: number }) => Math.min(p.y === 0 ? 0.24 : 0.07, 0.07 + p.w * 0.5);
 
-    /** The wet shine on the puddles: on top of everything, as it's the room reflected. */
-    const drawShine = (r: Renderer) => {
-      const ctx = r.ctx;
-      const sc = r.camera.scale;
-      for (const p of coffee.puddles) {
-        const depth = puddleDepth(p);
-        const c = r.camera.toScreen({ x: p.x, y: p.y - depth * 0.55 });
-        const rx = p.w * sc;
-        const ry = depth * sc * 0.5;
-        // The lamps reflected in it, sliding as the camera moves.
-        {
-          const shift = ((r.camera.x - p.x) * 0.15) % 1;
-          ctx.save();
-          ctx.translate(c.x, c.y);
-          ctx.fillStyle = "rgba(255,230,190,0.55)";
-          ctx.beginPath();
-          ctx.ellipse(-rx * (0.35 + shift * 0.2), -ry * 0.2, rx * 0.26, Math.max(1.5, ry * 0.32), 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255,0.35)";
-          ctx.beginPath();
-          ctx.ellipse(rx * (0.3 - shift * 0.15), -ry * 0.05, rx * 0.12, Math.max(1, ry * 0.22), 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-    };
 
-    /**
-     * Close to the camera, out of focus: things in the office between us and
-     * Stanley. Drawn `k` times nearer (bigger, and sliding past faster), along
-     * the bottom of the screen so they never hide the job.
-     */
-    const near = (r: Renderer, k: number, fn: (ctx: CanvasRenderingContext2D) => void) => {
-      const ctx = r.ctx;
-      const cam = r.camera;
-      const s = cam.scale * k;
-      ctx.save();
-      ctx.translate(cam.w / 2 - cam.x * s, cam.h);
-      ctx.scale(s, -s);
-      fn(ctx);
-      ctx.restore();
-    };
     const drawFore = (r: Renderer) => {
       const lit = mode === "disco" ? "rgba(210,140,255,0.6)" : "rgba(255,196,130,0.6)";
       // A big potted plant.
@@ -673,11 +461,11 @@ export const coffeeRunHD: Level = {
       drawBack,
       drawMid(r, game) {
         base.drawMid?.(r, game);
-        drawCoffee(r);
+        drawLiquid(r, coffee, COFFEE);
         drawButton(r);
       },
       drawFront(r, game) {
-        drawShine(r);
+        drawShine(r, coffee, COFFEE);
         drawSteam(r, game);
         base.drawFront?.(r, game);
       },

@@ -7,6 +7,8 @@ import { coffeeRunHD, DNP } from "../src/hd/coffeeRunHD";
 import { coffeeRun } from "../src/levels/downtown/coffeeRun";
 import { CHAPTERS } from "../src/app/campaign";
 import { twistFor } from "../src/levels/twists";
+import { FD_BUTTON, fireDrillHD, SPRINKLE_TIME } from "../src/hd/fireDrillHD";
+import { fireDrill } from "../src/levels/skyscraper/fireDrill";
 import { CUP_FILL, SLICK, type Liquid } from "../src/levels/liquid";
 
 beforeAll(async () => {
@@ -212,5 +214,77 @@ describe("Coffee Run's lamp", () => {
     run(g, 3);
     expect(g.props).toContain(lamp);
     expect(g.breaks).toBe(0);
+  });
+});
+
+describe("Fire Drill HD", () => {
+  const button = (g: Game) => g.buttons.find((b) => b.style === "custom")!;
+  const step = (g: Game, secs: number, intent: Partial<typeof IDLE_INTENT> | ((t: number) => Partial<typeof IDLE_INTENT>) = {}) => {
+    const events: GameEvent[] = [];
+    for (let i = 0; i < Math.round(secs / DT); i++) events.push(...g.step({ ...IDLE_INTENT, ...(typeof intent === "function" ? intent(i * DT) : intent) }));
+    return events;
+  };
+
+  it("is the Fire Drill in the game, with the button high on the left wall", () => {
+    expect(CHAPTERS.flatMap((c) => c.levels)).toContain(fireDrillHD);
+    expect(fireDrillHD.id).toBe(fireDrill.id);
+    const g = new Game(DEFAULT_TUNING, fireDrillHD);
+    const p = button(g).cap.translation();
+    expect(p.x).toBeLessThan(0.25);
+    expect(p.y).toBeCloseTo(FD_BUTTON.y, 2);
+  });
+
+  it("is out of reach standing on the floor", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, fireDrillHD);
+    step(g, 0.5);
+    step(g, 2, { move: -0.4 });
+    const ev = step(g, 3, () => ({ reach: { x: 0.05, y: FD_BUTTON.y }, grip: { L: false, R: false } }));
+    expect(button(g).presses).toBe(0);
+    expect(ev.some((e) => e.type === "graphics")).toBe(false);
+  });
+
+  it("can be reached with a jump", () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, fireDrillHD);
+    step(g, 0.5);
+    step(g, 2, { move: -0.4 });
+    const ev: GameEvent[] = [];
+    for (let k = 0; k < 4 && !ev.some((e) => e.type === "graphics"); k++) {
+      ev.push(...step(g, 1 / 120, { reach: { x: 0.05, y: FD_BUTTON.y + 0.3 }, jump: true }));
+      ev.push(...step(g, 1.2, { reach: { x: 0.05, y: FD_BUTTON.y + 0.3 } }));
+    }
+    expect(ev.some((e) => e.type === "graphics")).toBe(true);
+  });
+
+  it("can be hit with a thrown mannequin", () => {
+    const g = new Game(DEFAULT_TUNING, fireDrillHD);
+    step(g, 0.6);
+    const dummy = g.props.find((p) => p.kind === "dummy")!;
+    dummy.body.setTranslation({ x: 1.0, y: FD_BUTTON.y - 0.1 }, true);
+    dummy.body.setLinvel({ x: -6, y: 1 }, true);
+    const ev = step(g, 0.5);
+    expect(ev.some((e) => e.type === "graphics")).toBe(true);
+  });
+
+  it("in HD, it sets off the sprinklers, which knock the fire down (it smoulders, and comes back)", () => {
+    const g = new Game(DEFAULT_TUNING, fireDrillHD);
+    g.hd = true;
+    step(g, 0.6);
+    // Knock the heater over: it's a fire.
+    const heater = g.props.find((p) => p.kind === "heater")!;
+    heater.body.setLinvel({ x: 1.5, y: 0 }, true);
+    step(g, 2);
+    const inst = g.inst as unknown as { fire: { cells: { heat: number }[] }; water: Liquid };
+    const heat = () => inst.fire.cells.reduce((s, c) => s + c.heat, 0);
+    expect(heat()).toBeGreaterThan(0);
+    // Smack the button.
+    const b = button(g);
+    for (let i = 0; i < 30; i++) {
+      b.cap.setLinvel({ x: -2, y: 0 }, true);
+      g.step(IDLE_INTENT);
+    }
+    const ev = step(g, SPRINKLE_TIME);
+    expect(inst.water.puddles.length + inst.water.drops.length).toBeGreaterThan(0);
+    expect(heat()).toBe(0);
+    expect(ev.some((e) => e.type === "score" && e.text.startsWith("Fire's out"))).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import { OFFICE, type Level } from "../level";
+import type { Game } from "../../sim/game";
 import { Curio } from "../curio";
 import { drawCoworkerHands, drawCoworkerHead } from "../../render/characters";
 
@@ -46,7 +47,24 @@ export const coffeeRun: Level = {
     const trayX = COUNTER.x1 - 0.36;
     const tray = kit.tray(trayX, trayY, 0.34);
     for (const dx of [-0.225, -0.075, 0.075, 0.225]) kit.fragile(trayX + dx, trayY + 0.025, "cup");
-    kit.fragile(7.0, 0, "lamp");
+    const lamp = kit.fragile(7.0, 0, "lamp");
+    /** The game, as of the last step (for who's standing on what). */
+    let now: Game | null = null;
+    /**
+     * The lamp, set down gently and upright on something solid (the desk, the
+     * counter, the floor out of the way), stays in one piece: there's a way to
+     * get it out of the way without smashing it. Dropped, tipped over, knocked
+     * flying or stood on, it breaks as usual.
+     */
+    const lampSetDown = () => {
+      const b = lamp.body;
+      const v = b.linvel();
+      if (Math.abs(b.rotation()) > 0.3 || Math.hypot(v.x, v.y) > 0.4 || Math.abs(b.angvel()) > 1.2) return false;
+      if (now?.stanley.balance.standingOn === b) return false;
+      const q = b.translation();
+      const bottom = q.y - lamp.hh;
+      return kit.solids.some((s) => !s.angle && Math.abs(s.y + s.hh - bottom) < 0.06 && q.x > s.x - s.hw && q.x < s.x + s.hw);
+    };
     // Coworkers, hidden behind their cubicle walls, popping up now and then to comment.
     const peekers = CUBICLES.map((x0, i) => ({
       x: x0 + 0.7,
@@ -75,6 +93,7 @@ export const coffeeRun: Level = {
 
     return {
       update: (game, dt) => {
+        now = game;
         for (const p of peekers) {
           p.t += dt;
           const someoneElseUp = peekers.some((q) => q !== p && q.phase !== "hidden");
@@ -99,6 +118,7 @@ export const coffeeRun: Level = {
       // Reception's desk is a safe place for a coffee: set one down there (from
       // the tray or by hand) and it stays in one piece. Anywhere else, it's fair game.
       safe: (p) => {
+        if (p === lamp) return lampSetDown();
         if (p.kind !== "cup") return false;
         const q = p.body.translation();
         return q.x > DESK.x0 - 0.1 && q.x < DESK.x1 + 0.1 && q.y > DESK.top - 0.05 && q.y < DESK.top + 0.7;

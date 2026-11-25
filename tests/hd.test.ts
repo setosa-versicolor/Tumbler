@@ -6,6 +6,7 @@ import { IDLE_INTENT } from "../src/physics/body/stanley";
 import { coffeeRunHD, DNP } from "../src/hd/coffeeRunHD";
 import { coffeeRun } from "../src/levels/downtown/coffeeRun";
 import { CHAPTERS } from "../src/app/campaign";
+import { twistFor } from "../src/levels/twists";
 import { CUP_FILL, SLICK, type Liquid } from "../src/levels/liquid";
 
 beforeAll(async () => {
@@ -156,5 +157,60 @@ describe("Spilled coffee", () => {
     // Out of it, the grip comes back.
     run(g, 2);
     if (!liquid(g).slick) expect(g.tuning.traction).toBe(DEFAULT_TUNING.traction);
+  });
+});
+
+describe("Coffee Run's lamp", () => {
+  /** Stanley has just carried the lamp over and let go of it here (upright unless `tilt`), `drop` metres above `surface`. */
+  const setDown = (g: Game, x: number, surface: number, opts: { drop?: number; tilt?: number } = {}) => {
+    const lamp = g.props.find((p) => p.kind === "lamp")!;
+    (g as unknown as { fragile: Map<unknown, { carried: boolean; timer: number }> }).fragile.set(lamp.body, { carried: true, timer: 0 });
+    lamp.body.setTranslation({ x, y: surface + lamp.hh + 0.005 + (opts.drop ?? 0) }, true);
+    lamp.body.setRotation(opts.tilt ?? 0, true);
+    lamp.body.setLinvel({ x: 0, y: 0 }, true);
+    lamp.body.setAngvel(0, true);
+    return lamp;
+  };
+
+  for (const [where, x, y] of [
+    ["on Reception's desk", 12.4, 0.78],
+    ["on the kitchen counter", 1.0, 0.95],
+    ["on the floor out of the way", 4.0, 0],
+  ] as const) {
+    it(`survives being set down gently ${where}`, () => {
+      const g = new Game(DEFAULT_TUNING, coffeeRunHD);
+      run(g, 0.7);
+      const lamp = setDown(g, x, y);
+      run(g, 2);
+      expect(g.props).toContain(lamp);
+      expect(g.breaks).toBe(0);
+    });
+  }
+
+  it("still breaks if it's dropped onto the desk", () => {
+    const g = new Game(DEFAULT_TUNING, coffeeRunHD);
+    run(g, 0.7);
+    const lamp = setDown(g, 12.4, 0.78, { drop: 0.7 });
+    run(g, 2);
+    expect(g.props).not.toContain(lamp);
+    expect(g.breaks).toBe(1);
+  });
+
+  it("still breaks if it's put down leaning and topples", () => {
+    const g = new Game(DEFAULT_TUNING, coffeeRunHD);
+    run(g, 0.7);
+    const lamp = setDown(g, 4.0, 0, { tilt: 0.7 });
+    run(g, 3);
+    expect(g.props).not.toContain(lamp);
+    expect(g.breaks).toBe(1);
+  });
+
+  it("can be moved safely in Overtime too (so ★5 is possible)", () => {
+    const g = new Game(DEFAULT_TUNING, coffeeRunHD, 1, twistFor(coffeeRunHD.id));
+    run(g, 0.7);
+    const lamp = setDown(g, 12.4, 0.78);
+    run(g, 3);
+    expect(g.props).toContain(lamp);
+    expect(g.breaks).toBe(0);
   });
 });

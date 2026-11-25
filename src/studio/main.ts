@@ -3,6 +3,22 @@ import type { Game } from "../sim/game";
 import { drawStanleyHD, type StanleyLook } from "../render/charactersHD";
 import { drawCoworkerHandsHD, drawCoworkerHeadHD } from "../render/charactersHD";
 import { POSES, posed } from "./pose";
+import { PropArt } from "../hd/props";
+import type { Prop } from "../levels/kit";
+
+/** A stand-in prop body, fixed in place. */
+const propBody = (x: number, y: number, a = 0) => ({ translation: () => ({ x, y }), rotation: () => a, linvel: () => ({ x: 0, y: 0 }) });
+const propArt = new PropArt();
+/** The props, at a fill each: full, half, nearly empty, and tipped. */
+const PROPS: { prop: Prop; fill: number }[] = [
+  ...[1, 0.55, 0.15, 1].map((fill, i) => ({
+    prop: { kind: "cup", hw: 0.06, hh: 0.06, color: "#f4f4f4", body: propBody(-0.45 + i * 0.3, 0.06, i === 3 ? 0.35 : 0) } as unknown as Prop,
+    fill,
+  })),
+  { prop: { kind: "tray", hw: 0.34, hh: 0.025, color: "#9aa0a8", body: propBody(0, -0.35, 0.05) } as unknown as Prop, fill: 0 },
+];
+const fills = new Map(PROPS.map((q) => [q.prop.body, q.fill]));
+const propGame = { inst: { coffee: { fillOf: (b: unknown) => fills.get(b as never) ?? null } } } as unknown as Game;
 
 // The character studio: Stanley in a row of fixed poses and the coworkers, big,
 // on a plain background, so the details can be looked at properly.
@@ -99,6 +115,21 @@ function frame(now: number) {
       pose.name,
     );
   });
+  // The props: big, and (in the corner) at the size they are in the game.
+  cell(
+    POSES.length + 3,
+    () => {
+      const s0 = cam.scale;
+      for (const [k, x, y] of [[2.0, 0, -0.12], [1, 0.75, 0.75]] as const) {
+        cam.scale = s0 * k;
+        cam.x = x;
+        cam.y = y;
+        for (const q of PROPS) propArt.draw(r, q.prop, propGame, 0, () => {});
+      }
+      cam.scale = s0;
+    },
+    "Props: cups (full, half, low, tipped), tray",
+  );
   // The coworkers, over a cubicle wall.
   const row = POSES.length + 1;
   for (let k = 0; k < 2; k++) {

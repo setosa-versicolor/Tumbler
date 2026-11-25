@@ -647,7 +647,7 @@ export class Renderer {
     }
   }
 
-  private drawProp(p: Prop) {
+  protected drawProp(p: Prop) {
     const { ctx, camera: cam } = this;
     const sc = cam.scale;
     const pos = cam.toScreen(p.body.translation());

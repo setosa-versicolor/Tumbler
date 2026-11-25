@@ -3,6 +3,9 @@ import type { Game } from "../sim/game";
 import { BLUR, BRIGHT, FINAL, LIGHT, MAX_LIGHTS, VERT } from "./shaders";
 import { DEFAULT_SCENE } from "./types";
 import { drawStanleyHD, type StanleyLook } from "../render/charactersHD";
+import type { Prop } from "../levels/kit";
+import { smear } from "./smear";
+import { PropArt } from "./props";
 
 type Layer = "back" | "mid" | "front";
 
@@ -34,11 +37,11 @@ export function hdSupported(): boolean {
  */
 export class HDRenderer extends Renderer {
   private gl: WebGL2RenderingContext;
-  private layers: Record<"back" | "mid" | "emit", { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D }>;
+  private layers: Record<"back" | "mid" | "emit" | "glass", { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D }>;
   private front: HTMLCanvasElement;
   private frontCtx: CanvasRenderingContext2D;
   private progs!: Record<"light" | "bright" | "blur" | "final", { p: WebGLProgram; u: Record<string, WebGLUniformLocation | null> }>;
-  private tex!: Record<"back" | "mid" | "emit", WebGLTexture>;
+  private tex!: Record<"back" | "mid" | "emit" | "glass", WebGLTexture>;
   private scene: Target | null = null;
   private bloomA: Target | null = null;
   private bloomB: Target | null = null;
@@ -66,7 +69,7 @@ export class HDRenderer extends Renderer {
     gameCanvas.after(glCanvas, front);
     const back = make();
     super(glCanvas, back.ctx);
-    this.layers = { back, mid: make(), emit: make() };
+    this.layers = { back, mid: make(), emit: make(), glass: make() };
     this.front = front;
     this.frontCtx = this.front.getContext("2d")!;
     const gl = glCanvas.getContext("webgl2", { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false })!;
@@ -80,9 +83,20 @@ export class HDRenderer extends Renderer {
 
   private stanleyLook: StanleyLook = { blink: 0 };
 
-  /** Stanley, in detail. */
+  /** Stanley, in detail, with smears behind fast hands. */
   protected override drawStanley(game: Game, dt: number) {
+    for (const arm of Object.values(game.stanley.rig.arms)) {
+      smear(this, arm.hand.translation(), arm.hand.linvel(), 0.15, "#f4c69a", 0.9);
+      smear(this, arm.fore.translation(), arm.fore.linvel(), 0.1, "#f4c69a", 0.6);
+    }
     drawStanleyHD(this, game, this.stanleyLook, dt);
+  }
+
+  /** Props, with a smear behind anything flying fast. */
+  protected override drawProp(p: Prop) {
+    smear(this, p.body.translation(), p.body.linvel(), Math.max(p.hw, p.hh) * 1.8, p.kind === "cup" ? "#c9a27e" : p.kind === "tray" ? "#c9d0d8" : p.color);
+    if (this.now && this.props.draw(this, p, this.now.game, this.now.dt, (fn) => this.glass(fn))) return;
+    super.drawProp(p);
   }
 
   /** Show or hide the HD picture. */
@@ -128,7 +142,7 @@ export class HDRenderer extends Renderer {
       return { p, u };
     };
     this.progs = {
-      light: prog(LIGHT, ["uBack", "uMid", "uEmit", "uRes", "uAmbient", "uCount", "uLP", "uLC", "uLS", "uHaze", "uMotes", "uTime", "uPx", "uWorld0"]),
+      light: prog(LIGHT, ["uBack", "uMid", "uEmit", "uGlass", "uRes", "uAmbient", "uCount", "uLP", "uLC", "uLS", "uHaze", "uMotes", "uTime", "uPx", "uWorld0"]),
       bright: prog(BRIGHT, ["uScene", "uRes", "uThresh"]),
       blur: prog(BLUR, ["uTex", "uRes", "uDir"]),
       final: prog(FINAL, ["uScene", "uBloom", "uRes", "uFloor", "uReflect", "uBloomK", "uExposure", "uTime"]),
@@ -145,7 +159,7 @@ export class HDRenderer extends Renderer {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       return t;
     };
-    this.tex = { back: layerTex(false), mid: layerTex(true), emit: layerTex(false) };
+    this.tex = { back: layerTex(false), mid: layerTex(true), emit: layerTex(false), glass: layerTex(true) };
   }
 
   private target(w: number, h: number, mips: boolean): Target {
@@ -195,18 +209,27 @@ export class HDRenderer extends Renderer {
     const canvas = ctx.canvas;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (name === "back") {
-      const e = this.layers.emit.ctx;
-      e.setTransform(1, 0, 0, 1, 0, 0);
-      e.clearRect(0, 0, e.canvas.width, e.canvas.height);
-    }
+    if (name === "back")
+      for (const e of [this.layers.emit.ctx, this.layers.glass.ctx]) {
+        e.setTransform(1, 0, 0, 1, 0, 0);
+        e.clearRect(0, 0, e.canvas.width, e.canvas.height);
+      }
     ctx.setTransform(this.dpr, 0, 0, this.dpr, this.shakeNow.x * this.dpr, this.shakeNow.y * this.dpr);
     this.ctx = ctx;
   }
 
   override emit(fn: () => void) {
+    this.onLayer("emit", fn);
+  }
+
+  /** Mark where there's glass (the room behind it bends a little). */
+  glass(fn: () => void) {
+    this.onLayer("glass", fn);
+  }
+
+  private onLayer(name: "emit" | "glass", fn: () => void) {
     const was = this.ctx;
-    const e = this.layers.emit.ctx;
+    const e = this.layers[name].ctx;
     e.setTransform(this.dpr, 0, 0, this.dpr, this.shakeNow.x * this.dpr, this.shakeNow.y * this.dpr);
     this.ctx = e;
     try {
@@ -218,7 +241,12 @@ export class HDRenderer extends Renderer {
 
   // ------------------------------------------------------------- frame ---
 
+  /** This frame's game and time step, for the props' own animation. */
+  private now: { game: Game; dt: number } | null = null;
+  private props = new PropArt();
+
   override draw(game: Game, dt: number) {
+    this.now = { game, dt };
     super.draw(game, dt);
     this.composite(game);
   }
@@ -244,6 +272,7 @@ export class HDRenderer extends Renderer {
     this.upload(this.tex.back, this.layers.back.canvas, false);
     this.upload(this.tex.mid, this.layers.mid.canvas, true);
     this.upload(this.tex.emit, this.layers.emit.canvas, false);
+    this.upload(this.tex.glass, this.layers.glass.canvas, true);
 
     // World → device pixels, GL style (y up from the bottom).
     const px = cam.scale * dpr;
@@ -277,6 +306,7 @@ export class HDRenderer extends Renderer {
     this.bind(0, this.tex.back, pr.u.uBack);
     this.bind(1, this.tex.mid, pr.u.uMid);
     this.bind(2, this.tex.emit, pr.u.uEmit);
+    this.bind(3, this.tex.glass, pr.u.uGlass);
     gl.uniform2f(pr.u.uRes, W, H);
     gl.uniform3fv(pr.u.uAmbient, sc.ambient);
     gl.uniform1i(pr.u.uCount, n);

@@ -16,6 +16,7 @@ precision highp float;
 uniform sampler2D uBack;
 uniform sampler2D uMid;
 uniform sampler2D uEmit;
+uniform sampler2D uGlass;   // where there's glass (alpha)
 uniform vec2 uRes;
 uniform vec3 uAmbient;
 uniform int uCount;
@@ -55,7 +56,14 @@ float occlusion(vec2 p, vec2 lp, float start, float jit) {
 void main() {
   vec2 px = gl_FragCoord.xy;
   vec2 uv = px / uRes;
-  vec4 B = texture(uBack, uv);
+  // Behind glass, the room bends: offset by the slope of the (blurred) glass mask, like a lens at its edges.
+  float ge = max(1.5, uPx * 0.02);
+  vec2 gd = vec2(
+    textureLod(uGlass, (px + vec2(ge, 0.0)) / uRes, 1.5).a - textureLod(uGlass, (px - vec2(ge, 0.0)) / uRes, 1.5).a,
+    textureLod(uGlass, (px + vec2(0.0, ge)) / uRes, 1.5).a - textureLod(uGlass, (px - vec2(0.0, ge)) / uRes, 1.5).a);
+  float gin = texture(uGlass, uv).a;
+  vec2 bend = -gd * uPx * 0.035 + gin * vec2(0.0, uPx * 0.006);
+  vec4 B = texture(uBack, (px + bend) / uRes);
   vec4 M = texture(uMid, uv);
   vec4 E = texture(uEmit, uv);
   vec3 alb = lin(B.rgb);

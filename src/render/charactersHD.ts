@@ -676,15 +676,19 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
       ctx.bezierCurveTo(-R * 1.08, R * 1.42, R * 1.08, R * 1.42, R * 1.04, cy);
       ctx.closePath();
     };
+    // The bill comes out from under the front of the crown, level with its rim, curving down a touch at the tip.
     const brim = () => {
       ctx.beginPath();
-      ctx.moveTo(R * 0.5, cy + 0.01);
-      ctx.quadraticCurveTo(R * 1.3, cy + 0.035, R * 1.68, cy - 0.01);
-      ctx.quadraticCurveTo(R * 1.7, cy - 0.04, R * 1.6, cy - 0.042);
-      ctx.quadraticCurveTo(R * 1.2, cy - 0.03, R * 0.5, cy - 0.035);
+      ctx.moveTo(R * 0.55, cy + 0.035);
+      ctx.quadraticCurveTo(R * 1.25, cy + 0.04, R * 1.66, cy + 0.012);
+      ctx.quadraticCurveTo(R * 1.72, cy - 0.006, R * 1.62, cy - 0.012);
+      ctx.quadraticCurveTo(R * 1.2, cy - 0.004, R * 0.55, cy - 0.006);
       ctx.closePath();
     };
     for (const p of [crown, brim]) outline(ctx, p);
+    fill(ctx, brim, shade(STAN.cap, -0.06));
+    line(ctx, shade(STAN.cap, -0.42), 0.008, [[R * 0.95, cy - 0.002], [R * 1.3, cy - 0.004], [R * 1.6, cy - 0.008]]);
+    line(ctx, rgba("#ffffff", 0.35), 0.005, [[R * 1.05, cy + 0.028], [R * 1.4, cy + 0.026], [R * 1.6, cy + 0.012]]);
     fill(ctx, crown, STAN.cap);
     cel(
       ctx,
@@ -710,9 +714,6 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
     ctx.fillStyle = "#fff6ea";
     ctx.fill();
     label(ctx, "OJ", R * 0.46, R * 0.66, 0.03, STAN.cap, f);
-    fill(ctx, brim, shade(STAN.cap, -0.06));
-    line(ctx, shade(STAN.cap, -0.42), 0.012, [[R * 0.55, cy - 0.03], [R * 1.2, cy - 0.025], [R * 1.62, cy - 0.036]]);
-    line(ctx, rgba("#ffffff", 0.35), 0.005, [[R * 0.7, cy + 0.016], [R * 1.3, cy + 0.022], [R * 1.58, cy - 0.003]]);
   });
 }
 

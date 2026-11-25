@@ -1,5 +1,13 @@
 import { OFFICE, type Level } from "../level";
 import type { Game } from "../../sim/game";
+import { G_FLOOR, G_HEAD, G_PROP, G_WORLD, groups } from "../../physics/groups";
+
+/**
+ * The tray on the counter, like a tray in his hands: only his head bumps it,
+ * the rest of him passes in front. So walking up to it doesn't shove it back
+ * onto the counter, and a hand reaching for it doesn't lever it off the end.
+ */
+const TRAY_APART = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP | G_HEAD);
 import { Curio } from "../curio";
 import { drawCoworkerHands, drawCoworkerHead } from "../../render/characters";
 
@@ -43,9 +51,12 @@ export const coffeeRun: Level = {
     kit.solid((COUNTER.x0 + COUNTER.x1) / 2, COUNTER.top / 2, (COUNTER.x1 - COUNTER.x0) / 2, COUNTER.top / 2, "counter");
     kit.solid((DESK.x0 + DESK.x1) / 2, DESK.top / 2, (DESK.x1 - DESK.x0) / 2, DESK.top / 2, "desk");
     const trayY = COUNTER.top + 0.025;
-    // The tray sits at the front of the counter, within reach.
-    const trayX = COUNTER.x1 - 0.36;
+    // It hangs a little off the end of the counter (its weight still well over
+    // the counter), so Stanley can take hold of it near the middle, not just the end.
+    const trayX = COUNTER.x1 - 0.18;
     const tray = kit.tray(trayX, trayY, 0.34);
+    // Walking up to it doesn't shove it back, and reaching for it doesn't tip it.
+    for (let i = 0; i < tray.body.numColliders(); i++) tray.body.collider(i).setCollisionGroups(TRAY_APART);
     for (const dx of [-0.225, -0.075, 0.075, 0.225]) kit.fragile(trayX + dx, trayY + 0.025, "cup");
     const lamp = kit.fragile(7.0, 0, "lamp");
     /** The game, as of the last step (for who's standing on what). */

@@ -127,9 +127,21 @@ export class Grip {
     // over little ones (reaching for a tray gets the tray, not a cup on it).
     let found: Collider | null = null;
     let best = -1;
+    // With a tray balanced on the other hand, this one leaves what's on the tray alone (it'd only drag a cup off it).
+    const tray = (other.held?.userData as { balances?: boolean } | undefined)?.balances ? other.held : null;
+    const onTray = (b: RigidBody) => {
+      let touching = false;
+      for (let i = 0; i < b.numColliders() && !touching; i++)
+        for (let j = 0; j < tray!.numColliders() && !touching; j++)
+          world.contactPair(b.collider(i), tray!.collider(j), (m) => {
+            if (m.numContacts() > 0) touching = true;
+          });
+      return touching;
+    };
     world.intersectionsWithShape(h, 0, this.shape, (c) => {
       const b = c.parent();
       if (b && (b === this.noRegrab || b === this.setDown)) return true;
+      if (tray && b && b !== tray && b.isDynamic() && onTray(b)) return true;
       // (A handhold, like a trapeze bar, can be grabbed at any height.)
       if (!b?.isDynamic() && h.y < minStaticY && !(b?.userData as { handhold?: boolean } | undefined)?.handhold) return true;
       const score = b?.isDynamic() ? 1 + b.mass() : 0;

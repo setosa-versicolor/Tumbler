@@ -646,12 +646,16 @@ describe("Coffee Run", () => {
     const g = play(coffeeRun);
     g.props.find((p) => p.kind === "lamp")!.body.setTranslation({ x: 13.7, y: 0.51 }, true);
     const tray = g.props.find((p) => p.kind === "tray")!.body;
-    const hold = { L: true, R: true };
+    // (A tray balances on one hand.)
+    const hold = { L: true, R: false };
     const sh = () => g.stanley.shoulder;
     run(g, 0.5);
     run(g, 2, { move: -0.4 });
-    const grabAt = { x: tray.translation().x + 0.3, y: tray.translation().y + 0.03 };
-    run(g, 1, { reach: grabAt, grip: hold });
+    // Hand up over the counter, onto the middle of the tray, then take hold.
+    const grabAt = { x: tray.translation().x + 0.06, y: tray.translation().y + 0.055 };
+    run(g, 0.6, { reach: { x: 1.95, y: 1.35 }, move: -0.12 });
+    run(g, 0.8, { reach: grabAt, move: -0.12 });
+    run(g, 0.5, { reach: grabAt, grip: hold });
     run(g, 0.5, { reach: { x: grabAt.x, y: 1.2 }, grip: hold });
     // Swing it across in front, like a thumb sweeping over.
     for (let k = 0; k <= 180; k++) run(g, 1 / 120, () => ({ reach: { x: sh().x - Math.cos((Math.PI * k) / 180) * 0.6, y: 1.2 }, grip: hold }));
@@ -703,17 +707,22 @@ describe("Ducking", () => {
     expect(g.stanley.balance.posture).toBe("up");
   });
 
-  it("ducking, Stanley can bring the tray over his head without spilling", { timeout: 20000 }, () => {
+  it("ducking, Stanley can bring the tray over his head (held by the end) without losing the coffees", { timeout: 20000 }, () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, coffeeRun);
     const tray = g.props.find((p) => p.kind === "tray")!.body;
-    const hold = { L: true, R: true };
+    const hold = { L: true, R: false };
     const sh = () => g.stanley.shoulder;
     run(g, 0.5);
     run(g, 2, { move: -0.4 });
-    const grabAt = { x: tray.translation().x + 0.3, y: tray.translation().y + 0.03 };
-    run(g, 1, { reach: grabAt, grip: hold });
-    run(g, 0.5, { reach: { x: grabAt.x, y: 1.2 }, grip: hold });
-    run(g, 0.5, { reach: { x: grabAt.x, y: 1.45 }, grip: hold, duck: 1 });
+    // Hand up over the counter, onto the near end of the tray, then take hold.
+    const grabAt = { x: tray.translation().x + 0.28, y: tray.translation().y + 0.055 };
+    run(g, 0.6, { reach: { x: 1.95, y: 1.35 }, move: -0.12 });
+    run(g, 0.8, { reach: grabAt, move: -0.12 });
+    run(g, 0.5, { reach: grabAt, grip: hold });
+    // Step back from the counter with it, so it's out in front, clear of his head.
+    run(g, 0.8, () => ({ reach: { x: sh().x - 0.45, y: 1.1 }, grip: hold, move: 0.2 }));
+    run(g, 0.5, () => ({ reach: { x: sh().x - 0.45, y: 1.2 }, grip: hold }));
+    run(g, 0.5, () => ({ reach: { x: sh().x - 0.5, y: 1.45 }, grip: hold, duck: 1 }));
     // Up and over, from the counter side to the other, taking it steady.
     run(g, 2.5, (t) => {
       const a = Math.PI * (1 - t / 2.5);
@@ -722,7 +731,43 @@ describe("Ducking", () => {
     run(g, 1.5, (t) => ({ reach: { x: sh().x + 0.715, y: sh().y + 0.55 * (1 - t / 1.5) }, grip: hold, duck: 1 - t / 1.5 }));
     expect(g.held.has(tray)).toBe(true);
     expect(tray.translation().x - g.stanley.rig.head.translation().x).toBeGreaterThan(0.2);
+    // Enough left to do the job (three).
+    expect(g.props.filter((p) => p.kind === "cup").length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("Coffee Run tray", () => {
+  it("hangs a little off the end of the counter, and stays put with the coffees on it", () => {
+    const g = play(coffeeRun);
+    const tray = g.props.find((p) => p.kind === "tray")!;
+    const y0 = tray.body.translation().y;
+    run(g, 3);
+    const t = tray.body.translation();
+    expect(t.x + tray.hw).toBeGreaterThan(1.8 + 0.1);
+    expect(Math.abs(t.y - y0)).toBeLessThan(0.02);
+    expect(Math.abs(tray.body.rotation())).toBeLessThan(0.05);
     expect(g.props.filter((p) => p.kind === "cup").length).toBe(4);
+  });
+
+  it("can be taken hold of near the middle (not just the end), and the other hand leaves the cups on it alone", { timeout: 20000 }, () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, coffeeRun);
+    const tray = g.props.find((p) => p.kind === "tray")!.body;
+    run(g, 0.5);
+    run(g, 2, { move: -0.4 });
+    // Walking up to it didn't shove it back onto the counter.
+    expect(tray.translation().x + 0.34).toBeGreaterThan(1.8 + 0.1);
+    const grabAt = { x: tray.translation().x + 0.06, y: tray.translation().y + 0.055 };
+    run(g, 0.6, { reach: { x: 1.95, y: 1.35 }, move: -0.12 });
+    run(g, 0.8, { reach: grabAt, move: -0.12 });
+    // Both hands grip (as on a phone): one takes the tray, the other mustn't take a cup off it.
+    run(g, 0.5, { reach: grabAt, grip: { L: true, R: true } });
+    expect(g.held.has(tray)).toBe(true);
+    const grip = g.stanley.grips.L.held === tray ? g.stanley.grips.L : g.stanley.grips.R;
+    expect(Math.abs(grip.anchorWorld()!.x - tray.translation().x)).toBeLessThan(0.24);
+    expect(g.props.filter((p) => p.kind === "cup").length).toBe(4);
+    // Lifted gently, the other hand (still gripping, right by the cups) leaves them be.
+    run(g, 1.2, (t) => ({ reach: { x: grabAt.x, y: grabAt.y + 0.15 * (t / 1.2) }, grip: { L: true, R: true } }));
+    expect([...g.held].every((b) => b === tray || !g.props.some((p) => p.kind === "cup" && p.body === b))).toBe(true);
   });
 });
 

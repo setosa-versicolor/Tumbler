@@ -37,11 +37,11 @@ export function hdSupported(): boolean {
  */
 export class HDRenderer extends Renderer {
   private gl: WebGL2RenderingContext;
-  private layers: Record<"back" | "mid" | "emit" | "glass", { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D }>;
+  private layers: Record<"back" | "mid" | "emit" | "glass" | "fore", { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D }>;
   private front: HTMLCanvasElement;
   private frontCtx: CanvasRenderingContext2D;
   private progs!: Record<"light" | "bright" | "blur" | "final", { p: WebGLProgram; u: Record<string, WebGLUniformLocation | null> }>;
-  private tex!: Record<"back" | "mid" | "emit" | "glass", WebGLTexture>;
+  private tex!: Record<"back" | "mid" | "emit" | "glass" | "fore", WebGLTexture>;
   private scene: Target | null = null;
   private bloomA: Target | null = null;
   private bloomB: Target | null = null;
@@ -69,7 +69,7 @@ export class HDRenderer extends Renderer {
     gameCanvas.after(glCanvas, front);
     const back = make();
     super(glCanvas, back.ctx);
-    this.layers = { back, mid: make(), emit: make(), glass: make() };
+    this.layers = { back, mid: make(), emit: make(), glass: make(), fore: make() };
     this.front = front;
     this.frontCtx = this.front.getContext("2d")!;
     const gl = glCanvas.getContext("webgl2", { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false })!;
@@ -145,7 +145,7 @@ export class HDRenderer extends Renderer {
       light: prog(LIGHT, ["uBack", "uMid", "uEmit", "uGlass", "uRes", "uAmbient", "uCount", "uLP", "uLC", "uLS", "uHaze", "uMotes", "uTime", "uPx", "uWorld0"]),
       bright: prog(BRIGHT, ["uScene", "uRes", "uThresh"]),
       blur: prog(BLUR, ["uTex", "uRes", "uDir"]),
-      final: prog(FINAL, ["uScene", "uBloom", "uRes", "uFloor", "uReflect", "uBloomK", "uExposure", "uTime"]),
+      final: prog(FINAL, ["uScene", "uBloom", "uFore", "uRes", "uFloor", "uReflect", "uBloomK", "uExposure", "uTime"]),
     };
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
@@ -159,7 +159,7 @@ export class HDRenderer extends Renderer {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       return t;
     };
-    this.tex = { back: layerTex(false), mid: layerTex(true), emit: layerTex(false), glass: layerTex(true) };
+    this.tex = { back: layerTex(false), mid: layerTex(true), emit: layerTex(false), glass: layerTex(true), fore: layerTex(true) };
   }
 
   private target(w: number, h: number, mips: boolean): Target {
@@ -248,6 +248,20 @@ export class HDRenderer extends Renderer {
   override draw(game: Game, dt: number) {
     this.now = { game, dt };
     super.draw(game, dt);
+    // The out-of-focus foreground, on its own layer.
+    const fc = this.layers.fore.ctx;
+    fc.setTransform(1, 0, 0, 1, 0, 0);
+    fc.clearRect(0, 0, fc.canvas.width, fc.canvas.height);
+    if (game.inst.drawFore) {
+      fc.setTransform(this.dpr, 0, 0, this.dpr, this.shakeNow.x * this.dpr, this.shakeNow.y * this.dpr);
+      const was = this.ctx;
+      this.ctx = fc;
+      try {
+        game.inst.drawFore(this, game);
+      } finally {
+        this.ctx = was;
+      }
+    }
     this.composite(game);
   }
 
@@ -273,6 +287,7 @@ export class HDRenderer extends Renderer {
     this.upload(this.tex.mid, this.layers.mid.canvas, true);
     this.upload(this.tex.emit, this.layers.emit.canvas, false);
     this.upload(this.tex.glass, this.layers.glass.canvas, true);
+    this.upload(this.tex.fore, this.layers.fore.canvas, true);
 
     // World → device pixels, GL style (y up from the bottom).
     const px = cam.scale * dpr;
@@ -354,6 +369,7 @@ export class HDRenderer extends Renderer {
     gl.useProgram(pr.p);
     this.bind(0, this.scene.tex, pr.u.uScene);
     this.bind(1, A.tex, pr.u.uBloom);
+    this.bind(2, this.tex.fore, pr.u.uFore);
     gl.uniform2f(pr.u.uRes, W, H);
     gl.uniform1f(pr.u.uFloor, toPx(0, 0).y / H);
     gl.uniform1f(pr.u.uReflect, sc.reflect ?? 0);

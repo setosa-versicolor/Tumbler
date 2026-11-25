@@ -43,6 +43,8 @@ export interface LevelInstance {
   arrive?(game: Game, from: string): GameEvent[];
   /** Where the level's characters' heads are, for speech in a scene. */
   speakers?: Record<string, () => Vec>;
+  /** HD renderer: things close to the camera, out of focus (drawn on their own layer, then blurred). */
+  drawFore?(r: Renderer, game: Game): void;
   /** HD renderer: this frame's lights, haze and finish. Without it the HD renderer uses a soft default. */
   hd?(game: Game, time: number): HDScene;
 }

@@ -554,9 +554,120 @@ export const coffeeRunHD: Level = {
       }
     };
 
+    /**
+     * Close to the camera, out of focus: things in the office between us and
+     * Stanley. Drawn `k` times nearer (bigger, and sliding past faster), along
+     * the bottom of the screen so they never hide the job.
+     */
+    const near = (r: Renderer, k: number, fn: (ctx: CanvasRenderingContext2D) => void) => {
+      const ctx = r.ctx;
+      const cam = r.camera;
+      const s = cam.scale * k;
+      ctx.save();
+      ctx.translate(cam.w / 2 - cam.x * s, cam.h);
+      ctx.scale(s, -s);
+      fn(ctx);
+      ctx.restore();
+    };
+    const drawFore = (r: Renderer) => {
+      const lit = mode === "disco" ? "rgba(210,140,255,0.6)" : "rgba(255,196,130,0.6)";
+      // A big potted plant.
+      near(r, 1.8, (ctx) => {
+        const x = 2.3;
+        for (let i = 0; i < 9; i++) {
+          const a = -1.0 + i * 0.25 + Math.sin(r.clock * 0.6 + i) * 0.03;
+          const len = 0.38 + ((i * 37) % 5) * 0.04;
+          ctx.save();
+          ctx.translate(x, 0.08);
+          ctx.rotate(a);
+          ctx.beginPath();
+          ctx.ellipse(0, len / 2, 0.05, len / 2, 0, 0, Math.PI * 2);
+          ctx.fillStyle = i % 2 ? "#18301f" : "#1f3d27";
+          ctx.fill();
+          ctx.strokeStyle = lit;
+          ctx.lineWidth = 0.008;
+          ctx.beginPath();
+          ctx.moveTo(0, 0.02);
+          ctx.lineTo(0, len * 0.9);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.fillStyle = "#3a2218";
+        ctx.beginPath();
+        ctx.moveTo(x - 0.22, 0.14);
+        ctx.lineTo(x + 0.22, 0.14);
+        ctx.lineTo(x + 0.18, -0.3);
+        ctx.lineTo(x - 0.18, -0.3);
+        ctx.fill();
+        ctx.fillStyle = lit;
+        ctx.fillRect(x - 0.22, 0.12, 0.44, 0.02);
+      });
+      // The corner of someone's desk: the back of a monitor, a mug, a lamp's glow on its edge.
+      near(r, 1.6, (ctx) => {
+        const x0 = 5.2;
+        const top = 0.1;
+        ctx.fillStyle = "#3a2a20";
+        ctx.fillRect(x0, -0.6, 1.7, top + 0.6);
+        ctx.fillStyle = "#4e3a2c";
+        ctx.fillRect(x0, top - 0.045, 1.7, 0.045);
+        ctx.fillStyle = lit;
+        ctx.fillRect(x0, top - 0.012, 1.7, 0.03);
+        // Monitor, from behind: stand, the back of the screen, a cable.
+        ctx.fillStyle = "#2a2d34";
+        ctx.fillRect(x0 + 0.58, top, 0.07, 0.1);
+        ctx.fillRect(x0 + 0.48, top, 0.27, 0.02);
+        ctx.beginPath();
+        ctx.roundRect(x0 + 0.3, top + 0.08, 0.56, 0.22, 0.025);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(120,170,255,0.55)";
+        ctx.lineWidth = 0.016;
+        ctx.stroke();
+        ctx.strokeStyle = "#1b1d22";
+        ctx.lineWidth = 0.014;
+        ctx.beginPath();
+        ctx.moveTo(x0 + 0.62, top + 0.1);
+        ctx.quadraticCurveTo(x0 + 0.7, top - 0.05, x0 + 0.9, top);
+        ctx.stroke();
+        // A mug.
+        ctx.fillStyle = "#a33f36";
+        ctx.beginPath();
+        ctx.roundRect(x0 + 1.2, top, 0.12, 0.14, 0.018);
+        ctx.fill();
+        ctx.strokeStyle = "#a33f36";
+        ctx.lineWidth = 0.024;
+        ctx.beginPath();
+        ctx.arc(x0 + 1.33, top + 0.07, 0.04, -1.3, 1.3);
+        ctx.stroke();
+        ctx.fillStyle = lit;
+        ctx.fillRect(x0 + 1.2, top + 0.125, 0.12, 0.015);
+      });
+      // An office chair, turned away: seat, back, an armrest.
+      near(r, 1.7, (ctx) => {
+        const x = 10.4;
+        ctx.fillStyle = "#14161b";
+        ctx.fillRect(x - 0.035, -0.4, 0.07, 0.4);
+        ctx.fillStyle = "#2b2f38";
+        ctx.beginPath();
+        ctx.roundRect(x - 0.3, -0.02, 0.6, 0.1, 0.04);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(x - 0.24, 0.07, 0.42, 0.42, [0.1, 0.1, 0.04, 0.04]);
+        ctx.fill();
+        ctx.fillStyle = "#1f222a";
+        ctx.fillRect(x + 0.16, 0.08, 0.05, 0.16);
+        ctx.fillRect(x + 0.12, 0.22, 0.2, 0.035);
+        ctx.strokeStyle = lit;
+        ctx.lineWidth = 0.02;
+        ctx.beginPath();
+        ctx.roundRect(x - 0.24, 0.07, 0.42, 0.42, [0.1, 0.1, 0.04, 0.04]);
+        ctx.stroke();
+      });
+    };
+
     const inst: LevelInstance & { coffee: Liquid } = {
       ...base,
       coffee,
+      drawFore: (r) => drawFore(r),
       update,
       hd,
       drawBack,

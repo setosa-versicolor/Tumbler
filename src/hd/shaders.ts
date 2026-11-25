@@ -159,6 +159,7 @@ export const FINAL = `#version 300 es
 precision highp float;
 uniform sampler2D uScene;
 uniform sampler2D uBloom;
+uniform sampler2D uFore;    // things close to the camera, out of focus
 uniform vec2 uRes;
 uniform float uFloor;     // floor line, as a fraction of the height from the bottom
 uniform float uReflect;
@@ -188,6 +189,14 @@ void main() {
   }
 
   col += texture(uBloom, uv).rgb * uBloomK;
+  // The foreground, out of focus: a blurry copy (a soft lens blur from a few mip taps).
+  vec4 F = textureLod(uFore, uv, 3.0) * 0.4;
+  vec2 bs = 6.0 / uRes;
+  F += textureLod(uFore, uv + vec2(bs.x, bs.y), 3.0) * 0.15;
+  F += textureLod(uFore, uv + vec2(-bs.x, bs.y), 3.0) * 0.15;
+  F += textureLod(uFore, uv + vec2(bs.x, -bs.y), 3.0) * 0.15;
+  F += textureLod(uFore, uv + vec2(-bs.x, -bs.y), 3.0) * 0.15;
+  if (F.a > 0.001) col = col * (1.0 - F.a) + pow(F.rgb / F.a, vec3(2.2)) * F.a;
   col *= uExposure;
   col = aces(col);
   // Grade: cool shadows, warm highlights.

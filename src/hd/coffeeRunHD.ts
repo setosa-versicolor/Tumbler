@@ -25,6 +25,8 @@ const BALL_UP = H + 0.4;
 const BALL_DOWN = 3.45;
 /** Disco tempo. */
 const BPM = 118;
+/** Seconds the graphics take to turn up (the wipe across the room, the lamps coming on). */
+export const UPGRADE_TIME = 2.4;
 
 type Mode = "normal" | "blackout" | "disco" | "restore";
 
@@ -102,6 +104,7 @@ const css = (c: [number, number, number], a = 1) => `rgba(${(c[0] * 255) | 0},${
  * wall that says not to push it.
  */
 export const coffeeRunHD: Level = {
+  // This is the Coffee Run in the game: it starts in plain graphics, and the button turns them up.
   ...coffeeRun,
   build(kit) {
     const base = coffeeRun.build(kit);
@@ -118,22 +121,32 @@ export const coffeeRunHD: Level = {
     let lamps = 1;
     /** Flicker on a restore. */
     let flicker = 1;
+    /** Seconds since the button turned the graphics up (-1: it hasn't). */
+    let since = -1;
 
     const update = (game: Game, dt: number): GameEvent[] => {
       const events = base.update?.(game, dt) ?? [];
       events.push(...coffee.update(game, dt));
       t += dt;
       // The press itself comes from the button (it clicks); here, what it does.
-      // Flailing at it counts once: while the alarm's going, more pushes do nothing.
-      if (button.presses > presses && mode === "blackout") presses = button.presses;
+      // Flailing at it counts once: while the alarm's going (or the graphics are
+      // still turning up), more pushes do nothing.
+      if (since >= 0) since += dt;
+      const busy = mode === "blackout" || (since >= 0 && since < UPGRADE_TIME);
+      if (button.presses > presses && busy) presses = button.presses;
       if (button.presses > presses) {
         presses = button.presses;
         const at = { x: 0.9, y: DNP.y + 0.55 };
-        if (mode === "normal" || mode === "restore") {
+        if (!game.hd) {
+          // In plain graphics, it turns the graphics up.
+          since = 0;
+          events.push({ type: "graphics", to: "hd" });
+          events.push({ type: "surprise", id: `dnp-${presses}`, text: "It said DO NOT PUSH.", pos: at });
+        } else if (mode === "normal" || mode === "restore") {
           mode = "blackout";
           t = 0;
           events.push({ type: "sfx", name: "alarm" });
-          events.push({ type: "surprise", id: `dnp-${presses}`, text: presses < 3 ? "It said DO NOT PUSH." : "Again? Really?", pos: at });
+          events.push({ type: "surprise", id: `dnp-${presses}`, text: presses < 2 ? "It said DO NOT PUSH." : presses < 4 ? "Still says DO NOT PUSH." : "Again? Really?", pos: at });
         } else {
           mode = "restore";
           t = 0;
@@ -161,6 +174,18 @@ export const coffeeRunHD: Level = {
       return events;
     };
 
+    /**
+     * Just turned up: the lamps come on one by one, left to right, behind the
+     * wipe, each with a stutter as it strikes.
+     */
+    const lampWarmup = (i: number) => {
+      if (since < 0 || since > UPGRADE_TIME) return 1;
+      const k = (since - 0.7 - i * 0.32) / 0.25;
+      if (k <= 0) return 0;
+      if (k < 1) return Math.sin(k * 40) > 0 ? k : 0.1;
+      return 1;
+    };
+
     const hd = (_game: Game, time: number): HDScene => {
       const lights: HDLight[] = [];
       const lampLevel = lamps * flicker;
@@ -173,9 +198,10 @@ export const coffeeRunHD: Level = {
         }
         lights.push({ x: BALL_X, y: ball, z: 0.5, radius: 1.6, color: [1, 1, 1], intensity: 0.9 });
       }
-      for (const x of LAMPS) {
-        if (lampLevel <= 0.01) continue;
-        lights.push({ x, y: SHADE_Y - 0.12, z: 1.3, radius: 6.5, color: [1, 0.72, 0.45], intensity: 2.1 * lampLevel, shadow: mode !== "disco", spot: { dir: -Math.PI / 2, inner: 0.32, outer: 0.95 } });
+      for (const [i, x] of LAMPS.entries()) {
+        const on = lampLevel * lampWarmup(i);
+        if (on <= 0.01) continue;
+        lights.push({ x, y: SHADE_Y - 0.12, z: 1.3, radius: 6.5, color: [1, 0.72, 0.45], intensity: 2.1 * on, shadow: mode !== "disco", spot: { dir: -Math.PI / 2, inner: 0.32, outer: 0.95 } });
       }
       // Cool spill from the windows.
       for (const [x0, x1] of WINDOWS) lights.push({ x: (x0 + x1) / 2, y: (SILL + HEAD) / 2, z: 3.5, radius: 6, color: [0.42, 0.48, 0.95], intensity: mode === "disco" ? 0.08 : 0.2 });
@@ -247,6 +273,12 @@ export const coffeeRunHD: Level = {
     };
 
     const drawBack = (r: Renderer, game: Game) => {
+      // Plain graphics: the usual office, and the sign by the button.
+      if (!r.hd) {
+        base.drawBack?.(r, game);
+        drawWarning(r);
+        return;
+      }
       const time = r.clock;
       // Polished concrete floor, with seams.
       const ctx = r.ctx;
@@ -297,13 +329,14 @@ export const coffeeRunHD: Level = {
       }
       // Pendant lamps: cords, shades, and glowing bulbs underneath.
       const lampLevel = lamps * flicker;
-      for (const x of LAMPS) {
+      for (const [i, x] of LAMPS.entries()) {
+        const bulb = lampLevel * lampWarmup(i);
         r.line({ x, y: H - 0.18 }, { x, y: SHADE_Y + 0.22 }, 0.012, "#222");
         r.poly([{ x: x - 0.09, y: SHADE_Y + 0.24 }, { x: x + 0.09, y: SHADE_Y + 0.24 }, { x: x + 0.3, y: SHADE_Y - 0.04 }, { x: x - 0.3, y: SHADE_Y - 0.04 }], "#23272e");
         r.rect(x - 0.3, SHADE_Y - 0.06, x + 0.3, SHADE_Y - 0.03, "#b48a4a");
-        if (lampLevel > 0.02)
+        if (bulb > 0.02)
           r.emit(() => {
-            r.ctx.globalAlpha = lampLevel;
+            r.ctx.globalAlpha = bulb;
             r.rect(x - 0.27, SHADE_Y - 0.06, x + 0.27, SHADE_Y - 0.035, "#fff1d6");
             r.circle({ x, y: SHADE_Y - 0.06 }, 0.09, "#ffe2b0");
             r.ctx.globalAlpha = 1;

@@ -44,23 +44,49 @@ export class HDRenderer extends Renderer {
   private floatFmt: { internal: number; type: number } = { internal: 0, type: 0 };
   private lightBuf = { p: new Float32Array(MAX_LIGHTS * 4), c: new Float32Array(MAX_LIGHTS * 4), s: new Float32Array(MAX_LIGHTS * 4) };
 
-  constructor(glCanvas: HTMLCanvasElement) {
+  /**
+   * Laid over the plain game canvas (which still takes the input): the lit
+   * picture, then a crisp overlay for speech and effects, both under the HUD
+   * and cards. Hidden until shown.
+   */
+  constructor(gameCanvas: HTMLCanvasElement) {
     const make = () => {
       const canvas = document.createElement("canvas");
       return { canvas, ctx: canvas.getContext("2d")! };
     };
+    const layer = (id: string) => {
+      const c = document.createElement("canvas");
+      c.id = id;
+      Object.assign(c.style, { position: "fixed", inset: "0", width: "100%", height: "100%", pointerEvents: "none", display: "none" });
+      return c;
+    };
+    const glCanvas = layer("game-hd");
+    const front = layer("game-front");
+    gameCanvas.after(glCanvas, front);
     const back = make();
     super(glCanvas, back.ctx);
     this.layers = { back, mid: make(), emit: make() };
-    // The crisp overlay, just above the lit picture (and under the HUD and cards).
-    this.front = document.createElement("canvas");
-    this.front.id = "game-front";
-    Object.assign(this.front.style, { position: "fixed", inset: "0", width: "100%", height: "100%", pointerEvents: "none", display: "block" });
-    glCanvas.after(this.front);
+    this.front = front;
     this.frontCtx = this.front.getContext("2d")!;
     const gl = glCanvas.getContext("webgl2", { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false })!;
     this.gl = gl;
     this.initGL();
+  }
+
+  override get hd() {
+    return true;
+  }
+
+  /** Show or hide the HD picture. */
+  show(on: boolean) {
+    for (const c of [this.canvas, this.front]) c.style.display = on ? "block" : "none";
+    if (on) this.resize();
+  }
+
+  /** Show only the left part of the screen (0–1), for the wipe as the graphics turn up. */
+  reveal(fraction: number) {
+    const clip = fraction >= 1 ? "" : `inset(0 ${((1 - fraction) * 100).toFixed(2)}% 0 0)`;
+    for (const c of [this.canvas, this.front]) c.style.clipPath = clip;
   }
 
   // ------------------------------------------------------------- setup ---

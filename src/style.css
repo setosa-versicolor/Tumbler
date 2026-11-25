@@ -680,3 +680,64 @@ body.titling #topbar { visibility: hidden; }
 .touch-guide .used { background: rgba(255, 255, 255, 0.06); }
 .touch-guide .used .thumb, .touch-guide .used .how { opacity: 0.35; }
 .touch-guide .used .label::after { content: " ✓"; }
+
+/* ---------------------------------------------- graphics turning up --- */
+
+.hd-beam {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 16px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(140, 225, 255, 0.85) 30%, #fff 50%, rgba(140, 225, 255, 0.85) 70%, transparent);
+  box-shadow: 0 0 36px 14px rgba(110, 200, 255, 0.55), 0 0 90px 40px rgba(170, 120, 255, 0.25);
+  opacity: 0;
+}
+/* Sparks streaming up the beam. */
+.hd-beam::before {
+  content: "";
+  position: absolute;
+  inset: 0 -18px;
+  background-image: radial-gradient(circle, #fff 0 1.5px, transparent 2.5px);
+  background-size: 22px 37px;
+  animation: hd-sparks 0.35s linear infinite;
+}
+@keyframes hd-sparks {
+  from { background-position: 0 0; }
+  to { background-position: 7px -37px; }
+}
+.hd-stamp {
+  position: fixed;
+  left: 50%;
+  top: 22%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  text-align: center;
+  color: #fff;
+  white-space: nowrap;
+  animation: hd-stamp 3.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.hd-stamp .big {
+  font-weight: 900;
+  font-size: clamp(28px, 7vw, 64px);
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff 30%, #9fe3ff 60%, #c9a6ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px rgba(120, 200, 255, 0.8)) drop-shadow(0 4px 0 rgba(42, 34, 48, 0.6));
+}
+.hd-stamp .small {
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: clamp(12px, 2.4vw, 18px);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+@keyframes hd-stamp {
+  0%, 18% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(1.04); }
+}

@@ -144,6 +144,14 @@ export const sfx = {
     tone(180, 720, 0.25, "triangle", 0.16);
     burst(0.35, 500, 0.4, 2200, 0.7);
   },
+  /** The graphics turning up: a rising whine, a thump, then a shimmering chord. */
+  powerUp: () => {
+    tone(90, 1400, 0.55, "sawtooth", 0.06);
+    tone(180, 2800, 0.55, "square", 0.025);
+    tone(160, 40, 0.3, "sine", 0.35, 0.5);
+    burst(0.4, 3000, 0.12, 9000, 0.5);
+    [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f, 0.5, "triangle", 0.06, 0.6 + i * 0.09));
+  },
   /** One beat of the office disco: four on the floor, off-beat hats, a bass line. */
   beat: (n: number) => {
     const half = 60 / 118 / 2;

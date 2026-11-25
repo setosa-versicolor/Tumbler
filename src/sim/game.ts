@@ -26,6 +26,8 @@ export type GameEvent =
   | { type: "smash"; pos: Vec; material: string; big: boolean }
   /** Off to another level entirely (through a window, say). */
   | { type: "warp"; to: string }
+  /** Turn the graphics up (the button in Coffee Run). */
+  | { type: "graphics"; to: "hd" }
   | { type: "complete" };
 
 /** Sudden velocity change (m/s) on a prop that counts as an audible bump. */
@@ -84,6 +86,9 @@ export class Game {
   private fragile = new Map<RigidBody, FragileState>();
   /** Seeded randomness for the sim (shards, trips, slippery fish). */
   rand = rng(1);
+
+  /** Being drawn in HD (set by the app; levels can behave differently). */
+  hd = false;
 
   /** Overtime: an extra complication layered over the level. */
   twist: TwistInstance | null = null;

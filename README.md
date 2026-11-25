@@ -24,11 +24,13 @@ A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body
 
 **On any device:** https://setosa-versicolor.github.io/Tumbler/. Every push to `master` rebuilds and redeploys it via GitHub Actions (`.github/workflows/pages.yml`).
 
-## HD prototype
+## High-end graphics
 
-Add `?hd` to the URL (https://setosa-versicolor.github.io/Tumbler/?hd) for the high-end renderer, starting with **Coffee Run** after hours: pendant lamps with soft shadows and light beams in the haze, dust in the light, a dusk skyline through the windows, a glossy floor that reflects the room, bloom, tone mapping and a colour grade. It's the same job underneath. There's a button on the left wall, over the kitchen. It says not to push it. The coffee spills for real, too: tip a cup and it pours out of the sip hole, jolt it and it slops over the lid, break one and the lot goes everywhere, splashing off Stanley, the tray and the furniture. Where it lands it pools, and a puddle on the floor is slick: no grip underfoot, and run into one and your feet go out from under you (`src/levels/liquid.ts`).
+In **Coffee Run** there's a big red button on the left wall, over the kitchen (stand on the counter). It says DO NOT PUSH. Push it and the picture glitches, then a wipe sweeps across the room from the button and leaves high-end graphics behind it: the office after hours, lamps coming on one by one with soft shadows and beams in the haze, a dusk skyline through the windows, a glossy floor, bloom and a colour grade. It stays that way for Coffee Run for the rest of the session (restarts included). Push it again in HD and see what happens. `?hd` on the URL starts straight in Coffee Run with it already on.
 
-How it works (`src/hd/`): the usual drawing is split into layers (the room, what's in it, glowing things), and WebGL2 lights them: every outline gets rounded edges and highlights, and lights march across the props-and-Stanley layer for soft shadows. Then bloom, reflection and the finish. Speech and effects stay crisp on a canvas laid over the top. A level opts in with an `hd()` hook that returns its lights; without WebGL2 it falls back to the normal game.
+The coffee spills for real, too: tip a cup and it pours out of the sip hole, jolt it and it slops over the lid, break one and the lot goes everywhere, splashing off Stanley, the tray and the furniture. Where it lands it pools, and a puddle on the floor is slick: no grip underfoot, and run into one and your feet go out from under you (`src/levels/liquid.ts`).
+
+How it works (`src/hd/`): the usual drawing is split into layers (the room, what's in it, glowing things), and WebGL2 lights them: every outline gets rounded edges and highlights, and lights march across the props-and-Stanley layer for soft shadows. Then bloom, reflection and the finish. Speech and effects stay crisp on a canvas laid over the top. A level gives its lights with an `hd()` hook; the app swaps renderers mid-level (`turnUp` in `src/app/app.ts`). Without WebGL2 the button just says so.
 
 ## Run it locally
 

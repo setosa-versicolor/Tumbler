@@ -5,6 +5,7 @@ import { DEFAULT_TUNING } from "../src/sim/tuning";
 import { IDLE_INTENT } from "../src/physics/body/stanley";
 import { coffeeRunHD, DNP } from "../src/hd/coffeeRunHD";
 import { coffeeRun } from "../src/levels/downtown/coffeeRun";
+import { CHAPTERS } from "../src/app/campaign";
 import { CUP_FILL, SLICK, type Liquid } from "../src/levels/liquid";
 
 beforeAll(async () => {
@@ -23,6 +24,10 @@ const run = (g: Game, seconds: number, push = false) => {
 };
 
 describe("Coffee Run HD", () => {
+  it("is the Coffee Run in the game", () => {
+    expect(CHAPTERS.flatMap((c) => c.levels)).toContain(coffeeRunHD);
+  });
+
   it("is the same job, with the same id, and a button on the left wall", () => {
     expect(coffeeRunHD.id).toBe(coffeeRun.id);
     const g = new Game(DEFAULT_TUNING, coffeeRunHD);
@@ -42,8 +47,28 @@ describe("Coffee Run HD", () => {
     expect(ev.some((e) => e.type === "surprise")).toBe(false);
   });
 
-  it("pushing it sets off the alarm, then the party; pushing again ends it", () => {
+  it("in plain graphics, pushing it turns the graphics up (once, however hard you flail at it)", () => {
     const g = new Game(DEFAULT_TUNING, coffeeRunHD);
+    let ev = run(g, 0.3, true);
+    expect(ev.filter((e) => e.type === "graphics")).toEqual([{ type: "graphics", to: "hd" }]);
+    expect(ev.find((e) => e.type === "surprise")).toMatchObject({ text: "It said DO NOT PUSH." });
+    expect(ev.some((e) => e.type === "sfx" && e.name === "alarm")).toBe(false);
+    // The app turns them up; still pushing while they come up does nothing more.
+    g.hd = true;
+    ev = run(g, 1.5, true);
+    expect(ev.some((e) => e.type === "graphics" || e.type === "surprise" || (e.type === "sfx" && e.name === "alarm"))).toBe(false);
+    // The lamps come on one by one as the graphics turn up.
+    run(g, 2);
+    expect(g.inst.hd!(g, g.time).lights.filter((l) => l.shadow).length).toBe(4);
+    // Pushed again, now in HD: the party.
+    ev = run(g, 0.3, true);
+    expect(ev.some((e) => e.type === "sfx" && e.name === "alarm")).toBe(true);
+    expect(ev.some((e) => e.type === "graphics")).toBe(false);
+  });
+
+  it("in HD, pushing it sets off the alarm, then the party; pushing again ends it", () => {
+    const g = new Game(DEFAULT_TUNING, coffeeRunHD);
+    g.hd = true;
     let ev = run(g, 0.3, true);
     // Still pushing during the alarm: no difference.
     ev.push(...run(g, 0.6, true));

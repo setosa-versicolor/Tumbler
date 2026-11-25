@@ -7,10 +7,7 @@ import { loadTuning, mountTuningPanel } from "./ui/tuningPanel";
 import { unlockAudio } from "./ui/audio";
 import { captureGlobalErrors, logError } from "./app/errorLog";
 import { setOnStale } from "./sim/game";
-import { HDRenderer, hdSupported } from "./hd/hdRenderer";
 import { coffeeRunHD } from "./hd/coffeeRunHD";
-import { coffeeRun } from "./levels/downtown/coffeeRun";
-import { CHAPTERS } from "./app/campaign";
 
 captureGlobalErrors();
 setOnStale((level, kinds, when) => logError("error", `Stale prop(s) ${kinds.join(", ")} found ${when} [in ${level}]`));
@@ -22,15 +19,8 @@ async function boot() {
   await initPhysics();
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
   const tuning = loadTuning();
-  // HD prototype (?hd): lit on the GPU, starting with Coffee Run.
-  const hd = new URLSearchParams(location.search).has("hd") && hdSupported();
-  if (hd) {
-    for (const list of [...CHAPTERS.map((c) => c.levels), ALL_LEVELS]) {
-      const i = list.indexOf(coffeeRun);
-      if (i >= 0) list[i] = coffeeRunHD;
-    }
-    document.body.classList.add("hd");
-  }
+  // ?hd: straight into Coffee Run with the graphics already turned up.
+  const hd = new URLSearchParams(location.search).has("hd");
   const app = new App(
     {
       canvas: $("#game"),
@@ -46,7 +36,7 @@ async function boot() {
       fade: $("#fade"),
     },
     tuning,
-    hd ? (c) => new HDRenderer(c) : undefined,
+    hd ? [coffeeRunHD.id] : [],
   );
   const panel = mountTuningPanel($("#ui"), tuning, () => app.restart());
   window.addEventListener("keydown", (e) => {

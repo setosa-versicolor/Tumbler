@@ -5,6 +5,7 @@ import { Game, onStale, type GameEvent } from "../sim/game";
 import type { Tuning } from "../sim/tuning";
 import type { Level } from "../levels/level";
 import { Renderer } from "../render/renderer";
+import { HDRenderer, hdSupported } from "../hd/hdRenderer";
 import { Input } from "../input/input";
 import { Cutscene } from "../story/cutscene";
 import { Scene } from "../story/scene";
@@ -69,7 +70,16 @@ export interface Dom {
 
 /** Runs the whole game: which level or cutscene is on, the cards over it, and saving. */
 export class App {
-  readonly renderer: Renderer;
+  /** Whichever renderer is drawing the current level. */
+  renderer: Renderer;
+  /** The usual one. */
+  private plain: Renderer;
+  /** The HD one, made the first time it's needed (null if this device can't). */
+  private hdR: HDRenderer | null | undefined;
+  /** Levels whose graphics have been turned up this session. */
+  private hdLevels = new Set<string>();
+  /** The graphics turning up: the effect's elements and how far along it is. */
+  private upgrade: { t: number; beam: HTMLElement; stamp: HTMLElement } | null = null;
   readonly input: Input;
   game!: Game;
   mode: Mode = { kind: "card" };
@@ -97,9 +107,11 @@ export class App {
   constructor(
     private dom: Dom,
     private tuning: Tuning,
-    makeRenderer: (canvas: HTMLCanvasElement) => Renderer = (c) => new Renderer(c),
+    /** Levels that start in HD (?hd). */
+    hdLevels: string[] = [],
   ) {
-    this.renderer = makeRenderer(dom.canvas);
+    this.plain = this.renderer = new Renderer(dom.canvas);
+    for (const id of hdLevels) this.hdLevels.add(id);
     this.input = new Input(dom.canvas);
     this.save = loadSave();
 
@@ -150,6 +162,9 @@ export class App {
     this.game = new Game(this.tuning, level, 1, twist);
     // The old level's physics world goes, rather than piling up in memory.
     old?.free();
+    this.endUpgrade();
+    this.useRenderer(this.hdLevels.has(level.id) ? (this.hdRenderer() ?? this.plain) : this.plain);
+    this.game.hd = this.renderer.hd;
     this.renderer.camera.setLevel(level);
     this.renderer.clearFx();
     this.renderer.camera.follow(this.game.stanley.position, 0, true);
@@ -159,6 +174,101 @@ export class App {
     this.dom.overlay.replaceChildren();
     this.paused = false;
     this.boardClose = null;
+  }
+
+  // -------------------------------------------------------- graphics ---
+
+  private hdRenderer(): HDRenderer | null {
+    if (this.hdR === undefined) {
+      try {
+        this.hdR = hdSupported() ? new HDRenderer(this.dom.canvas) : null;
+      } catch (e) {
+        logError("error", `HD renderer: ${String((e as Error)?.message ?? e)}`);
+        this.hdR = null;
+      }
+    }
+    return this.hdR;
+  }
+
+  private useRenderer(r: Renderer) {
+    this.hdR?.show(r === this.hdR);
+    this.hdR?.reveal(1);
+    if (r === this.renderer) return;
+    r.camera.x = this.renderer.camera.x;
+    r.camera.y = this.renderer.camera.y;
+    this.renderer = r;
+    r.resize();
+  }
+
+  /**
+   * The button in Coffee Run: the picture glitches, then a wipe sweeps across
+   * from the button, leaving HD behind it, and the lamps come on one by one.
+   */
+  private turnUp() {
+    const hd = this.hdRenderer();
+    const g = this.game;
+    if (!hd || this.upgrade || this.renderer === hd) {
+      if (!hd) this.renderer.note("Your device can't handle it. Probably for the best.", { x: 1.2, y: 3.6 });
+      return;
+    }
+    this.hdLevels.add(g.level.id);
+    g.hd = true;
+    const from = this.renderer.camera;
+    hd.camera.setLevel(g.level);
+    hd.camera.x = from.x;
+    hd.camera.y = from.y;
+    hd.clearFx();
+    hd.reveal(0);
+    hd.show(true);
+    this.renderer = hd;
+    const beam = h("div", { class: "hd-beam" });
+    const stamp = h("div", { class: "hd-stamp" }, h("div", { class: "big" }, "GRAPHICS: ULTRA"), h("div", { class: "small" }, "Gerald is not paying for this."));
+    document.getElementById("game-front")!.after(beam, stamp);
+    this.upgrade = { t: 0, beam, stamp };
+    sfx.powerUp();
+    this.plain.camera.shake(10);
+  }
+
+  /** Move the effect along (real time, so slow-mo doesn't drag it out). */
+  private stepUpgrade(dt: number) {
+    const u = this.upgrade;
+    const hd = this.hdR;
+    if (!u || !hd) return;
+    u.t += dt;
+    const canvas = this.dom.canvas;
+    const GLITCH = 0.5;
+    const WIPE = 1.5;
+    if (u.t < GLITCH) {
+      // The old picture can't take it.
+      const k = u.t / GLITCH;
+      const j = () => ((Math.random() - 0.5) * 14 * k).toFixed(1);
+      canvas.style.transform = `translate(${j()}px, ${j()}px)`;
+      canvas.style.filter = `saturate(${1 + k * 2}) hue-rotate(${Math.round(Math.sin(u.t * 60) * 40 * k)}deg) contrast(${1 + k * 0.4})`;
+      hd.reveal(0);
+      u.beam.style.opacity = "0";
+    } else {
+      canvas.style.transform = "";
+      canvas.style.filter = "";
+      const p = Math.min(1, (u.t - GLITCH) / WIPE);
+      const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      hd.reveal(e);
+      u.beam.style.opacity = p >= 1 ? "0" : "1";
+      u.beam.style.left = `${(e * 100).toFixed(2)}%`;
+      if (u.t - dt < GLITCH) sfx.whoosh(9);
+    }
+    if (u.t > GLITCH + WIPE) hd.reveal(1);
+    if (u.t > 3.4) this.endUpgrade();
+  }
+
+  private endUpgrade() {
+    const u = this.upgrade;
+    if (!u) return;
+    u.beam.remove();
+    u.stamp.remove();
+    this.dom.canvas.style.transform = "";
+    this.dom.canvas.style.filter = "";
+    this.hdR?.reveal(1);
+    this.upgrade = null;
   }
 
   private fadeThen(fn: () => void) {
@@ -692,6 +802,19 @@ export class App {
     const stale = g.pruneStale();
     if (stale.length) onStale(g.level.id, stale, "before drawing");
     this.renderer.draw(g, live ? dt : 0);
+    if (this.upgrade && this.renderer !== this.plain) {
+      // Mid-wipe: the old picture is still showing on the right.
+      const p = this.plain;
+      p.camera.setLevel(g.level);
+      p.camera.x = cam.x;
+      p.camera.y = cam.y;
+      p.camera.punch = cam.punch;
+      p.bubble = this.renderer.bubble;
+      p.goal = this.renderer.goal;
+      p.cursor = this.renderer.cursor;
+      p.draw(g, live ? dt : 0);
+      this.stepUpgrade(dt);
+    }
     this.drawSticks();
     this.hud();
   }
@@ -766,6 +889,9 @@ export class App {
       switch (ev.type) {
         case "press":
           sfx.press();
+          break;
+        case "graphics":
+          this.turnUp();
           break;
         case "score":
           r.popup(ev.text, ev.pos, "#37a59c");

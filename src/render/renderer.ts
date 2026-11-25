@@ -140,6 +140,11 @@ export class Renderer {
     this.ctx = ctx ?? canvas.getContext("2d")!;
   }
 
+  /** Lit on the GPU (the HD renderer)? Levels draw extra scenery for it. */
+  get hd() {
+    return false;
+  }
+
   /** Seconds of drawing so far (for animated scenery). */
   get clock() {
     return this.time;

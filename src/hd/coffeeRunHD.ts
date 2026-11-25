@@ -2,6 +2,7 @@ import type { Level, LevelInstance } from "../levels/level";
 import type { Renderer } from "../render/renderer";
 import type { Game, GameEvent } from "../sim/game";
 import { coffeeRun } from "../levels/downtown/coffeeRun";
+import { Liquid } from "../levels/liquid";
 import type { HDLight, HDScene } from "./types";
 
 const W = 14;
@@ -106,6 +107,7 @@ export const coffeeRunHD: Level = {
     const base = coffeeRun.build(kit);
     const button = kit.button(DNP.mount, DNP.y, DNP.hw, DNP.hh, "right");
     button.style = "custom";
+    const coffee = new Liquid("cup");
     let mode: Mode = "normal";
     /** Seconds in the current mode. */
     let t = 0;
@@ -119,6 +121,7 @@ export const coffeeRunHD: Level = {
 
     const update = (game: Game, dt: number): GameEvent[] => {
       const events = base.update?.(game, dt) ?? [];
+      events.push(...coffee.update(game, dt));
       t += dt;
       // The press itself comes from the button (it clicks); here, what it does.
       // Flailing at it counts once: while the alarm's going, more pushes do nothing.
@@ -399,7 +402,7 @@ export const coffeeRunHD: Level = {
       const ctx = r.ctx;
       ctx.lineCap = "round";
       for (const [i, p] of game.props.entries()) {
-        if (p.kind !== "cup") continue;
+        if (p.kind !== "cup" || !coffee.fillOf(p.body)) continue;
         const q = p.body.translation();
         if (Math.cos(p.body.rotation()) < 0.8) continue;
         for (let k = 0; k < 3; k++) {
@@ -420,16 +423,117 @@ export const coffeeRunHD: Level = {
       }
     };
 
-    const inst: LevelInstance = {
+    /** Spilled coffee: drops in flight, and puddles where it's landed. */
+    const drawCoffee = (r: Renderer) => {
+      const ctx = r.ctx;
+      const sc = r.camera.scale;
+      const time = r.clock;
+      // Puddles: a pool lying on the surface, seen from a little above, with a wet shine.
+      for (const p of coffee.puddles) {
+        const depth = puddleDepth(p);
+        const c = r.camera.toScreen({ x: p.x, y: p.y - depth * 0.55 });
+        const rx = p.w * sc;
+        const ry = depth * sc * 0.5;
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        // A wobbly outline, so it isn't a perfect ellipse.
+        ctx.beginPath();
+        for (let i = 0; i <= 24; i++) {
+          const t = (i / 24) * Math.PI * 2;
+          const k = 1 + 0.07 * Math.sin(t * 3 + p.x * 9) + 0.04 * Math.sin(t * 5 + p.x * 3);
+          ctx.lineTo(Math.cos(t) * rx * k, Math.sin(t) * ry * k);
+        }
+        ctx.closePath();
+        const g = ctx.createLinearGradient(0, -ry, 0, ry);
+        g.addColorStop(0, "#4a2512");
+        g.addColorStop(0.6, "#6e3c1c");
+        g.addColorStop(1, "#8a5430");
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(196,140,92,0.9)";
+        ctx.lineWidth = Math.max(1, 0.006 * sc);
+        ctx.stroke();
+        ctx.restore();
+        // A ripple now and then where drops land.
+        if (coffee.drops.length) {
+          const ph = (time * 1.3 + p.x) % 1;
+          r.ring({ x: p.x + Math.sin(time + p.x) * p.w * 0.4, y: p.y - depth * 0.55 }, 0.02 + ph * p.w * 0.3, `rgba(160,110,70,${0.4 * (1 - ph)})`, 0.004);
+        }
+      }
+      if (!coffee.drops.length) return;
+      // Drops: round blobs stretched along their path, so close ones run together into a stream.
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#3d2010";
+      ctx.lineWidth = 0.042 * sc;
+      ctx.beginPath();
+      for (const d of coffee.drops) {
+        const a = r.camera.toScreen(d);
+        const b = r.camera.toScreen({ x: d.x - d.vx * 0.02, y: d.y - d.vy * 0.02 });
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x + 0.01, b.y);
+      }
+      ctx.stroke();
+      // Lighter, milky core and a glint, for a bit of depth.
+      ctx.strokeStyle = "#6b3f22";
+      ctx.lineWidth = 0.022 * sc;
+      ctx.beginPath();
+      for (const d of coffee.drops) {
+        const a = r.camera.toScreen({ x: d.x - 0.004, y: d.y + 0.004 });
+        const b = r.camera.toScreen({ x: d.x - d.vx * 0.012 - 0.004, y: d.y - d.vy * 0.012 + 0.004 });
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x + 0.01, b.y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,236,210,0.6)";
+      for (const d of coffee.drops) {
+        const a = r.camera.toScreen({ x: d.x - 0.007, y: d.y + 0.008 });
+        ctx.fillRect(a.x, a.y, Math.max(1, 0.006 * sc), Math.max(1, 0.006 * sc));
+      }
+    };
+
+    /** How deep a puddle looks (it's drawn lying on the floor, seen from a little above). */
+    const puddleDepth = (p: { y: number; w: number }) => Math.min(p.y === 0 ? 0.24 : 0.07, 0.07 + p.w * 0.5);
+
+    /** The wet shine on the puddles: on top of everything, as it's the room reflected. */
+    const drawShine = (r: Renderer) => {
+      const ctx = r.ctx;
+      const sc = r.camera.scale;
+      for (const p of coffee.puddles) {
+        const depth = puddleDepth(p);
+        const c = r.camera.toScreen({ x: p.x, y: p.y - depth * 0.55 });
+        const rx = p.w * sc;
+        const ry = depth * sc * 0.5;
+        // The lamps reflected in it, sliding as the camera moves.
+        {
+          const shift = ((r.camera.x - p.x) * 0.15) % 1;
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.fillStyle = "rgba(255,230,190,0.55)";
+          ctx.beginPath();
+          ctx.ellipse(-rx * (0.35 + shift * 0.2), -ry * 0.2, rx * 0.26, Math.max(1.5, ry * 0.32), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.35)";
+          ctx.beginPath();
+          ctx.ellipse(rx * (0.3 - shift * 0.15), -ry * 0.05, rx * 0.12, Math.max(1, ry * 0.22), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    };
+
+    const inst: LevelInstance & { coffee: Liquid } = {
       ...base,
+      coffee,
       update,
       hd,
       drawBack,
       drawMid(r, game) {
         base.drawMid?.(r, game);
+        drawCoffee(r);
         drawButton(r);
       },
       drawFront(r, game) {
+        drawShine(r);
         drawSteam(r, game);
         base.drawFront?.(r, game);
       },

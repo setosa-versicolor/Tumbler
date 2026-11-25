@@ -1,6 +1,6 @@
 import { Renderer } from "../render/renderer";
 import type { Game } from "../sim/game";
-import { drawStanleyHD } from "../render/charactersHD";
+import { drawStanleyHD, type StanleyLook } from "../render/charactersHD";
 import { drawCoworkerHandsHD, drawCoworkerHeadHD } from "../render/charactersHD";
 import { POSES, posed } from "./pose";
 
@@ -25,13 +25,19 @@ const bg = document.getElementById("bg") as HTMLSelectElement;
 
 const CELL = { w: 2.3, h: 2.5 };
 const COLS = 4;
+/** Each cell's Stanley keeps his swinging bits from frame to frame. */
+const looks: StanleyLook[] = [];
+Object.assign(window, { studio: { looks } });
+let last = 0;
+/** Hopping about, to see the lanyard, cap, hair and hem swing and the squash on landing. */
+const HOP = { ...POSES[0], name: "Hopping (springs, squash)" };
 
 function frame(now: number) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth;
   const cellPx = W / COLS;
   const scale = cellPx / CELL.w;
-  const rows = Math.ceil(POSES.length / COLS) + 1;
+  const rows = Math.ceil((POSES.length + 1) / COLS) + 1;
   const H = Math.round(rows * CELL.h * scale);
   if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
     canvas.width = Math.round(W * dpr);
@@ -39,6 +45,9 @@ function frame(now: number) {
     canvas.style.height = `${H}px`;
   }
   r.setTime(now / 1000);
+  const dt = last ? Math.min(0.05, (now - last) / 1000) : 0;
+  last = now;
+  const t = now / 1000;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = bg.value;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -64,14 +73,19 @@ function frame(now: number) {
     ctx.textAlign = "left";
     ctx.fillText(label, 10, 20);
   };
-  POSES.forEach((pose, i) => {
+  [...POSES, HOP].forEach((pose, i) => {
     cell(
       i,
       () => {
         cam.x = 0.15;
         cam.y = CELL.h / 2 - 0.22;
-        const g = posed(pose, { x: 0, y: 0 });
-        drawStanleyHD(r, g, { blink: 0 }, 0);
+        // The hopping one bounces along a path (a hop every 0.8 s, swaying side to side).
+        const ph = (t % 0.8) / 0.8;
+        const at = pose === HOP ? { x: Math.sin(t * 1.3) * 0.25, y: ph < 0.62 ? Math.sin((ph / 0.62) * Math.PI) * 0.45 : 0 } : { x: 0, y: 0 };
+        const g = posed(pose === HOP ? { ...pose, grounded: at.y < 0.02 } : pose, at);
+        (g.stanley.balance as { groundDist: number }).groundDist = 0.935 + at.y;
+        looks[i] ??= { blink: 0 };
+        drawStanleyHD(r, g, looks[i], dt);
         if (showPlain.checked) {
           // The plain one, small, in the corner for comparison.
           const s = cam.scale;
@@ -86,7 +100,7 @@ function frame(now: number) {
     );
   });
   // The coworkers, over a cubicle wall.
-  const row = Math.ceil(POSES.length / COLS) * COLS;
+  const row = POSES.length + 1;
   for (let k = 0; k < 2; k++) {
     cell(
       row + k,

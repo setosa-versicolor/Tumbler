@@ -166,8 +166,172 @@ function label(ctx: Ctx, text: string, x: number, y: number, size: number, color
 
 // ------------------------------------------------------------- stanley ---
 
+/** A damped spring: value, velocity. */
+interface Spring {
+  x: number;
+  v: number;
+}
+function spring(s: Spring, force: number, k: number, damp: number, dt: number, max: number) {
+  s.v += (force - k * s.x - damp * s.v) * dt;
+  s.x = Math.max(-max, Math.min(max, s.x + s.v * dt));
+}
+
+/** A point on the lanyard (verlet). */
+interface Knot {
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+}
+
+/**
+ * Stanley's look from frame to frame: blinking, and the bits that swing about
+ * after him (they're only drawn, so the physics doesn't feel them).
+ */
 export interface StanleyLook {
   blink: number;
+  /** Cap brim flex, back hair sway, shirt hem flutter (radians / metres). */
+  brim?: Spring;
+  hair?: Spring;
+  hem?: Spring;
+  /** Squash (+) and stretch (-) about his feet, after a landing or a jump. */
+  squash?: Spring;
+  /** The lanyard's knots, collar to badge. */
+  cord?: Knot[];
+  /** Last frame's head and hips, and their velocities, to feel the jolts. */
+  prev?: { head: Vec; hip: Vec; hv: Vec; pv: Vec };
+}
+
+const CORD_KNOTS = 6;
+const CORD_SEG = 0.04;
+/** Where the lanyard hangs from: the front of the collar, in the chest's frame (x forward). */
+const CORD_ANCHOR = { x: 0.125, y: 0.24 };
+
+/** Move the swinging bits on by `dt`, from how the body moved since last frame. */
+function swing(look: StanleyLook, game: Game, dt: number) {
+  const st = game.stanley;
+  const rig = st.rig;
+  look.brim ??= { x: 0, v: 0 };
+  look.hair ??= { x: 0, v: 0 };
+  look.hem ??= { x: 0, v: 0 };
+  look.squash ??= { x: 0, v: 0 };
+  const head = { ...rig.head.translation() };
+  const hip = { ...rig.pelvis.translation() };
+  const anchor = chestPoint(rig.chest, CORD_ANCHOR, st.facing);
+  const prev = look.prev;
+  // Teleported (or the first frame): settle everything at rest.
+  const jumped = !prev || Math.hypot(head.x - prev.head.x, head.y - prev.head.y) > 0.6;
+  if (jumped || !look.cord) {
+    look.cord = Array.from({ length: CORD_KNOTS }, (_, i) => {
+      const y = anchor.y - i * CORD_SEG;
+      return { x: anchor.x, y, px: anchor.x, py: y };
+    });
+  }
+  if (jumped || dt <= 0) {
+    look.prev = { head, hip, hv: prev?.hv ?? { x: 0, y: 0 }, pv: prev?.pv ?? { x: 0, y: 0 } };
+    return;
+  }
+  const hv = { x: (head.x - prev.head.x) / dt, y: (head.y - prev.head.y) / dt };
+  const pv = { x: (hip.x - prev.hip.x) / dt, y: (hip.y - prev.hip.y) / dt };
+  // Accelerations, clamped (a frame hitch shouldn't fling things).
+  const cl = (v: number) => Math.max(-60, Math.min(60, v));
+  const ha = { x: cl((hv.x - prev.hv.x) / dt), y: cl((hv.y - prev.hv.y) / dt) };
+  const pa = { x: cl((pv.x - prev.pv.x) / dt), y: cl((pv.y - prev.pv.y) / dt) };
+  look.prev = { head, hip, hv, pv };
+  const f = st.facing;
+  // The brim flexes against the head's jolts (down when he lands, up when he jumps); the hair lags behind.
+  spring(look.brim, -ha.y * 0.012 - ha.x * f * 0.004, 260, 9, dt, 0.32);
+  spring(look.hair, ha.x * f * 0.02 + hv.x * f * 0.0, 120, 6, dt, 0.4);
+  // The hem flutters with the hips' bounce, and trails when he runs.
+  spring(look.hem, pa.y * 0.0018 - Math.abs(pv.x) * 0.12, 180, 8, dt, 0.05);
+  // Squash on a hard landing (the hips stopping fast), stretch on take-off.
+  // (A kick to the spring's speed: about 0.13 of squash per unit of kick at this stiffness.)
+  const landing = pa.y > 18 && pv.y > -0.5 && pv.y < 1 ? Math.min(3.2, (pa.y - 18) * 0.11) : 0;
+  const takeoff = pa.y > 18 && pv.y > 1.5 ? -Math.min(2.4, (pa.y - 18) * 0.09) : 0;
+  look.squash.v += landing + takeoff;
+  spring(look.squash, 0, 220, 11, dt, 0.22);
+  // The lanyard: verlet knots, pinned at the collar, a few steps at a time.
+  const steps = Math.min(8, Math.ceil(dt / (1 / 120)));
+  const h = dt / steps;
+  const g = 9.8;
+  const cord = look.cord!;
+  for (let s = 0; s < steps; s++) {
+    for (const k of cord.slice(1)) {
+      const vx = (k.x - k.px) * 0.985;
+      const vy = (k.y - k.py) * 0.985;
+      k.px = k.x;
+      k.py = k.y;
+      k.x += vx;
+      k.y += vy - g * h * h;
+    }
+    for (let it = 0; it < 4; it++) {
+      cord[0].x = anchor.x;
+      cord[0].y = anchor.y;
+      for (let i = 1; i < cord.length; i++) {
+        const a = cord[i - 1];
+        const b = cord[i];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 1e-6;
+        const diff = (d - CORD_SEG) / d;
+        if (i === 1) {
+          b.x -= dx * diff;
+          b.y -= dy * diff;
+        } else {
+          a.x += dx * diff * 0.5;
+          a.y += dy * diff * 0.5;
+          b.x -= dx * diff * 0.5;
+          b.y -= dy * diff * 0.5;
+        }
+      }
+    }
+  }
+  cord[0].px = cord[0].x;
+  cord[0].py = cord[0].y;
+}
+
+/** A point given in the chest's frame (x forward), in the world. */
+function chestPoint(chest: RigidBody, p: Vec, f: number): Vec {
+  const c = chest.translation();
+  const a = chest.rotation();
+  const x = p.x * f;
+  return { x: c.x + x * Math.cos(a) - p.y * Math.sin(a), y: c.y + x * Math.sin(a) + p.y * Math.cos(a) };
+}
+
+/** The lanyard down the front of the shirt, and the Odd Jobs ID badge on the end. */
+function lanyard(ctx: Ctx, cord: Knot[], f: number) {
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 0.022;
+  ctx.beginPath();
+  for (const k of cord) ctx.lineTo(k.x, k.y);
+  ctx.stroke();
+  ctx.strokeStyle = "#e85d4f";
+  ctx.lineWidth = 0.011;
+  ctx.stroke();
+  const end = cord[cord.length - 1];
+  const before = cord[cord.length - 2];
+  // The badge hangs along the cord's last stretch.
+  const ang = Math.atan2(end.y - before.y, end.x - before.x) + Math.PI / 2;
+  local(ctx, end, ang, 1, () => {
+    ctx.beginPath();
+    ctx.roundRect(-0.038, -0.1, 0.076, 0.1, 0.01);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = LINE * 1.2;
+    ctx.stroke();
+    ctx.fillStyle = "#f6f3ec";
+    ctx.fill();
+    ctx.fillStyle = STAN.cap;
+    ctx.fillRect(-0.038, -0.028, 0.076, 0.02);
+    // A tiny photo of Stanley, and his name in lines.
+    ctx.fillStyle = "#b9d4e6";
+    ctx.fillRect(-0.028, -0.07, 0.026, 0.032);
+    oval(ctx, -0.015, -0.05, 0.008, 0.008, STAN.skin);
+    oval(ctx, -0.015, -0.044, 0.009, 0.004, STAN.cap);
+    for (const y of [-0.05, -0.062]) line(ctx, rgba(INK, 0.5), 0.004, [[0.004, y], [0.026, y]]);
+    ctx.fillStyle = "#9aa0a8";
+    ctx.fillRect(-0.008, -0.004, 0.016, 0.012);
+  });
+  void f;
 }
 
 interface Mood {
@@ -187,6 +351,7 @@ export function drawStanleyHD(r: Renderer, game: Game, look: StanleyLook, dt: nu
   const front: Side = f > 0 ? "R" : "L";
   look.blink -= dt;
   if (look.blink < -3.4) look.blink = 0.13;
+  swing(look, game, dt);
   const hp = rig.head.translation();
   const mood: Mood = {
     down: st.balance.posture === "down",
@@ -196,14 +361,24 @@ export function drawStanleyHD(r: Renderer, game: Game, look: StanleyLook, dt: nu
     gaze: st.lookAt ? { x: st.lookAt.x - hp.x, y: st.lookAt.y - hp.y } : { x: f, y: -0.1 },
   };
   world(r, (ctx) => {
+    // Squash and stretch, about the ground under him.
+    const sq = look.squash!.x;
+    if (sq) {
+      const p = rig.pelvis.translation();
+      const gy = Number.isFinite(st.balance.groundDist) ? p.y - st.balance.groundDist : p.y - DIM.standHeight;
+      ctx.translate(p.x, gy);
+      ctx.scale(1 + sq * 0.7, 1 - sq);
+      ctx.translate(-p.x, -gy);
+    }
     arm(ctx, game, back, f, FAR);
     leg(ctx, game, back, f, FAR);
     leg(ctx, game, front, f, 0);
     hips(ctx, rig.pelvis, f);
     neck(ctx, rig.chest, rig.head);
-    shirt(ctx, rig.chest, f);
+    shirt(ctx, rig.chest, f, look.hem!.x);
     belt(ctx, rig.pelvis, f);
-    head(ctx, rig.head, f, mood);
+    lanyard(ctx, look.cord!, f);
+    head(ctx, rig.head, f, mood, look.brim!.x, look.hair!.x);
     arm(ctx, game, front, f, 0);
   });
 }
@@ -441,7 +616,7 @@ function neck(ctx: Ctx, chest: RigidBody, headB: RigidBody) {
 }
 
 /** The polo shirt: shoulders, collar, placket, a chest pocket with the logo and a pen. */
-function shirt(ctx: Ctx, chest: RigidBody, f: number) {
+function shirt(ctx: Ctx, chest: RigidBody, f: number, hem = 0) {
   const s = STAN.shirt;
   const at = chest.translation();
   const ang = chest.rotation();
@@ -456,8 +631,9 @@ function shirt(ctx: Ctx, chest: RigidBody, f: number) {
     ctx.quadraticCurveTo(-0.17, 0.285, -0.08, 0.3);
     ctx.lineTo(0.09, 0.3);
     ctx.quadraticCurveTo(0.19, 0.29, 0.205, 0.19);
+    // The hem: it flutters (pulled down by a bounce, trailing when he runs).
     ctx.quadraticCurveTo(0.225, 0.05, 0.195, -0.135);
-    ctx.quadraticCurveTo(0.0, -0.16, -0.17, -0.135);
+    ctx.quadraticCurveTo(0.0 - hem * 1.5, -0.16 - hem, -0.17 - Math.max(0, -hem) * 0.4, -0.135 - Math.max(0, -hem) * 0.3);
     ctx.closePath();
     ctx.restore();
   };
@@ -528,7 +704,7 @@ function shirt(ctx: Ctx, chest: RigidBody, f: number) {
 // ---- head
 
 /** Stanley's head, three-quarter view: hair under the cap, ear, big eyes, a button nose. */
-function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
+function head(ctx: Ctx, body: RigidBody, f: number, m: Mood, brimFlex = 0, hairSway = 0) {
   const R = DIM.head.r;
   const at = body.translation();
   const a = body.rotation();
@@ -552,6 +728,11 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
     };
     // Hair at the back and side, under the cap.
     const hair = () => {
+      // Sways from where it comes out under the cap.
+      ctx.save();
+      ctx.translate(-R * 0.4, R * 0.35);
+      ctx.rotate(hairSway);
+      ctx.translate(R * 0.4, -R * 0.35);
       ctx.beginPath();
       ctx.moveTo(-R * 0.1, R * 0.42);
       ctx.quadraticCurveTo(-R * 1.15, R * 0.45, -R * 1.0, -R * 0.38);
@@ -563,6 +744,7 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
       ctx.lineTo(-R * 0.27, -R * 0.22);
       ctx.lineTo(-R * 0.18, R * 0.2);
       ctx.closePath();
+      ctx.restore();
     };
     for (const p of [face, hair]) outline(ctx, p);
     fill(ctx, face, STAN.skin);
@@ -677,18 +859,28 @@ function head(ctx: Ctx, body: RigidBody, f: number, m: Mood) {
       ctx.closePath();
     };
     // The bill comes out from under the front of the crown, level with its rim, curving down a touch at the tip.
-    const brim = () => {
+    const flex = (fn: () => void) => {
+      ctx.save();
+      ctx.translate(R * 0.75, cy);
+      ctx.rotate(brimFlex);
+      ctx.translate(-R * 0.75, -cy);
+      fn();
+      ctx.restore();
+    };
+    const brim = () => flex(() => {
       ctx.beginPath();
       ctx.moveTo(R * 0.55, cy + 0.035);
       ctx.quadraticCurveTo(R * 1.25, cy + 0.04, R * 1.66, cy + 0.012);
       ctx.quadraticCurveTo(R * 1.72, cy - 0.006, R * 1.62, cy - 0.012);
       ctx.quadraticCurveTo(R * 1.2, cy - 0.004, R * 0.55, cy - 0.006);
       ctx.closePath();
-    };
+    });
     for (const p of [crown, brim]) outline(ctx, p);
     fill(ctx, brim, shade(STAN.cap, -0.06));
-    line(ctx, shade(STAN.cap, -0.42), 0.008, [[R * 0.95, cy - 0.002], [R * 1.3, cy - 0.004], [R * 1.6, cy - 0.008]]);
-    line(ctx, rgba("#ffffff", 0.35), 0.005, [[R * 1.05, cy + 0.028], [R * 1.4, cy + 0.026], [R * 1.6, cy + 0.012]]);
+    flex(() => {
+      line(ctx, shade(STAN.cap, -0.42), 0.008, [[R * 0.95, cy - 0.002], [R * 1.3, cy - 0.004], [R * 1.6, cy - 0.008]]);
+      line(ctx, rgba("#ffffff", 0.35), 0.005, [[R * 1.05, cy + 0.028], [R * 1.4, cy + 0.026], [R * 1.6, cy + 0.012]]);
+    });
     fill(ctx, crown, STAN.cap);
     cel(
       ctx,

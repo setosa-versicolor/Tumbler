@@ -1,5 +1,6 @@
 import type { Renderer } from "./renderer";
 import { toward, type Vec } from "../sim/math";
+import { drawCoworkerHandsHD, drawCoworkerHeadHD } from "./charactersHD";
 
 // The game's characters, each drawn by one function wherever they turn up
 // (their own scene, and the office party), so they're always the same people.
@@ -14,8 +15,9 @@ export function drawHenderson(r: Renderer, cx: number, sill: number, up = 1) {
   r.line({ x: cx - 0.07, y: sill + 0.14 + 0.3 * up }, { x: cx + 0.07, y: sill + 0.14 + 0.3 * up }, 0.025, "#2a2230");
 }
 
-/** A coworker's head (as seen over a cubicle wall), eyes on `look`. */
-export function drawCoworkerHead(r: Renderer, x: number, faceY: number, skin: string, hair: string, look: Vec) {
+/** A coworker's head (as seen over a cubicle wall), eyes on `look`. `who`: which coworker (in HD, they're each their own person). */
+export function drawCoworkerHead(r: Renderer, x: number, faceY: number, skin: string, hair: string, look: Vec, who = 0) {
+  if (r.hd) return drawCoworkerHeadHD(r, x, faceY, skin, hair, look, who);
   r.circle({ x, y: faceY + 0.05 }, 0.17, hair);
   r.circle({ x, y: faceY - 0.02 }, 0.155, skin);
   for (const dx of [-0.06, 0.06]) {
@@ -23,6 +25,12 @@ export function drawCoworkerHead(r: Renderer, x: number, faceY: number, skin: st
     r.circle(e, 0.035, "#fff");
     r.circle(toward(e, look, 0.015), 0.016, "#2a2230");
   }
+}
+
+/** A coworker's fingers over the top of a wall at `wallTop`. */
+export function drawCoworkerHands(r: Renderer, x: number, wallTop: number, skin: string) {
+  if (r.hd) return drawCoworkerHandsHD(r, x, wallTop, skin);
+  for (const dx of [-0.2, 0.2]) r.circle({ x: x + dx, y: wallTop + 0.01 }, 0.05, skin);
 }
 
 /** The goblin: green, pointy, pleased with itself. `y` is its feet; `f` which way the spear points. */

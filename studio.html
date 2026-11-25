@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Character Studio</title>
+    <style>
+      html, body { margin: 0; background: #e9e6e1; font-family: system-ui, sans-serif; color: #2a2230; }
+      header { padding: 12px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+      h1 { font-size: 18px; margin: 0; }
+      label { font-size: 14px; }
+      canvas { display: block; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Character Studio</h1>
+      <label><input type="checkbox" id="plain" checked /> Show the plain-graphics Stanley alongside</label>
+      <label>Background <select id="bg"><option value="#e9e6e1">Light</option><option value="#3a3f4a">Dark</option><option value="#7c8a99">Mid</option></select></label>
+    </header>
+    <canvas id="studio"></canvas>
+    <script type="module" src="/src/studio/main.ts"></script>
+  </body>
+</html>

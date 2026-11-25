@@ -1384,7 +1384,7 @@ export class Renderer {
     this.circle({ x: p.x + toe.x, y: p.y + toe.y }, 0.08, back ? "#3a2a26" : "#4c3730");
   }
 
-  private drawStanley(game: Game, dt: number) {
+  protected drawStanley(game: Game, dt: number) {
     const { ctx, camera: cam } = this;
     const st = game.stanley;
     const rig = st.rig;

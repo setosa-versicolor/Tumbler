@@ -2,6 +2,7 @@ import { Renderer } from "../render/renderer";
 import type { Game } from "../sim/game";
 import { BLUR, BRIGHT, FINAL, LIGHT, MAX_LIGHTS, VERT } from "./shaders";
 import { DEFAULT_SCENE } from "./types";
+import { drawStanleyHD, type StanleyLook } from "../render/charactersHD";
 
 type Layer = "back" | "mid" | "front";
 
@@ -75,6 +76,13 @@ export class HDRenderer extends Renderer {
 
   override get hd() {
     return true;
+  }
+
+  private stanleyLook: StanleyLook = { blink: 0 };
+
+  /** Stanley, in detail. */
+  protected override drawStanley(game: Game, dt: number) {
+    drawStanleyHD(this, game, this.stanleyLook, dt);
   }
 
   /** Show or hide the HD picture. */

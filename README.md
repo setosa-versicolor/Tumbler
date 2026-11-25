@@ -32,6 +32,8 @@ The coffee spills for real, too: tip a cup and it pours out of the sip hole, jol
 
 How it works (`src/hd/`): the usual drawing is split into layers (the room, what's in it, glowing things), and WebGL2 lights them: every outline gets rounded edges and highlights, and lights march across the props-and-Stanley layer for soft shadows. Then bloom, reflection and the finish. Speech and effects stay crisp on a canvas laid over the top. A level gives its lights with an `hd()` hook; the app swaps renderers mid-level (`turnUp` in `src/app/app.ts`). Without WebGL2 the button just says so.
 
+In HD the characters are drawn in detail too (`src/render/charactersHD.ts`): Stanley's polo shirt, chinos, belt, work shoes, cap and a face that reacts (worried in the air, gritted teeth lifting, X eyes when he's down), and the coworkers each their own person. Every shape sits on the physics bodies, so the ragdoll moves exactly as before. **`studio.html`** (the Character Studio) shows them big, in a set of fixed poses, on a plain background: the place to work on them.
+
 ## Run it locally
 
 ```bash

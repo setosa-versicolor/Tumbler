@@ -1,6 +1,6 @@
 import { OFFICE, type Level } from "../level";
 import { Curio } from "../curio";
-import { drawCoworkerHead } from "../../render/characters";
+import { drawCoworkerHands, drawCoworkerHead } from "../../render/characters";
 
 const COUNTER = { x0: 0.2, x1: 1.8, top: 0.95 };
 const DESK = { x0: 11.4, x1: 13.4, top: 0.78 };
@@ -127,10 +127,10 @@ export const coffeeRun: Level = {
         // Coworkers peek up over their cubicle walls to watch the coffee go by:
         // just the top of a head and a pair of eyes, and fingers on the edge.
         const head = game.stanley.rig.head.translation();
-        for (const p of peekers) {
+        for (const [i, p] of peekers.entries()) {
           const k = lift(p);
           if (k <= 0) continue;
-          drawCoworkerHead(r, p.x, WALL_TOP - 0.2 + k * 0.32, p.skin, p.hair, head);
+          drawCoworkerHead(r, p.x, WALL_TOP - 0.2 + k * 0.32, p.skin, p.hair, head, i);
         }
         for (const x of CUBICLES) {
           r.rect(x, 0, x + 1.4, WALL_TOP, "#969ea8");
@@ -139,7 +139,7 @@ export const coffeeRun: Level = {
         for (const p of peekers) {
           const k = lift(p);
           if (k < 0.6) continue;
-          for (const dx of [-0.2, 0.2]) r.circle({ x: p.x + dx, y: WALL_TOP + 0.01 }, 0.05, p.skin);
+          drawCoworkerHands(r, p.x, WALL_TOP, p.skin);
         }
         r.rect(DESK.x0 + 0.3, DESK.top + 0.05, DESK.x0 + 0.9, DESK.top + 0.5, "#2a2230");
         r.rect(DESK.x0 + 0.33, DESK.top + 0.08, DESK.x0 + 0.87, DESK.top + 0.47, "#5d9de8");

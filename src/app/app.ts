@@ -76,7 +76,11 @@ export class App {
   private plain: Renderer;
   /** The HD one, made the first time it's needed (null if this device can't). */
   private hdR: HDRenderer | null | undefined;
-  /** Levels whose graphics have been turned up this session. */
+  /**
+   * Levels to start in HD the next time they load (from ?hd). Only once: the
+   * button turns the graphics up for one attempt, and a restart (or coming
+   * back later) is back to the usual graphics.
+   */
   private hdLevels = new Set<string>();
   /** The graphics turning up: the effect's elements and how far along it is. */
   private upgrade: { t: number; beam: HTMLElement; stamp: HTMLElement } | null = null;
@@ -163,7 +167,8 @@ export class App {
     // The old level's physics world goes, rather than piling up in memory.
     old?.free();
     this.endUpgrade();
-    this.useRenderer(this.hdLevels.has(level.id) ? (this.hdRenderer() ?? this.plain) : this.plain);
+    const hd = this.hdLevels.delete(level.id);
+    this.useRenderer(hd ? (this.hdRenderer() ?? this.plain) : this.plain);
     this.game.hd = this.renderer.hd;
     this.renderer.camera.setLevel(level);
     this.renderer.clearFx();
@@ -211,7 +216,6 @@ export class App {
       if (!hd) this.renderer.note("Your device can't handle it. Probably for the best.", { x: 1.2, y: 3.6 });
       return;
     }
-    this.hdLevels.add(g.level.id);
     g.hd = true;
     const from = this.renderer.camera;
     hd.camera.setLevel(g.level);

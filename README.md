@@ -26,7 +26,7 @@ A wobbly active-ragdoll game about Stanley, who does simple odd jobs with a body
 
 ## High-end graphics
 
-In **Coffee Run** there's a big red button on the left wall, over the kitchen (stand on the counter). It says DO NOT PUSH. Push it and the picture glitches, then a wipe sweeps across the room from the button and leaves high-end graphics behind it: the office after hours, lamps coming on one by one with soft shadows and beams in the haze, a dusk skyline through the windows, a glossy floor, bloom and a colour grade. It stays that way for Coffee Run for the rest of the session (restarts included). Push it again in HD and see what happens. `?hd` on the URL starts straight in Coffee Run with it already on.
+In **Coffee Run** there's a big red button on the left wall, over the kitchen (stand on the counter). It says DO NOT PUSH. Push it and the picture glitches, then a wipe sweeps across the room from the button and leaves high-end graphics behind it: the office after hours, lamps coming on one by one with soft shadows and beams in the haze, a dusk skyline through the windows, a glossy floor, bloom and a colour grade. It lasts for that attempt: restart (or come back later) and it's the usual graphics again, button and all. Push it again in HD and see what happens. `?hd` on the URL starts straight in Coffee Run with it already on.
 
 The coffee spills for real, too: tip a cup and it pours out of the sip hole, jolt it and it slops over the lid, break one and the lot goes everywhere, splashing off Stanley, the tray and the furniture. Where it lands it pools, and a puddle on the floor is slick: no grip underfoot, and run into one and your feet go out from under you (`src/levels/liquid.ts`).
 

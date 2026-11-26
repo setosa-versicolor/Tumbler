@@ -6,6 +6,7 @@ import { Liquid, type Drop } from "../liquid";
 import { drawCoworkerHead } from "../../render/characters";
 import { CHAMPAGNE, drawLiquid, drawShine } from "../../hd/shared";
 import type { Vec } from "../../sim/math";
+import { groups, G_FLOOR, G_FURNITURE, G_PROP, G_WORLD } from "../../physics/groups";
 
 // CEO Life: the company jet. Pour the board a glass of champagne each. The
 // bottle points where your arm points: tip it over a glass and it pours. Then
@@ -17,7 +18,7 @@ const BAR = { x0: 0.3, x1: 1.75, top: 0.9 };
 const BUCKET = { x: 1.55, hw: 0.075, h: 0.24 };
 const TABLE = { x0: 5.6, x1: 8.0, top: 0.5 };
 /** Where the glasses stand on the table. */
-export const SLOTS = [6.15, 6.8, 7.45];
+export const SLOTS = [6.15, 6.8];
 /** How many drops fill a glass. */
 export const GLASS_FULL = 18;
 /** Passengers' seats (x). Each has a drinks ledge in front, with their own glass on it. */
@@ -82,6 +83,13 @@ export const jet: Level = {
       ...SLOTS.map((x) => ({ x, y: TABLE.top + 0.105, owner: -1 })),
       ...SEATS.map((_, i) => ({ x: ledgeX(i), y: LEDGE.top + 0.105, owner: i })),
     ].map(({ x, y, owner }) => ({ prop: flute(x, y), home: { x, y }, owner, fill: 0, full: -1, floor: 0 }));
+    // The board's glasses sit out of Stanley's way (he walks the aisle past them): only the bottle,
+    // other glasses and the turbulence can knock them over. The table's two are fair game.
+    for (const g of glasses) {
+      if (g.owner < 0) continue;
+      const c = g.prop.body.collider(0);
+      c.setCollisionGroups(groups(G_PROP, G_WORLD | G_FLOOR | G_PROP | G_FURNITURE));
+    }
 
     /** Does a glass catch this drop? (Into its mouth, upright, not yet full.) */
     const absorb = (d: Drop) => {

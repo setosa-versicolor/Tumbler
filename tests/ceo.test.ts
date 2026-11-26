@@ -205,6 +205,22 @@ describe("Jet", () => {
     expect(ev.some((e) => e.type === "sfx" && e.name === "alarm")).toBe(true);
   });
 
+  it("two glasses on the table: run and jump it, and they're both still standing (and so are the board's)", () => {
+    const { g, inst } = start();
+    expect(inst.glasses.filter((gl) => gl.owner < 0)).toHaveLength(2);
+    let jumped = false;
+    for (let i = 0; i < Math.round(3.5 / DT); i++) {
+      const j = !jumped && g.stanley.position.x > 5.2;
+      if (j) jumped = true;
+      g.step({ ...IDLE_INTENT, move: 1, jump: j });
+    }
+    expect(g.stanley.position.x).toBeGreaterThan(12);
+    for (const gl of inst.glasses) {
+      expect(Math.abs(gl.prop.body.rotation())).toBeLessThan(0.3);
+      expect(Math.abs(gl.prop.body.translation().x - gl.home.x)).toBeLessThan(0.1);
+    }
+  });
+
   it("each of the board has a glass on a ledge in front of them; miss it and they say so", () => {
     const { g, inst } = start();
     const theirs = inst.glasses.filter((gl) => gl.owner >= 0);

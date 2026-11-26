@@ -5,7 +5,7 @@ import { DEFAULT_TUNING } from "../src/sim/tuning";
 import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
 import { dirtBike, trackY, type Bike } from "../src/levels/ceo/dirtBike";
 import { golf, HOLES } from "../src/levels/ceo/golf";
-import { jet, GLASS_FULL } from "../src/levels/ceo/jet";
+import { jet, GLASS_FULL, REMARKS } from "../src/levels/ceo/jet";
 import { yacht, DECK } from "../src/levels/ceo/yacht";
 import { CEO_LIFE } from "../src/levels/ceo";
 import { levelById } from "../src/app/campaign";
@@ -160,10 +160,18 @@ describe("Golf", () => {
 });
 
 describe("Jet", () => {
-  type Glass = { prop: Prop; fill: number };
+  type Glass = { prop: Prop; fill: number; owner: number; home: { x: number; y: number } };
   const start = () => {
     const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, jet);
-    const inst = g.inst as unknown as { bottle: Prop; glasses: Glass[]; phase: () => string; poured: () => number };
+    const inst = g.inst as unknown as {
+      bottle: Prop;
+      glasses: Glass[];
+      fizz: { add(x: number, y: number, vx: number, vy: number): void };
+      phase: () => string;
+      severe: () => boolean;
+      poured: () => number;
+      turbulence: (bad: boolean) => void;
+    };
     return { g, inst, bottle: inst.bottle.body };
   };
   const R = { L: false, R: true };
@@ -195,6 +203,51 @@ describe("Jet", () => {
     expect([...phases]).toEqual(expect.arrayContaining(["calm", "warning", "bumpy"]));
     expect(ev.some((e) => e.type === "shake")).toBe(true);
     expect(ev.some((e) => e.type === "sfx" && e.name === "alarm")).toBe(true);
+  });
+
+  it("each of the board has a glass on a ledge in front of them; miss it and they say so", () => {
+    const { g, inst } = start();
+    const theirs = inst.glasses.filter((gl) => gl.owner >= 0);
+    expect(theirs).toHaveLength(3);
+    run(g, 0.5);
+    // Champagne falling just past the first one's glass.
+    const gl = theirs[0].prop.body.translation();
+    for (let i = 0; i < 8; i++) inst.fizz.add(gl.x + 0.18, 1.0 + i * 0.02, 0, -0.5);
+    const ev = run(g, 0.8);
+    expect(texts(ev).some((t) => REMARKS.miss.includes(t))).toBe(true);
+    expect(theirs[0].fill).toBe(0);
+  });
+
+  it("on the suit is worse; fill their glass and you get a grudging word", () => {
+    const { g, inst } = start();
+    run(g, 0.5);
+    const theirs = inst.glasses.filter((gl) => gl.owner >= 0);
+    for (let i = 0; i < 4; i++) inst.fizz.add(12.25, 1.3 + i * 0.02, 0, -0.5);
+    let ev = run(g, 0.6);
+    expect(texts(ev).some((t) => REMARKS.suit.includes(t))).toBe(true);
+    const gl = theirs[2].prop.body.translation();
+    for (let i = 0; i < GLASS_FULL + 2; i++) inst.fizz.add(gl.x, gl.y + 0.2 + i * 0.015, 0, -0.3);
+    ev = run(g, 0.6);
+    expect(texts(ev).some((t) => REMARKS.thanks.includes(t))).toBe(true);
+    expect(inst.poured()).toBe(1);
+  });
+
+  it("the bad turbulence: a jolt tears the bottle out of his hand and sends it flying", () => {
+    const { g, inst, bottle } = start();
+    takeBottle(g, bottle);
+    expect(g.held.has(bottle)).toBe(true);
+    inst.turbulence(true);
+    let maxSpeed = 0;
+    const ev: GameEvent[] = [];
+    for (let i = 0; i < 50; i++) {
+      ev.push(...run(g, 0.1, { grip: R, reach: { x: g.stanley.shoulder.x + 0.4, y: g.stanley.shoulder.y } }));
+      const v = bottle.linvel();
+      maxSpeed = Math.max(maxSpeed, Math.hypot(v.x, v.y));
+    }
+    expect(texts(ev)).toContain("Captain here: hold on to something.");
+    expect(texts(ev)).toContain("THE BOTTLE!");
+    expect(maxSpeed).toBeGreaterThan(5);
+    expect(ev.some((e) => e.type === "shake" && e.mag > 30)).toBe(true);
   });
 
   it("dropped on the floor, the steward puts the bottle back on ice", () => {

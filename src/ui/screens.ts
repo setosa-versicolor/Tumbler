@@ -201,9 +201,12 @@ export function boardCard(o: {
       h(
         "div",
         { class: "mode-switch" },
-        h("button", { class: ot.on || o.ceo?.on ? "" : "on", click: () => ot.onToggle(false) }, "Regular"),
-        h("button", { class: ot.on ? "on" : "", click: () => ot.onToggle(true) }, "🔥 Overtime"),
-        o.ceo && h("button", { class: o.ceo.on ? "on" : "", click: () => o.ceo!.onToggle(true) }, "👔 CEO Life"),
+        // Each the same: an icon over a one-line label.
+        ...[
+          { icon: "💼", label: "Regular", on: !ot.on && !o.ceo?.on, click: () => ot.onToggle(false) },
+          { icon: "🔥", label: "Overtime", on: ot.on && !o.ceo?.on, click: () => ot.onToggle(true) },
+          ...(o.ceo ? [{ icon: "👔", label: "CEO Life", on: o.ceo.on, click: () => o.ceo!.onToggle(true) }] : []),
+        ].map((t) => h("button", { class: t.on ? "on" : "", click: t.click }, h("span", { class: "icon" }, t.icon), h("span", { class: "label" }, t.label))),
       ),
     ot?.on && h("p", { class: "sub" }, "Every job, with a twist. ★4: beat the ★★★ time anyway. ★5: and break nothing."),
     ...(o.ceo?.on

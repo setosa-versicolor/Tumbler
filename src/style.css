@@ -519,14 +519,21 @@ button.primary.danger { background: #c0392b; box-shadow: 0 4px 0 #8e2a1f; min-wi
   margin: 0 0 12px;
 }
 .mode-switch button {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   border: none;
   background: none;
   border-radius: 9px;
-  padding: 8px;
+  padding: 8px 4px;
   font-weight: 800;
   cursor: pointer;
 }
+.mode-switch button .icon { font-size: 20px; line-height: 1; }
+.mode-switch button .label { font-size: 14px; line-height: 1.2; white-space: nowrap; }
 .mode-switch button.on { background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
 .job.overtime { border-color: #f6c9bb; }
 

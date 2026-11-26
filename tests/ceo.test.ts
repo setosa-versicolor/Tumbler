@@ -186,7 +186,7 @@ describe("Golf", () => {
     expect(g.inst.follow?.(g)).toBeNull();
   });
 
-  it("holed on the last green: a moment to watch it drop, then the cart", () => {
+  it("the last putt, rolling up to the cup: the camera heads over, then the horn, and back to Stanley. Nobody sees it drop", () => {
     const { g, inst, ball } = start();
     run(g, 0.5);
     for (const k of [0, 1]) {
@@ -195,16 +195,23 @@ describe("Golf", () => {
       run(g, 3);
     }
     const h = HOLES[2];
-    g.stanley.teleport({ x: h.cup - 6, y: 0.25 });
+    g.stanley.teleport({ x: h.cup - 4, y: 0.25 });
     run(g, 0.5);
-    ball.setTranslation({ x: h.cup - 0.4, y: 0.3 }, true);
-    ball.setLinvel({ x: 1.2, y: 0 }, true);
-    let ev = run(g, 1);
-    expect(texts(ev)).not.toContain("BEEP BEEEEEP!");
+    ball.setTranslation({ x: h.cup - 2.2, y: 0.3 }, true);
+    ball.setLinvel({ x: 1.8, y: 0 }, true);
+    run(g, 0.3);
+    // Rolling up to it: the camera's going to the hole...
     expect(g.inst.follow?.(g)?.x).toBe(h.cup);
-    ev = run(g, 3);
+    let ev: GameEvent[] = [];
+    for (let i = 0; i < 40 && !texts(ev).includes("BEEP BEEEEEP!"); i++) ev.push(...run(g, 0.05));
+    // ...and before it gets there, the horn. Back to Stanley.
     expect(texts(ev)).toContain("BEEP BEEEEEP!");
+    expect(Math.abs(ball.translation().x - h.cup)).toBeGreaterThan(0.05);
+    expect(g.inst.follow?.(g)).toBeNull();
+    ev = run(g, 4);
     expect(disasters(ev)).toEqual(["Hit and Run"]);
+    // Whatever happened, nobody called it.
+    expect(texts(ev).some((t) => /HOLE IN ONE|Birdie|Par|Bogey|EAGLE/.test(t))).toBe(false);
     expect(inst.hole()).toBe(2);
   });
 

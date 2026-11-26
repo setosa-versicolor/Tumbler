@@ -220,7 +220,7 @@ export const golf: Level = {
               type: "disaster",
               title: "Hit and Run",
               text: cart.sunk
-                ? "The last hole, holed. Nobody saw it: everyone was looking at the cart. The caddie says the brakes are 'more of a suggestion'. It's a lovely day, though."
+                ? "Did the last putt drop? Nobody knows. Everyone, you included, was looking at the cart. The caddie says the brakes are 'more of a suggestion'. It's a lovely day, though."
                 : "One putt from the best round of your life. The caddie says the brakes are 'more of a suggestion', and the ball is still on the lip. It's a lovely day, though.",
             });
           }
@@ -289,7 +289,8 @@ export const golf: Level = {
         if (sunk < 0 && Math.abs(p.x - h.cup) < CUP_HW && p.y < GREEN_H - 0.02) {
           sunk = 0;
           cards[hole] = Math.max(1, strokes);
-          ev.push({ type: "score", text: nameFor(cards[hole], h.par), pos: { x: h.cup, y: 1.8 } });
+          // (Not the last hole's: nobody's looking. See the cart.)
+          if (hole < HOLES.length - 1) ev.push({ type: "score", text: nameFor(cards[hole], h.par), pos: { x: h.cup, y: 1.8 } });
         }
         if (sunk >= 0) {
           sunk += dt;
@@ -312,9 +313,13 @@ export const golf: Level = {
         }
         // The last hole, the ball on the green and Stanley over it (or it's dropped already): here comes the cart.
         const last = hole === HOLES.length - 1;
-        const lining = restTime > 0.6 && p.x > h.green[0] && p.x < h.green[1] && Math.abs(pel.x - p.x) < 3;
-        if (last && !cart && (lining || sunk > 1.3)) {
-          cart = { x: pel.x - 15, hit: false, sunk: sunk >= 0 };
+        const onGreen = p.x > h.green[0] && p.x < h.green[1];
+        const lining = restTime > 0.6 && onGreen && Math.abs(pel.x - p.x) < 3;
+        // The last putt, rolling up to the cup, the camera on its way over to watch... and the horn. Everyone looks
+        // round. Did it drop? Nobody saw. Nobody will ever know (the hole isn't called: the scorecard stays blank).
+        const rollingIn = onGreen && Math.abs(p.x - h.cup) < 0.9 && Math.abs(v.x) > 0.1 && (h.cup - p.x) * v.x > 0;
+        if (last && !cart && (lining || rollingIn || sunk >= 0)) {
+          cart = { x: pel.x - 15, hit: false, sunk: rollingIn || sunk >= 0 };
           ev.push({ type: "score", text: "BEEP BEEEEEP!", pos: { x: pel.x - 4, y: groundY(pel.x) + 2.2 } });
           ev.push({ type: "sfx", name: "alarm" });
         }

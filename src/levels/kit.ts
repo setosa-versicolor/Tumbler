@@ -91,7 +91,11 @@ export type PropKind =
   | "brick"
   | "wreckingball"
   | "club"
-  | "golfball";
+  | "golfball"
+  | "champagne"
+  | "flute"
+  | "rod"
+  | "catch";
 
 export interface Prop {
   kind: PropKind;

@@ -5,6 +5,8 @@ import { DEFAULT_TUNING } from "../src/sim/tuning";
 import { IDLE_INTENT, type Intent } from "../src/physics/body/stanley";
 import { dirtBike, trackY, type Bike } from "../src/levels/ceo/dirtBike";
 import { golf, HOLES } from "../src/levels/ceo/golf";
+import { jet, GLASS_FULL } from "../src/levels/ceo/jet";
+import { yacht, DECK } from "../src/levels/ceo/yacht";
 import { CEO_LIFE } from "../src/levels/ceo";
 import { levelById } from "../src/app/campaign";
 import type { Prop } from "../src/levels/kit";
@@ -24,8 +26,8 @@ const texts = (ev: GameEvent[]) => ev.flatMap((e) => ("text" in e ? [e.text] : [
 const both = { L: true, R: true };
 
 describe("CEO Life", () => {
-  it("has the dirt bike and golf, findable by id, with no ratings", () => {
-    expect(CEO_LIFE.map((l) => l.id)).toEqual(["ceo-dirt-bike", "ceo-golf"]);
+  it("has the dirt bike, golf, the jet and the yacht, findable by id, with no ratings", () => {
+    expect(CEO_LIFE.map((l) => l.id)).toEqual(["ceo-dirt-bike", "ceo-golf", "ceo-jet", "ceo-yacht"]);
     for (const l of CEO_LIFE) {
       expect(levelById(l.id)).toBe(l);
       expect(l.sandbox && l.ceo).toBe(true);
@@ -147,5 +149,111 @@ describe("Golf", () => {
     expect(texts(ev)).toContain("Out of bounds. +1");
     expect(inst.strokes()).toBe(1);
     expect(ball.translation().x).toBeGreaterThan(1);
+  });
+});
+
+describe("Jet", () => {
+  type Glass = { prop: Prop; fill: number };
+  const start = () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, jet);
+    const inst = g.inst as unknown as { bottle: Prop; glasses: Glass[]; phase: () => string; poured: () => number };
+    return { g, inst, bottle: inst.bottle.body };
+  };
+  const R = { L: false, R: true };
+  const takeBottle = (g: Game, bottle: Prop["body"]) => {
+    run(g, 1);
+    run(g, 0.8, { move: -0.5 });
+    run(g, 1, () => ({ reach: bottle.translation(), grip: R }));
+    run(g, 2.5, { move: 0.6, grip: R, reach: { x: g.stanley.shoulder.x + 0.4, y: g.stanley.shoulder.y + 0.2 } });
+  };
+
+  it("off the ice and tipped over a flute, the champagne fills it: a toast", () => {
+    const { g, inst, bottle } = start();
+    takeBottle(g, bottle);
+    expect(g.held.has(bottle)).toBe(true);
+    const ev = run(g, 2, { grip: R, reach: { x: 5.8, y: 0.9 } });
+    expect(inst.glasses[0].fill).toBeGreaterThanOrEqual(GLASS_FULL - 1);
+    expect(inst.poured()).toBe(1);
+    expect(texts(ev).some((t) => /Cheers|To |Bubbly|Lovely/.test(t))).toBe(true);
+  });
+
+  it("every so often: the seatbelt sign, then turbulence that shakes the cabin", () => {
+    const { g, inst } = start();
+    const phases = new Set<string>();
+    const ev: GameEvent[] = [];
+    for (let i = 0; i < 16 / 0.1; i++) {
+      ev.push(...run(g, 0.1));
+      phases.add(inst.phase());
+    }
+    expect([...phases]).toEqual(expect.arrayContaining(["calm", "warning", "bumpy"]));
+    expect(ev.some((e) => e.type === "shake")).toBe(true);
+    expect(ev.some((e) => e.type === "sfx" && e.name === "alarm")).toBe(true);
+  });
+
+  it("dropped on the floor, the steward puts the bottle back on ice", () => {
+    const { g, bottle } = start();
+    run(g, 0.5);
+    bottle.setTranslation({ x: 4, y: 0.1 }, true);
+    bottle.setRotation(Math.PI / 2, true);
+    run(g, 3.5);
+    expect(Math.abs(bottle.translation().x - 1.55)).toBeLessThan(0.1);
+    expect(bottle.translation().y).toBeGreaterThan(1);
+  });
+});
+
+describe("Yacht", () => {
+  const start = () => {
+    const g = new Game({ ...DEFAULT_TUNING, trippiness: 0 }, yacht);
+    const inst = g.inst as unknown as { rod: Prop; state: () => string; fish: () => Prop | null; caught: () => number };
+    const rod = inst.rod.body;
+    run(g, 1);
+    run(g, 1.2, { move: 0.5 });
+    run(g, 1.2, () => ({ reach: { x: rod.translation().x, y: rod.translation().y - 0.5 }, grip: both }));
+    return { g, inst, rod };
+  };
+  const fight = (g: Game, inst: { state: () => string }) => () => ({
+    grip: both,
+    move: inst.state() === "fight" && g.stanley.position.x > 6.5 ? -0.5 : 0,
+    reach: { x: g.stanley.shoulder.x - 0.4, y: g.stanley.shoulder.y + 0.5 },
+  });
+
+  it("rod in hand, something bites; reel it in to the stern and it's landed", () => {
+    const { g, inst, rod } = start();
+    expect(g.held.has(rod)).toBe(true);
+    let ev = run(g, 9, fight(g, inst));
+    expect(texts(ev)).toContain("FISH ON!");
+    ev = run(g, 50, () => (inst.caught() ? { grip: both } : fight(g, inst)()));
+    expect(texts(ev).some((t) => t.startsWith("LANDED!"))).toBe(true);
+    expect(inst.caught()).toBe(1);
+  });
+
+  it("let go of the rod mid-fight and it gets away", () => {
+    const { g, inst } = start();
+    run(g, 9, fight(g, inst));
+    expect(inst.state()).toBe("fight");
+    const ev = run(g, 0.5);
+    expect(texts(ev)).toContain("It got away.");
+    expect(inst.fish()).toBeNull();
+  });
+
+  it("too much strain for too long: the line snaps", () => {
+    const { g, inst } = start();
+    run(g, 9, fight(g, inst));
+    const fish = inst.fish()!;
+    const ev = run(g, 1.5, () => {
+      if (inst.fish()) fish.body.setLinvel({ x: 9, y: 0 }, true);
+      return fight(g, inst)();
+    });
+    expect(texts(ev)).toContain("SNAP!");
+    expect(inst.state()).toBe("gone");
+  });
+
+  it("dragged over the stern: man overboard, and the fish gets away", () => {
+    const { g, inst } = start();
+    run(g, 9, fight(g, inst));
+    g.stanley.teleport({ x: DECK.stern + 1.5, y: 1 });
+    const ev = run(g, 1, { grip: both });
+    expect(texts(ev).some((t) => /overboard|got away/.test(t))).toBe(true);
+    expect(inst.fish()).toBeNull();
   });
 });

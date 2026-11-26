@@ -152,6 +152,15 @@ export const WATER: LiquidLook = {
   shine: "rgba(220,240,255,0.6)",
 };
 
+export const CHAMPAGNE: LiquidLook = {
+  pool: ["rgba(200,160,70,0.6)", "rgba(230,195,100,0.55)", "rgba(245,220,150,0.5)"],
+  edge: "rgba(255,240,190,0.8)",
+  drop: "rgba(240,200,90,0.85)",
+  core: "rgba(255,248,215,0.95)",
+  ripple: "255,240,190",
+  shine: "rgba(255,248,220,0.6)",
+};
+
 /** How deep a puddle looks (it's drawn lying on the floor, seen from a little above). */
 const puddleDepth = (p: { y: number; w: number }) => Math.min(p.y === 0 ? 0.24 : 0.07, 0.07 + p.w * 0.5);
 

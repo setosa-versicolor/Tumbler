@@ -26,6 +26,8 @@ export type GameEvent =
   | { type: "smash"; pos: Vec; material: string; big: boolean }
   /** Off to another level entirely (through a window, say). */
   | { type: "warp"; to: string }
+  /** Shake the camera (turbulence), this hard. */
+  | { type: "shake"; mag: number }
   /** Turn the graphics up (the button in Coffee Run). */
   | { type: "graphics"; to: "hd" }
   | { type: "complete" };

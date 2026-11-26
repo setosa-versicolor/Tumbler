@@ -1161,6 +1161,86 @@ export class Renderer {
         outline();
         break;
       }
+      case "champagne": {
+        // A magnum: dark green, a shoulder up to the neck, gold foil, a cream label. Neck at local +y (canvas -y).
+        ctx.fillStyle = "#1f4a33";
+        ctx.beginPath();
+        ctx.moveTo(-w, h);
+        ctx.lineTo(-w, -h * 0.15);
+        ctx.quadraticCurveTo(-w, -h * 0.45, -w * 0.38, -h * 0.55);
+        ctx.lineTo(-w * 0.38, -h);
+        ctx.lineTo(w * 0.38, -h);
+        ctx.lineTo(w * 0.38, -h * 0.55);
+        ctx.quadraticCurveTo(w, -h * 0.45, w, -h * 0.15);
+        ctx.lineTo(w, h);
+        ctx.closePath();
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#e2b13c";
+        ctx.fillRect(-w * 0.42, -h, w * 0.84, h * 0.3);
+        ctx.fillStyle = "#f4efe0";
+        ctx.fillRect(-w * 0.9, h * 0.05, w * 1.8, h * 0.4);
+        ctx.fillStyle = "#c9962a";
+        ctx.fillRect(-w * 0.9, h * 0.2, w * 1.8, h * 0.06);
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+        ctx.fillRect(-w * 0.7, -h * 0.1, w * 0.2, h * 0.9);
+        break;
+      }
+      case "flute": {
+        // A champagne flute: foot, stem, a tall glass bowl (the level draws what's in it).
+        ctx.fillStyle = "rgba(225,238,248,0.35)";
+        ctx.strokeStyle = "rgba(42,34,48,0.6)";
+        ctx.lineWidth = Math.max(1, sc * 0.008);
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.85, -h);
+        ctx.quadraticCurveTo(-w, -h * 0.1, 0, h * 0.1);
+        ctx.quadraticCurveTo(w, -h * 0.1, w * 0.85, -h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "rgba(200,215,228,0.8)";
+        ctx.fillRect(-w * 0.12, h * 0.1, w * 0.24, h * 0.8);
+        ctx.beginPath();
+        ctx.ellipse(0, h * 0.92, w * 0.8, h * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,0.7)";
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.55, -h * 0.85);
+        ctx.lineTo(-w * 0.5, -h * 0.3);
+        ctx.stroke();
+        break;
+      }
+      case "rod": {
+        // A fishing rod: cork handle and reel at the held end (local -y), the blank tapering to the tip.
+        ctx.fillStyle = "#c9a27e";
+        ctx.fillRect(-w * 1.4, h * 0.62, w * 2.8, h * 0.38);
+        ctx.fillStyle = "#2a2230";
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.9, h * 0.62);
+        ctx.lineTo(w * 0.9, h * 0.62);
+        ctx.lineTo(w * 0.25, -h);
+        ctx.lineTo(-w * 0.25, -h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#c9ccd1";
+        ctx.beginPath();
+        ctx.arc(w * 2.2, h * 0.5, w * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        outline();
+        ctx.fillStyle = "#e85d4f";
+        ctx.beginPath();
+        ctx.arc(w * 2.2, h * 0.5, w * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        for (const g of [0.3, -0.2, -0.65]) {
+          ctx.strokeStyle = "#c9ccd1";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(w * 0.9, g * h, w * 0.6, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        break;
+      }
       case "golfball":
         ctx.fillStyle = "#ffffff";
         ctx.beginPath();

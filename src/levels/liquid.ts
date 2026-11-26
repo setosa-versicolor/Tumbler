@@ -32,7 +32,7 @@ const SPREAD_RATE = 0.6;
 /** Traction (fraction of normal) with a foot in a puddle. */
 export const SLICK = 0.12;
 
-interface Drop {
+export interface Drop {
   x: number;
   y: number;
   vx: number;
@@ -85,7 +85,18 @@ export class Liquid {
   /** Is a foot in a puddle right now? */
   slick = false;
 
-  constructor(private kind = "cup") {}
+  /** A push on every drop, besides gravity (turbulence, say), m/s². */
+  extra = { x: 0, y: 0 };
+
+  constructor(
+    private kind = "cup",
+    private opts: {
+      /** Something that soaks up a drop (a glass being filled): true, and the drop's gone. */
+      absorb?: (d: Drop) => boolean;
+      /** Props the liquid passes straight through (the bottle it's pouring from). */
+      ignore?: (p: Prop) => boolean;
+    } = {},
+  ) {}
 
   /** Coffee left in a cup (0–1), or null if it isn't one we know. */
   fillOf(body: RigidBody): number | null {
@@ -197,7 +208,8 @@ export class Liquid {
       });
     }
     for (const d of drops) {
-      d.vy -= g * dt;
+      d.vx += this.extra.x * dt;
+      d.vy += (this.extra.y - g) * dt;
       d.px = d.x;
       d.py = d.y;
       d.x += d.vx * dt;
@@ -235,8 +247,10 @@ export class Liquid {
     }
     // Hit things, then velocities from how far each drop actually went.
     const statics = game.solids;
-    const movers = game.props.filter((p) => p.kind !== "shard" && p.kind !== this.kind);
+    const movers = game.props.filter((p) => p.kind !== "shard" && p.kind !== this.kind && !this.opts.ignore?.(p));
     const caps = capsules(game);
+    const absorb = this.opts.absorb;
+    if (absorb) for (let i = drops.length - 1; i >= 0; i--) if (absorb(drops[i])) drops.splice(i, 1);
     for (const d of drops) {
       d.on = null;
       for (const s of statics) this.hitSolid(d, s);

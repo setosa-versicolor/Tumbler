@@ -912,6 +912,9 @@ export class App {
         case "graphics":
           this.turnUp();
           break;
+        case "shake":
+          r.camera.shake(ev.mag);
+          break;
         case "score":
           r.popup(ev.text, ev.pos, "#37a59c");
           if (ev.text.startsWith("DING")) sfx.dingDong();

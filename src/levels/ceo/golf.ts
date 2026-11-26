@@ -189,11 +189,11 @@ export const golf: Level = {
      * The 18th (well, the 3rd): lining up the last putt, the caddie arrives. At speed. The brakes, he says
      * later, are more of a suggestion. x: the cart's middle; null till it comes.
      */
-    let cart: { x: number; hit: boolean } | null = null;
+    let cart: { x: number; hit: boolean; sunk: boolean } | null = null;
     let now: Game | null = null;
     const CART_SPEED = 12;
 
-    const inst: LevelInstance & { club: Prop; ball: Prop; hole: () => number; strokes: () => number; cart: () => { x: number; hit: boolean } | null } = {
+    const inst: LevelInstance & { club: Prop; ball: Prop; hole: () => number; strokes: () => number; cart: () => { x: number; hit: boolean; sunk: boolean } | null } = {
       club,
       ball,
       hole: () => hole,
@@ -219,7 +219,9 @@ export const golf: Level = {
             ev.push({
               type: "disaster",
               title: "Hit and Run",
-              text: "One putt from the best round of your life. The caddie says the brakes are 'more of a suggestion', and the ball is still on the lip. It's a lovely day, though.",
+              text: cart.sunk
+                ? "The last hole, holed. Nobody saw it: everyone was looking at the cart. The caddie says the brakes are 'more of a suggestion'. It's a lovely day, though."
+                : "One putt from the best round of your life. The caddie says the brakes are 'more of a suggestion', and the ball is still on the lip. It's a lovely day, though.",
             });
           }
           // (It misses the ball, somehow. The ball stays exactly where it was: one putt from the cup.)
@@ -227,6 +229,12 @@ export const golf: Level = {
           return ev;
         }
         const held = game.held.has(club.body);
+        // Let go of with its head under the turf (a held club swings through the ground), it would fall out of
+        // the world: the caddie fishes it out and puts it back in the bag.
+        {
+          const c = club.body.translation();
+          if (!held && (c.y < groundY(c.x) - 0.12 || c.y < -0.3)) putAway(bagX);
+        }
         // A swung club hits the ball; put down, it lies on the grass like anything else.
         const want = held ? CLUB_SWING : PROP_GROUPS;
         for (let i = 0; i < club.body.numColliders(); i++) if (club.body.collider(i).collisionGroups() !== want) club.body.collider(i).setCollisionGroups(want);
@@ -305,8 +313,8 @@ export const golf: Level = {
         // The last hole, the ball on the green and Stanley over it (or it's dropped already): here comes the cart.
         const last = hole === HOLES.length - 1;
         const lining = restTime > 0.6 && p.x > h.green[0] && p.x < h.green[1] && Math.abs(pel.x - p.x) < 3;
-        if (last && !cart && (lining || sunk >= 0)) {
-          cart = { x: pel.x - 15, hit: false };
+        if (last && !cart && (lining || sunk > 1.3)) {
+          cart = { x: pel.x - 15, hit: false, sunk: sunk >= 0 };
           ev.push({ type: "score", text: "BEEP BEEEEEP!", pos: { x: pel.x - 4, y: groundY(pel.x) + 2.2 } });
           ev.push({ type: "sfx", name: "alarm" });
         }
@@ -329,10 +337,20 @@ export const golf: Level = {
       },
       progress: () => {
         const h = HOLES[hole];
-        return { done: false, label: `Hole ${h.n} · par ${h.par} · ${strokes} stroke${strokes === 1 ? "" : "s"}` };
+        return { done: false, label: `Hole ${h.n} of ${HOLES.length}${h.n === HOLES.length ? " (the last)" : ""} · par ${h.par} · ${strokes} stroke${strokes === 1 ? "" : "s"}` };
       },
       // While the ball's flying, the camera goes with it.
-      follow: () => (!cart && Math.hypot(ball.body.linvel().x, ball.body.linvel().y) > 2 ? ball.body.translation() : null),
+      // Rolling up to the cup (or dropping in), the camera goes to the hole to watch.
+      follow: () => {
+        // (The cart's coming: back to Stanley.)
+        if (cart) return null;
+        const h = HOLES[hole];
+        const bp = ball.body.translation();
+        const bv = ball.body.linvel();
+        const toCup = (h.cup - bp.x) * bv.x > 0;
+        if (sunk >= 0 || (Math.abs(bp.x - h.cup) < 4 && bp.x > h.green[0] && bp.x < h.green[1] && Math.abs(bv.x) > 0.15 && toCup)) return { x: h.cup, y: GREEN_H + 0.4 };
+        return Math.hypot(bv.x, bv.y) > 2 ? bp : null;
+      },
       drawBack(r) {
         drawScenery(r);
       },

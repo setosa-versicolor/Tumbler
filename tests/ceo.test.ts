@@ -153,6 +153,61 @@ describe("Golf", () => {
     expect(Math.abs(g.stanley.rig.pelvis.translation().x - 19)).toBeLessThan(1.5);
   });
 
+  it("let go of with its head in the turf, the club doesn't fall out of the world: it's back in the bag", () => {
+    const { g, club } = start();
+    const sh = () => g.stanley.shoulder;
+    const gripAt = () => ({ x: club.translation().x, y: club.translation().y + 0.4 });
+    run(g, 1);
+    run(g, 0.5, { move: -0.4 });
+    run(g, 1.2, () => ({ reach: gripAt() }));
+    run(g, 0.6, () => ({ reach: gripAt(), grip: both }));
+    expect(g.held.has(club)).toBe(true);
+    // Shove it down through the ground, and let go.
+    run(g, 1, () => ({ reach: { x: sh().x + 0.2, y: sh().y - 2 }, grip: both }));
+    run(g, 6);
+    expect(g.held.has(club)).toBe(false);
+    expect(club.translation().y).toBeGreaterThan(0.2);
+    expect(g.props.some((p) => p.body === club)).toBe(true);
+  });
+
+  it("the label says which hole of how many; rolling up to the cup, the camera goes to the hole", () => {
+    const { g, inst, ball } = start();
+    run(g, 0.5);
+    expect(g.progress.label).toMatch(/^Hole 1 of 3 /);
+    const h = HOLES[0];
+    ball.setTranslation({ x: h.cup - 1.2, y: 0.3 }, true);
+    ball.setLinvel({ x: 1.6, y: 0 }, true);
+    run(g, 0.2);
+    expect(g.inst.follow?.(g)?.x).toBe(h.cup);
+    run(g, 2.6);
+    expect(g.inst.follow?.(g)?.x).toBe(h.cup);
+    run(g, 2.4);
+    expect(inst.hole()).toBe(1);
+    expect(g.inst.follow?.(g)).toBeNull();
+  });
+
+  it("holed on the last green: a moment to watch it drop, then the cart", () => {
+    const { g, inst, ball } = start();
+    run(g, 0.5);
+    for (const k of [0, 1]) {
+      ball.setTranslation({ x: HOLES[k].cup - 0.4, y: 0.3 }, true);
+      ball.setLinvel({ x: 1.2, y: 0 }, true);
+      run(g, 3);
+    }
+    const h = HOLES[2];
+    g.stanley.teleport({ x: h.cup - 6, y: 0.25 });
+    run(g, 0.5);
+    ball.setTranslation({ x: h.cup - 0.4, y: 0.3 }, true);
+    ball.setLinvel({ x: 1.2, y: 0 }, true);
+    let ev = run(g, 1);
+    expect(texts(ev)).not.toContain("BEEP BEEEEEP!");
+    expect(g.inst.follow?.(g)?.x).toBe(h.cup);
+    ev = run(g, 3);
+    expect(texts(ev)).toContain("BEEP BEEEEEP!");
+    expect(disasters(ev)).toEqual(["Hit and Run"]);
+    expect(inst.hole()).toBe(2);
+  });
+
   it("lining up the last putt of the round, the caddie's cart runs him over. Disaster.", () => {
     const { g, inst, ball } = start();
     run(g, 0.5);

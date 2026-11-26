@@ -341,7 +341,8 @@ export const jet: Level = {
         // Put down somewhere (or dropped on the floor) a while: the steward puts it back on ice.
         const bp = bottle.body.translation();
         bottleDown = !held && (bp.y < BAR.top - 0.2 || Math.abs(bp.x - BUCKET.x) > 0.3) ? bottleDown + dt : 0;
-        if (bottleDown > 2.5) {
+        // (Out through the floor, it doesn't wait.)
+        if (bottleDown > 2.5 || (!held && bp.y < -0.3)) {
           bottleDown = 0;
           place(bottle, BUCKET.x, BAR.top + 0.03 + bottle.hh);
         }

@@ -295,7 +295,8 @@ export const yacht: Level = {
         // The rod, left lying about (or in the sea): the deckhand puts it back in its holder.
         const rp = rod.body.translation();
         rodDown = !held && (Math.abs(rp.x - HOLDER.x) > 0.2 || rp.y < DECK.top + 0.5) ? rodDown + dt : 0;
-        if (rodDown > 2.5) {
+        // (Out through the deck or the sea floor, it doesn't wait.)
+        if (rodDown > 2.5 || (!held && rp.y < -0.3)) {
           rodDown = 0;
           rod.body.setTranslation({ x: HOLDER.x, y: DECK.top + 0.03 + ROD_HH }, true);
           rod.body.setRotation(0, true);

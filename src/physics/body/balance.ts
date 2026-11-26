@@ -47,7 +47,7 @@ export class Balance {
    * `bend` (0..1) folds the torso forward at the waist and `crouch` (metres)
    * lowers the hips, so the hands can reach things on the floor.
    */
-  update(world: World, rig: Rig, t: Tuning, move: number, facing: 1 | -1, jump: boolean, bend: number, crouch: number, dt: number) {
+  update(world: World, rig: Rig, t: Tuning, move: number, facing: 1 | -1, jump: boolean, bend: number, crouch: number, dt: number, seated = false, upright = 0) {
     const M = rig.totalMass;
     const chest = rig.chest;
     const pelvis = rig.pelvis;
@@ -56,11 +56,13 @@ export class Balance {
     const cv = chest.linvel();
     const hit = Math.hypot(cv.x - this.lastChestVel.x, cv.y - this.lastChestVel.y);
     this.lastChestVel = { x: cv.x, y: cv.y };
-    const lean = -facing * (0.12 * clamp(Math.abs(move), 0, 1) * (1 - bend) + 1.05 * bend);
+    // (`upright` tilts the whole lot: sitting on something, he leans with it.)
+    const lean = upright - facing * (0.12 * clamp(Math.abs(move), 0, 1) * (1 - bend) + 1.05 * bend);
     // Tilt is measured against the lean we asked for, so bending over isn't falling over.
     const tilt = Math.abs(wrapAngle(chest.rotation() - lean));
 
-    if (this.posture === "up" && (tilt > t.fallTilt || hit > t.knockdown)) this.knockDown();
+    // (Sitting on something, he tilts and jolts with it: whatever he's on decides when he comes off.)
+    if (this.posture === "up" && !seated && (tilt > t.fallTilt || hit > t.knockdown)) this.knockDown();
     if (this.posture === "down") {
       this.timer -= dt;
       this.stability = 0.04;
@@ -98,8 +100,8 @@ export class Balance {
     this.standingOn = rh && rh.timeOfImpact < HOVER_RANGE && under?.isDynamic() ? under : null;
     this.grounded = this.groundDist < HOVER_RANGE;
 
-    // --- Hover spring under the pelvis --------------------------------------
-    if (this.grounded) {
+    // --- Hover spring under the pelvis (not while sitting on something) ----------
+    if (this.grounded && !seated) {
       const pv = pelvis.linvel();
       const k = 140;
       const c = 2 * 0.9 * Math.sqrt(k);
@@ -114,7 +116,8 @@ export class Balance {
     }
 
     // --- Upright torques ------------------------------------------------------
-    const maxT = 450 * s;
+    // (Sitting, he only loosely keeps himself upright: the ride throws him about.)
+    const maxT = 450 * s * (seated ? 0.6 : 1);
     driveAngle(chest, lean, 1.4, 14, 1, maxT, dt);
     driveAngle(pelvis, lean * 0.45, 0.7, 14, 1, maxT * 0.6, dt);
     driveAngle(rig.head, lean * 0.6, 0.08, 9, 0.8, 12 * s, dt, chest);
@@ -126,11 +129,11 @@ export class Balance {
     const speed = t.moveSpeed * (1 - STOOP_SLOWDOWN * bend);
     // On a slippery floor Stanley can barely speed up, slow down or stop.
     const ax = clamp(7 * (move * speed - pv.x), -22, 22) * control * t.traction;
-    pelvis.applyImpulse({ x: M * ax * dt, y: 0 }, true);
+    if (!seated) pelvis.applyImpulse({ x: M * ax * dt, y: 0 }, true);
 
     // --- Jump ----------------------------------------------------------------
     this.jumpCooldown -= dt;
-    if (jump && this.grounded && this.posture === "up" && this.jumpCooldown <= 0) {
+    if (jump && this.grounded && !seated && this.posture === "up" && this.jumpCooldown <= 0) {
       this.jumpCooldown = 0.35;
       for (const b of rig.bodies) b.applyImpulse({ x: 0, y: b.mass() * t.jumpSpeed }, true);
       // Our own jump isn't a hit.

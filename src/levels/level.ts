@@ -41,6 +41,8 @@ export interface LevelInstance {
   safe?(p: Prop): boolean;
   /** Arriving from another level (crashing in from the Smash Room, say): set the scene. */
   arrive?(game: Game, from: string): GameEvent[];
+  /** Somewhere for the camera to follow instead of Stanley, for now (a golf ball in flight), or null. */
+  follow?(game: Game): Vec | null;
   /** Where the level's characters' heads are, for speech in a scene. */
   speakers?: Record<string, () => Vec>;
   /** HD renderer: things close to the camera, out of focus (drawn on their own layer, then blurred). */
@@ -66,6 +68,10 @@ export interface Level {
   theme: Theme;
   /** No goal, no timer. */
   sandbox?: boolean;
+  /** One of the CEO Life activities (after the story: no ratings, just fun). */
+  ceo?: boolean;
+  /** How to play it, shown along the bottom (instead of the usual controls). */
+  hint?: string;
   build(kit: Kit): LevelInstance;
 }
 

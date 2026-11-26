@@ -155,6 +155,8 @@ export function boardCard(o: {
   onClose?: () => void;
   /** After the story: switch between the normal jobs and Overtime. */
   overtime?: { on: boolean; twistName: (levelId: string) => string; onToggle: (on: boolean) => void };
+  /** After the story: CEO Life (no ratings, just the leisure). */
+  ceo?: { levels: Level[]; on: boolean; onToggle: (on: boolean) => void };
 }): HTMLElement {
   const ot = o.overtime;
   const total = o.chapters
@@ -199,11 +201,28 @@ export function boardCard(o: {
       h(
         "div",
         { class: "mode-switch" },
-        h("button", { class: ot.on ? "" : "on", click: () => ot.onToggle(false) }, "Regular"),
+        h("button", { class: ot.on || o.ceo?.on ? "" : "on", click: () => ot.onToggle(false) }, "Regular"),
         h("button", { class: ot.on ? "on" : "", click: () => ot.onToggle(true) }, "🔥 Overtime"),
+        o.ceo && h("button", { class: o.ceo.on ? "on" : "", click: () => o.ceo!.onToggle(true) }, "👔 CEO Life"),
       ),
     ot?.on && h("p", { class: "sub" }, "Every job, with a twist. ★4: beat the ★★★ time anyway. ★5: and break nothing."),
-    ...chapters,
+    ...(o.ceo?.on
+      ? [
+          h("p", { class: "sub" }, "You're the CEO now. No ratings: who rates the CEO?"),
+          h(
+            "section",
+            { class: "chapter ceo" },
+            h("h2", {}, "CEO Life"),
+            h(
+              "div",
+              { class: "jobs" },
+              ...o.ceo.levels.map((l) =>
+                h("button", { class: "job", click: () => o.onPlay(l) }, h("span", { class: "job-icon" }, l.icon), h("span", { class: "job-title" }, l.title), h("span", { class: "job-new" }, "Leisure")),
+              ),
+            ),
+          ),
+        ]
+      : chapters),
     h(
       "section",
       { class: "chapter extras" },
@@ -367,7 +386,7 @@ export function endCard(o: { onBoard: () => void }): HTMLElement {
     h("div", { class: "big-icon" }, "🏢"),
     h("h1", {}, "Odd Jobs Ltd."),
     h("p", { class: "goal" }, "We're a family. (Legally a company.)"),
-    h("p", { class: "controls" }, "Thanks for playing. Overtime is now open on the Job Board: every job, with a twist, and two more stars to earn."),
+    h("p", { class: "controls" }, "Thanks for playing. Overtime is now open on the Job Board: every job, with a twist, and two more stars to earn. And you're the CEO now: 👔 CEO Life is open too (no ratings; who rates the CEO?)."),
     h("button", { class: "primary", click: o.onBoard }, "Job Board"),
   );
 }

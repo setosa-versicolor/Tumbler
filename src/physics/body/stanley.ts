@@ -43,6 +43,21 @@ export class Stanley {
   readonly gait = new Gait();
   readonly grips: Record<Side, Grip>;
   facing: 1 | -1 = 1;
+  /**
+   * Sitting on something (a dirt bike's seat): no standing spring, no running
+   * or jumping, a loose hold on staying upright, knees bent. The level that
+   * seats him keeps him there (and decides when he comes off).
+   */
+  seated = false;
+  /** Sitting: which way is "upright" (the angle of what he's sitting on), so he turns with it. */
+  seatAngle = 0;
+
+  /** Face a given way (for things he sits on). */
+  face(f: 1 | -1) {
+    if (f === this.facing) return;
+    this.facing = f;
+    setKneeFacing(this.rig, f);
+  }
   /** Last reach point, for the eyes to look at. */
   lookAt: Vec | null = null;
   /** How far bent over at the waist, 0..1. */
@@ -152,7 +167,7 @@ export class Stanley {
 
     this.updateFacing(intent);
     const { bend, crouch } = this.stoop(intent, dt);
-    balance.update(this.world, rig, t, intent.move, this.facing, intent.jump, bend, crouch, dt);
+    balance.update(this.world, rig, t, intent.move, this.facing, intent.jump, bend, crouch, dt, this.seated, this.seated ? this.seatAngle : 0);
     gait.update(pv.x, t.moveSpeed, dt);
 
     const airborne = !balance.grounded;
@@ -164,9 +179,12 @@ export class Stanley {
     const legStrength = t.legStrength * limp;
     (["L", "R"] as const).forEach((side, i) => {
       const leg = rig.legs[side];
-      const lt = hanging
-        ? { thigh: this.facing * 1.7, shin: this.facing * (1.7 - 2.3) }
-        : gait.targets(i as 0 | 1, this.facing, airborne, crouch);
+      const lt = this.seated
+        ? // Sitting: thighs forward, shins down (one a touch ahead of the other).
+          { thigh: this.facing * (1.35 + i * 0.12), shin: this.facing * -(1.45 + i * 0.1) }
+        : hanging
+          ? { thigh: this.facing * 1.7, shin: this.facing * (1.7 - 2.3) }
+          : gait.targets(i as 0 | 1, this.facing, airborne, crouch);
       driveAngle(leg.thigh, lt.thigh, I_THIGH, 18, 0.9, legStrength, dt, rig.pelvis);
       driveAngle(leg.shin, lt.shin, I_SHIN, 18, 0.9, legStrength * 0.7, dt, leg.thigh);
     });
@@ -256,6 +274,8 @@ export class Stanley {
   }
 
   private updateFacing(intent: Intent) {
+    // Sitting on something, he faces the way it does (the level sets that).
+    if (this.seated) return;
     let f = this.facing;
     if (Math.abs(intent.move) > 0.2) f = intent.move > 0 ? 1 : -1;
     // Ducking, he stays hunched the way he is while things go over his head:

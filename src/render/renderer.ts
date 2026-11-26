@@ -1148,6 +1148,28 @@ export class Renderer {
         }
         break;
       }
+      case "club": {
+        // A golf club: rubber grip at the bottom (local -y), steel shaft, the head on the far end.
+        ctx.fillStyle = "#2a2230";
+        ctx.fillRect(-w * 1.3, h * 0.55, w * 2.6, h * 0.45);
+        ctx.fillStyle = "#c9ccd1";
+        ctx.fillRect(-w * 0.6, -h, w * 1.2, h * 1.6);
+        ctx.fillStyle = "#5f6670";
+        ctx.beginPath();
+        ctx.roundRect(-w * 0.8, -h - sc * 0.03, sc * 0.11, sc * 0.06, sc * 0.02);
+        ctx.fill();
+        outline();
+        break;
+      }
+      case "golfball":
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(0, 0, w, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = Math.max(1, sc * 0.008);
+        ctx.strokeStyle = "rgba(42,34,48,0.6)";
+        ctx.stroke();
+        break;
       case "squeegee": {
         // A yellow handle, with the rubber blade across the top end (local +y,
         // which is -y on the canvas). The blade's colour says wet, dry or dirty.

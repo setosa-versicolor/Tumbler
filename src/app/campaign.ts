@@ -18,6 +18,7 @@ import { mailRoom } from "../levels/skyscraper/mailRoom";
 import { shredIt } from "../levels/skyscraper/shredIt";
 import { fireDrillHD } from "../hd/fireDrillHD";
 import { executiveAction } from "../levels/finale/executiveAction";
+import { CEO_LIFE } from "../levels/ceo";
 
 export interface Chapter {
   id: string;
@@ -44,7 +45,7 @@ export const SANDBOX = dayOff;
 export const ALL_LEVELS: Level[] = [...CHAPTERS.flatMap((c) => c.levels), dayOff];
 
 export function levelById(id: string): Level | undefined {
-  return ALL_LEVELS.find((l) => l.id === id);
+  return ALL_LEVELS.find((l) => l.id === id) ?? CEO_LIFE.find((l) => l.id === id);
 }
 
 export function chapterOf(levelId: string): Chapter | undefined {

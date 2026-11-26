@@ -13,6 +13,7 @@ import { BOSS, office, type OfficeInstance } from "../story/office";
 import { SCRIPTS } from "../story/scripts";
 import { CHAPTERS, allFiveStars, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus, overtimeOpen, SANDBOX, starsFor, TAGS, type Chapter } from "./campaign";
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
+import { CEO_LIFE } from "../levels/ceo";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
 import { h, titleCard, boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, partyEndCard, quantumCard, resultsCard } from "../ui/screens";
 import { theGift } from "../levels/secret/theGift";
@@ -105,6 +106,8 @@ export class App {
   private overtime = false;
   /** The job board is showing the Overtime list. */
   private boardOvertime = false;
+  /** The job board is showing CEO Life. */
+  private boardCeo = false;
   /** Closes the job board, if it can be closed. */
   private boardClose: (() => void) | null = null;
 
@@ -690,10 +693,22 @@ export class App {
         onSecret: () => this.playSmashRoom(),
         overtime: overtimeOpen(this.save.seen)
           ? {
-              on: this.boardOvertime,
+              on: this.boardOvertime && !this.boardCeo,
               twistName: (id) => twistFor(id)?.name ?? "",
               onToggle: (on) => {
                 this.boardOvertime = on;
+                this.boardCeo = false;
+                this.showBoard();
+              },
+            }
+          : undefined,
+        ceo: overtimeOpen(this.save.seen)
+          ? {
+              levels: CEO_LIFE,
+              on: this.boardCeo,
+              onToggle: (on) => {
+                this.boardCeo = on;
+                if (on) this.boardOvertime = false;
                 this.showBoard();
               },
             }
@@ -799,7 +814,7 @@ export class App {
           { x: (g.stanley.position.x + (m.scene.speaker() ?? g.stanley.position).x) / 2, y: 1.5 }
         : m.kind === "intro" && g.level.target
           ? g.level.target
-          : g.stanley.position;
+          : (g.inst.follow?.(g) ?? g.stanley.position);
     this.renderer.goal = m.kind === "play" && g.level.target ? { pos: g.level.target, icon: g.level.icon } : null;
     cam.follow(focus, dt);
     this.renderer.cursor = m.kind === "play" || m.kind === "sandbox" ? this.input.cursor(cam) : null;
@@ -1015,6 +1030,8 @@ export class App {
     const guiding = this.touchGuide(m.kind === "play" && firstTime && g.level.id === "ding-dong" && this.input.touch);
     hint.textContent = guiding
       ? ""
+      : m.kind === "sandbox" && g.level.hint
+        ? g.level.hint
       : (m.kind === "play" && firstTime) || m.kind === "sandbox"
         ? this.input.touch
           ? "Left thumb: run, flick up to jump, pull down to duck · Right thumb: drag to reach, hold to grab"

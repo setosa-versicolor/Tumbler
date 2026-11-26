@@ -142,6 +142,8 @@ export class Grip {
       const b = c.parent();
       if (b && (b === this.noRegrab || b === this.setDown)) return true;
       if (tray && b && b !== tray && b.isDynamic() && onTray(b)) return true;
+      // Some things can't be taken hold of (a dirt bike's frame: you grab its handlebars).
+      if ((b?.userData as { noGrab?: boolean } | undefined)?.noGrab) return true;
       // (A handhold, like a trapeze bar, can be grabbed at any height.)
       if (!b?.isDynamic() && h.y < minStaticY && !(b?.userData as { handhold?: boolean } | undefined)?.handhold) return true;
       const score = b?.isDynamic() ? 1 + b.mass() : 0;

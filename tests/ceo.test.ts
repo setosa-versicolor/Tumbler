@@ -364,6 +364,21 @@ describe("Jet", () => {
     expect(ev.some((e) => e.type === "shake" && e.mag > 30)).toBe(true);
   });
 
+  it("a poured glass stays poured: knocked over by the turbulence, it still counts", () => {
+    const { g, inst } = start();
+    run(g, 0.5);
+    inst.glasses[0].fill = GLASS_FULL;
+    run(g, 0.3);
+    expect(g.progress.label).toContain("Glasses poured: 1 of 5");
+    const b = inst.glasses[0].prop.body;
+    b.setRotation(Math.PI / 2, true);
+    b.setTranslation({ x: b.translation().x, y: 0.6 }, true);
+    run(g, 0.5);
+    expect(inst.glasses[0].fill).toBe(0);
+    run(g, 3);
+    expect(g.progress.label).toContain("Glasses poured: 1 of 5");
+  });
+
   it("four poured, the last one nearly full: the air pocket. Every glass hits the ceiling. Disaster.", () => {
     const { g, inst } = start();
     run(g, 0.5);

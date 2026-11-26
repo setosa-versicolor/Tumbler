@@ -355,8 +355,7 @@ export const jet: Level = {
           if (Math.abs(b.rotation()) > 0.9 && g.fill > 0) {
             for (let i = 0; i < g.fill; i++) fizz.add(p.x + (game.rand() - 0.5) * 0.05, p.y + 0.05, b.linvel().x + (game.rand() - 0.5), 0.3 + game.rand());
             g.fill = 0;
-            // Spilt: it needs pouring again.
-            g.full = -1;
+            // Spilt: but it was poured, and that counts. (Credit, like the board, doesn't give anything back.)
           }
           if (g.fill >= GLASS_FULL && g.full < 0) {
             g.full = 0;
@@ -367,7 +366,7 @@ export const jet: Level = {
               board[g.owner].miss = board[g.owner].full = 0;
             } else ev.push({ type: "score", text: CHEERS[poured % CHEERS.length], pos: { x: p.x, y: 1.6 } });
           }
-          // Full, it stays full (and poured), till it's drunk (never) or spilt.
+          // Full: poured, for good (whatever the turbulence does to it after).
           if (g.full >= 0) g.full += dt;
           g.floor = p.y < g.home.y - 0.2 || Math.abs(b.rotation()) > 1.2 ? g.floor + dt : 0;
           if (g.floor > 2.5) {
@@ -390,7 +389,18 @@ export const jet: Level = {
       },
       drawMid(r) {
         // What's in each glass, then any champagne in flight or on the floor.
-        for (const g of glasses) if (!g.gone) drawFill(r, g.prop, g.fill);
+        for (const g of glasses) {
+          if (g.gone) continue;
+          drawFill(r, g.prop, g.fill);
+          // Poured: a little gold tick floats over it (it stays, even if the glass goes over).
+          if (g.full >= 0) {
+            const q = g.prop.body.translation();
+            const c = { x: q.x, y: Math.max(q.y, g.home.y) + 0.24 + Math.sin(r.clock * 3 + g.home.x) * 0.015 };
+            r.circle(c, 0.055, "#d4a53a");
+            r.line({ x: c.x - 0.025, y: c.y }, { x: c.x - 0.005, y: c.y - 0.02 }, 0.012, "#fff");
+            r.line({ x: c.x - 0.005, y: c.y - 0.02 }, { x: c.x + 0.03, y: c.y + 0.025 }, 0.012, "#fff");
+          }
+        }
         drawLiquid(r, fizz, CHAMPAGNE);
       },
       drawFront(r) {

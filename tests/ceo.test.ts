@@ -72,7 +72,7 @@ describe("Dirt bike", () => {
       if (phase === 2 && c.y < trackY(c.x) + 0.7 && c.x > 44) phase = 3;
       return { reach: bars(), grip: both, move: phase === 0 || phase === 3 ? 1 : phase === 1 ? 0 : -1 };
     });
-    expect(texts(ev)).toContain("BACKFLIP!");
+    expect(texts(ev).some((t) => t.endsWith("BACKFLIP!"))).toBe(true);
   });
 
   it("upside down, he comes off", () => {
@@ -83,9 +83,16 @@ describe("Dirt bike", () => {
     expect(ev.some((e) => e.type === "ouch")).toBe(true);
   });
 
-  it("round the course, it's a lap", () => {
+  it("round the course, over the mountain and the mega kicker (massive air), it's a lap", () => {
     const { g, bike, bars } = mount();
-    const ev = run(g, 14, () => ({ reach: bars(), grip: both, move: 1 }));
+    let top = 0;
+    const ev = run(g, 18, () => {
+      const c = bike.chassis.translation();
+      if (c.x > 113.6 && c.x < 130) top = Math.max(top, c.y - trackY(c.x));
+      return { reach: bars(), grip: both, move: 1 };
+    });
+    expect(texts(ev).some((t) => t.startsWith("MASSIVE AIR!"))).toBe(true);
+    expect(top).toBeGreaterThan(4.5);
     expect(texts(ev)).toContain("LAP!");
     expect(bike.chassis.translation().x).toBeLessThan(80);
   });

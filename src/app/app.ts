@@ -816,6 +816,9 @@ export class App {
           ? g.level.target
           : (g.inst.follow?.(g) ?? g.stanley.position);
     this.renderer.goal = m.kind === "play" && g.level.target ? { pos: g.level.target, icon: g.level.icon } : null;
+    // The level can ask for a wider frame for a moment (big air), eased in and out.
+    const wantView = (live && g.inst.view?.(g)) || g.level.viewHeight || 5.6;
+    cam.viewHeight += (wantView - cam.viewHeight) * (1 - Math.exp(-dt * 2.5));
     cam.follow(focus, dt);
     this.renderer.cursor = m.kind === "play" || m.kind === "sandbox" ? this.input.cursor(cam) : null;
     const stale = g.pruneStale();

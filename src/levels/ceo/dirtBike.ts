@@ -11,7 +11,7 @@ import { wrapAngle, type Vec } from "../../sim/math";
 // A; in the air, A/D tip it back and forward, for flips. Stanley sits on it,
 // but nothing holds him there but the seat: land badly and off he comes.
 
-const W = 90;
+const W = 162;
 /** The bike (and its wheels) don't collide with Stanley: he rides on the seat, his legs hang either side. */
 const BIKE_GROUPS = groups(G_PROP, G_WORLD | G_FLOOR | G_PROP);
 const WHEEL_R = 0.32;
@@ -24,10 +24,12 @@ export const BARS = { x: 0.36, y: 0.6 };
 const TOP_SPEED = 13;
 const PULL = 10;
 const BRAKE = 9;
+/** Extra top speed pointing downhill (m/s, per unit of downward slope). */
+const DOWNHILL = 16;
 /** How hard A/D tip the bike in the air (N·m). */
 const AIR_TORQUE = 650;
 /** Ride past here and you're carried back round to the start, for another lap. */
-const LAP_AT = 84;
+const LAP_AT = 156;
 const LAP_TO = 6;
 /** The seat holds Stanley like a soft spring; thrown further than this from it, he's off. */
 const SEAT_BREAK = 0.62;
@@ -54,6 +56,36 @@ export const TRACK: [number, number][] = [
   [43.5, 0],
   [46.5, 1.6],
   [52.5, 0],
+  [58, 0],
+  // The mountain: a long climb over a rounded top, then the big drop down onto a shelf, straight into
+  // the mega kicker at its edge: off it at full speed, massive air down onto the long landing slope.
+  [59.5, 0.075],
+  [61.0, 0.3],
+  [62.5, 0.675],
+  [64.0, 1.2],
+  [77, 6.4],
+  [79.0, 7.1],
+  [81.0, 7.6],
+  [83.0, 7.9],
+  [85.0, 8.0],
+  [87.0, 7.9],
+  [89.0, 7.6],
+  [91.0, 7.1],
+  [93.0, 6.4],
+  [100, 3.6],
+  [101.2, 3.23],
+  [102.4, 3.043],
+  [103.6, 2.981],
+  [104.8, 2.986],
+  [106.0, 3.0],
+  [107.0, 3.106],
+  [108.0, 3.4],
+  [109.0, 3.844],
+  [110.0, 4.4],
+  [110.1, 0],
+  [116, 0],
+  [120, 3.4],
+  [150, 0],
   [W + 1, 0],
 ];
 
@@ -63,6 +95,9 @@ function buildTrack(kit: Kit) {
     const [x0, y0] = TRACK[i];
     const [x1, y1] = TRACK[i + 1];
     if (y0 === 0 && y1 === 0) continue;
+    // A sheer drop (the back of a kicker): the fill under the ramp is its face. (A slab here would poke up
+    // above the lip and trip the front wheel.)
+    if (Math.abs(x1 - x0) < 0.3 && y1 < y0) continue;
     const len = Math.hypot(x1 - x0, y1 - y0);
     const a = Math.atan2(y1 - y0, x1 - x0);
     const hh = 0.12;
@@ -75,7 +110,13 @@ function buildTrack(kit: Kit) {
     const top = Math.max(y0, y1);
     if (top > 0.2 && y0 !== y1) {
       const xh = y1 > y0 ? x1 : x0;
-      kit.solid(xh, top / 2, 0.05, top / 2, "ground", { hidden: true });
+      // Where one stretch of a curved ramp meets the next, kept a little below the dirt so there's no lip;
+      // under a kicker's lip (a sheer drop next), full height: it's the face.
+      const next = TRACK[i + 2];
+      const face = next && Math.abs(next[0] - x1) < 0.3 && next[1] < y1;
+      // (The face sits just past the lip, so its corner is the lip and nothing pokes up before it.)
+      const h = face ? top : top - 0.15;
+      kit.solid(face ? xh + 0.05 : xh, h / 2, 0.05, Math.max(0.01, h / 2), "ground", { hidden: true });
     }
     if (y0 === y1 && y0 > 0) kit.solid((x0 + x1) / 2, y0 / 2, (x1 - x0) / 2, y0 / 2, "ground", { hidden: true });
   }
@@ -155,12 +196,12 @@ export const dirtBike: Level = {
   par: [0, 0],
   sandbox: true,
   ceo: true,
-  bounds: { w: W, h: 6 },
+  bounds: { w: W, h: 16 },
   viewHeight: 6.5,
   spawn: { x: 2.2, y: 0 },
   theme: { ...OUTDOOR, top: "#79b8e8", bottom: "#f3dcae", floor: "#8a6a4a", floorTop: "#a5825f" },
   build(kit) {
-    kit.enclosure(W, 6, true);
+    kit.enclosure(W, 16, true);
     buildTrack(kit);
     const bike = buildBike(kit, 4.2);
     let flip = 0;
@@ -173,6 +214,10 @@ export const dirtBike: Level = {
     /** In the air, A/D lean the bike, but not a key that was already held at take-off (holding the gas off a jump shouldn't nose-dive you): let go and press again. */
     let leanArmed = true;
     let laps = 0;
+    /** How high the bike is over the dirt below it (m). */
+    const height = (game: Game) => (game.stanley.seated ? Math.max(0, bike.chassis.translation().y - WHEEL_R - 0.25 - trackY(bike.chassis.translation().x)) : 0);
+    /** Speed carried from the last descent (m/s). */
+    let carried = 0;
     /** Seconds on the ground since the last time in the air. */
     let ground = 1;
 
@@ -232,10 +277,13 @@ export const dirtBike: Level = {
         const along = cvel0.x * dir.x + cvel0.y * dir.y;
         const mass = ch.mass() + bike.rear.mass() + bike.front.mass() + st.rig.totalMass;
         let acc = 0;
-        if (gas && move > 0.1) acc = Math.min(PULL, Math.max(0, 5 * (TOP_SPEED * move - along)));
+        // (Pointing downhill, it'll go faster: the mountain's drop is how you get the speed for the mega kicker.)
+        // Speed earned on the way down is kept up for a while after (on the gas), so it carries into the kicker.
+        carried = Math.max(carried * Math.exp(-dt / 2.5), Math.min(TOP_SPEED + DOWNHILL * 0.5, along));
+        const top = Math.max(TOP_SPEED + Math.max(0, -dir.y) * DOWNHILL, carried);
+        if (gas && move > 0.1) acc = Math.min(PULL, Math.max(0, 5 * (top * move - along)));
         else if (gas && move < -0.1) acc = -Math.min(BRAKE, Math.max(0, along * 6));
         if (acc) ch.applyImpulse({ x: dir.x * mass * acc * dt, y: dir.y * mass * acc * dt }, true);
-        bike.motor.configureMotorVelocity(0, 0);
         // On the ground, a wheelie's fine but it won't loop over backwards under power.
         const pitch = wrapAngle(ch.rotation() - Math.atan2(trackY(ch.translation().x + 0.6) - trackY(ch.translation().x - 0.6), 1.2));
         if (rearDown && !airborne && pitch > 0.5) ch.applyTorqueImpulse(-(pitch - 0.5) * 900 * dt - ch.angvel() * 40 * dt, true);
@@ -255,7 +303,7 @@ export const dirtBike: Level = {
           const lean = leanArmed ? move : 0;
           if (st.seated && Math.abs(lean) > 0.1) ch.applyTorqueImpulse(-lean * AIR_TORQUE * dt, true);
           // No lean: it settles itself level, gently (flips take a deliberate lean).
-          else ch.applyTorqueImpulse((-wrapAngle(ch.rotation()) * 70 - ch.angvel() * 18) * dt, true);
+          else ch.applyTorqueImpulse((-wrapAngle(ch.rotation()) * 160 - ch.angvel() * 45) * dt, true);
         }
         // Landed (on the ground a moment: a wheel brushing something mid-flip doesn't count): call the trick.
         ground = airborne ? 0 : ground + dt;
@@ -268,7 +316,7 @@ export const dirtBike: Level = {
             const n = turns === 1 ? "" : turns === 2 ? "DOUBLE " : turns === 3 ? "TRIPLE " : `${turns}× `;
             ev.push({ type: "score", text: `${n}${name}!`, pos: at });
           } else if (air > 0.9 && upright && st.seated) {
-            ev.push({ type: "score", text: `BIG AIR! ${air.toFixed(1)}s`, pos: at });
+            ev.push({ type: "score", text: `${air > 1.4 ? "MASSIVE AIR!" : "BIG AIR!"} ${air.toFixed(1)}s`, pos: at });
           }
           if (air > best && st.seated) best = air;
           flip = 0;
@@ -297,6 +345,17 @@ export const dirtBike: Level = {
         if (laps) bits.push(`${laps} lap${laps > 1 ? "s" : ""}`);
         return { done: false, label: game.stanley.seated ? bits.join(" · ") : "Grab the handlebars to get on" };
       },
+      // High in the air, the camera pulls back and looks down a little, so you can see how far down the ground is.
+      view(game) {
+        const h = height(game);
+        return h > 1.2 ? Math.min(15, 6.5 + (h - 1.2) * 1.3) : null;
+      },
+      follow(game) {
+        const h = height(game);
+        if (h <= 1.2) return null;
+        const c = game.stanley.position;
+        return { x: c.x + 1.5, y: c.y - Math.min(h, 7) * 0.45 };
+      },
       drawBack(r) {
         drawScenery(r);
       },
@@ -313,7 +372,7 @@ export const dirtBike: Level = {
 
 function drawScenery(r: Renderer) {
   // Far hills, then a line of trees, then the CEO's start banner and the finish.
-  for (let i = 0; i < 18; i++) r.circle({ x: i * 6 - 2, y: -2.2 }, 4.2, i % 2 ? "#9cc98a" : "#a9d396");
+  for (let i = 0; i < W / 6 + 2; i++) r.circle({ x: i * 6 - 2, y: -2.2 }, 4.2, i % 2 ? "#9cc98a" : "#a9d396");
   for (let x = 1; x < W; x += 2.7) {
     const h = 1.3 + ((x * 37) % 7) * 0.12;
     r.rect(x - 0.06, 0, x + 0.06, h * 0.5, "#6b4a35");

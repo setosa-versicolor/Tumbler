@@ -43,6 +43,8 @@ export interface LevelInstance {
   arrive?(game: Game, from: string): GameEvent[];
   /** Somewhere for the camera to follow instead of Stanley, for now (a golf ball in flight), or null. */
   follow?(game: Game): Vec | null;
+  /** A taller frame for now (metres of view: big air on the dirt bike, say), or null for the level's own. */
+  view?(game: Game): number | null;
   /** Where the level's characters' heads are, for speech in a scene. */
   speakers?: Record<string, () => Vec>;
   /** HD renderer: things close to the camera, out of focus (drawn on their own layer, then blurred). */

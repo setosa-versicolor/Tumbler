@@ -1,5 +1,5 @@
 import { type Level, type LevelInstance } from "../level";
-import type { Prop } from "../kit";
+import { shatter, type Prop } from "../kit";
 import type { Game, GameEvent } from "../../sim/game";
 import type { Renderer } from "../../render/renderer";
 import { Liquid, type Drop } from "../liquid";
@@ -46,7 +46,7 @@ type Remark = keyof typeof REMARKS;
 const CAPTAIN = "Captain here: hold on to something.";
 const WINDOWS = [3.4, 4.9, 9.0, 10.6, 12.2, 13.8];
 
-type Phase = "calm" | "warning" | "bumpy";
+type Phase = "calm" | "warning" | "bumpy" | "finale";
 
 export const jet: Level = {
   id: "ceo-jet",
@@ -77,12 +77,12 @@ export const jet: Level = {
       kit.solid(ledgeX(i), LEDGE.top - 0.02, LEDGE.hw, 0.02, "ground", { collides: "props", hidden: true });
       for (const s of [-1, 1]) kit.solid(ledgeX(i) + s * (LEDGE.hw - 0.015), LEDGE.top + 0.03, 0.012, 0.03, "ground", { collides: "props", hidden: true });
     }
-    type Glass = { prop: Prop; home: Vec; owner: number; fill: number; full: number; floor: number };
+    type Glass = { prop: Prop; home: Vec; owner: number; fill: number; full: number; floor: number; gone: boolean };
     const flute = (x: number, y: number) => kit.box(x, y, 0.035, 0.1, { kind: "flute", density: 5, friction: 1.1, color: "#e1eef8" });
     const glasses: Glass[] = [
       ...SLOTS.map((x) => ({ x, y: TABLE.top + 0.105, owner: -1 })),
       ...SEATS.map((_, i) => ({ x: ledgeX(i), y: LEDGE.top + 0.105, owner: i })),
-    ].map(({ x, y, owner }) => ({ prop: flute(x, y), home: { x, y }, owner, fill: 0, full: -1, floor: 0 }));
+    ].map(({ x, y, owner }) => ({ prop: flute(x, y), home: { x, y }, owner, fill: 0, full: -1, floor: 0, gone: false }));
     // The board's glasses sit out of Stanley's way (he walks the aisle past them): only the bottle,
     // other glasses and the turbulence can knock them over. The table's two are fair game.
     for (const g of glasses) {
@@ -94,7 +94,7 @@ export const jet: Level = {
     /** Does a glass catch this drop? (Into its mouth, upright, not yet full.) */
     const absorb = (d: Drop) => {
       for (const g of glasses) {
-        if (g.fill >= GLASS_FULL || g.full >= 0) continue;
+        if (g.gone || g.fill >= GLASS_FULL || g.full >= 0) continue;
         const b = g.prop.body;
         const a = b.rotation();
         if (Math.abs(a) > 0.5) continue;
@@ -128,6 +128,7 @@ export const jet: Level = {
     let jolted = false;
     /** Seconds the bottle's been flying loose (it sprays). */
     let flung = 0;
+    let ended = false;
     /** Each passenger's tally of the drops you've got wrong lately, and when they last said something. */
     const board = SEATS.map(() => ({ miss: 0, full: 0, suit: 0, quiet: 0, said: 0 }));
     const counted = new WeakSet<Drop>();
@@ -171,6 +172,53 @@ export const jet: Level = {
         now = game;
         const ev: GameEvent[] = [];
         t += dt;
+
+        // --- The finale: one glass from done, the biggest air pocket of all. Everything goes up; the glasses meet the ceiling.
+        if (phase !== "finale") {
+          const left = glasses.filter((g) => g.full < 0);
+          if (left.length === 1 && left[0].fill >= GLASS_FULL * 0.6) {
+            phase = "finale";
+            t = 0;
+            flung = 0;
+            if (game.held.has(bottle.body)) game.stanley.letGo(bottle.body);
+            for (const b of [...game.stanley.rig.bodies, ...game.props.map((p) => p.body)]) {
+              if (!b.isDynamic()) continue;
+              const v = b.linvel();
+              b.setLinvel({ x: v.x + (game.rand() - 0.5) * 2, y: 9 + game.rand() * 3 }, true);
+            }
+            ev.push({ type: "ouch", text: "AIR POCKET!", pos: { x: game.stanley.position.x, y: H - 0.5 } });
+            ev.push({ type: "shake", mag: 36 });
+            ev.push({ type: "sfx", name: "boom" });
+          }
+        }
+        if (phase === "finale") {
+          turb.x = 0;
+          turb.y = t < 0.5 ? 14 : 0;
+          if (turb.y) for (const b of [...game.stanley.rig.bodies, ...game.props.map((p) => p.body)]) if (b.isDynamic()) b.applyImpulse({ x: 0, y: b.mass() * turb.y * dt }, true);
+          // Every glass, against the ceiling (or near enough): smash, and whatever was in it rains back down.
+          for (const g of glasses) {
+            if (g.gone) continue;
+            const q = g.prop.body.translation();
+            if (q.y < H - 0.4 && t < 0.9) continue;
+            g.gone = true;
+            for (let i = 0; i < Math.max(4, g.fill); i++) fizz.add(q.x + (game.rand() - 0.5) * 0.08, q.y, (game.rand() - 0.5) * 2, -game.rand() * 2);
+            g.fill = 0;
+            const shards = shatter(game.world, g.prop, game.rand);
+            game.props = game.props.filter((p) => p !== g.prop).concat(shards);
+            ev.push({ type: "break", pos: { ...q }, kind: "cup" });
+          }
+          if (!ended && glasses.every((g) => g.gone)) {
+            ended = true;
+            ev.push({
+              type: "disaster",
+              title: "Air Pocket",
+              text: "Five glasses of vintage champagne, poured to perfection, and one ceiling. The board would like a word. Several words. Mostly from the one in the wet suit.",
+            });
+          }
+          fizz.extra = { x: 0, y: 0 };
+          ev.push(...fizz.update(game, dt));
+          return ev;
+        }
 
         // --- Turbulence: calm, a chime and the seatbelt sign, then a few seconds of bumps.
         // About one bout in three is a bad one (and never more than two mild ones in a row).
@@ -300,11 +348,14 @@ export const jet: Level = {
 
         // --- The glasses: full, a toast (and a fresh one); knocked over, it's spilt; on the floor, tidied away.
         for (const g of glasses) {
+          if (g.gone) continue;
           const b = g.prop.body;
           const p = b.translation();
           if (Math.abs(b.rotation()) > 0.9 && g.fill > 0) {
             for (let i = 0; i < g.fill; i++) fizz.add(p.x + (game.rand() - 0.5) * 0.05, p.y + 0.05, b.linvel().x + (game.rand() - 0.5), 0.3 + game.rand());
             g.fill = 0;
+            // Spilt: it needs pouring again.
+            g.full = -1;
           }
           if (g.fill >= GLASS_FULL && g.full < 0) {
             g.full = 0;
@@ -315,14 +366,8 @@ export const jet: Level = {
               board[g.owner].miss = board[g.owner].full = 0;
             } else ev.push({ type: "score", text: CHEERS[poured % CHEERS.length], pos: { x: p.x, y: 1.6 } });
           }
-          if (g.full >= 0) {
-            g.full += dt;
-            if (g.full > (g.owner >= 0 ? 3 : 1.6)) {
-              g.full = -1;
-              g.fill = 0;
-              place(g.prop, g.home.x, g.home.y);
-            }
-          }
+          // Full, it stays full (and poured), till it's drunk (never) or spilt.
+          if (g.full >= 0) g.full += dt;
           g.floor = p.y < g.home.y - 0.2 || Math.abs(b.rotation()) > 1.2 ? g.floor + dt : 0;
           if (g.floor > 2.5) {
             g.floor = 0;
@@ -334,14 +379,17 @@ export const jet: Level = {
       },
       progress: () => ({
         done: false,
-        label: `${phase === "bumpy" ? "⚠ Turbulence! · " : phase === "warning" ? "🔔 Seatbelt sign's on · " : ""}Glasses poured: ${poured}`,
+        label:
+          phase === "finale"
+            ? "⚠⚠⚠"
+            : `${phase === "bumpy" ? "⚠ Turbulence! · " : phase === "warning" ? "🔔 Seatbelt sign's on · " : ""}Glasses poured: ${glasses.filter((g) => g.full >= 0).length} of ${glasses.length}`,
       }),
       drawBack(r) {
         drawCabin(r, now, phase);
       },
       drawMid(r) {
         // What's in each glass, then any champagne in flight or on the floor.
-        for (const g of glasses) drawFill(r, g.prop, g.fill);
+        for (const g of glasses) if (!g.gone) drawFill(r, g.prop, g.fill);
         drawLiquid(r, fizz, CHAMPAGNE);
       },
       drawFront(r) {

@@ -379,6 +379,19 @@ export function golfCard(o: { onNext: () => void }): HTMLElement {
   );
 }
 
+/** The end of a CEO Life activity: always a disaster. */
+export function disasterCard(o: { title: string; text: string; nextLabel: string; onAgain: () => void; onNext: () => void }): HTMLElement {
+  return h(
+    "div",
+    { class: "card intro disaster" },
+    h("div", { class: "kicker" }, "💥 CEO Life"),
+    h("h1", {}, o.title),
+    h("p", { class: "goal" }, o.text),
+    h("button", { class: "primary", click: o.onNext }, o.nextLabel),
+    h("button", { class: "secondary", click: o.onAgain }, "↺ Again"),
+  );
+}
+
 export function endCard(o: { onBoard: () => void }): HTMLElement {
   return h(
     "div",

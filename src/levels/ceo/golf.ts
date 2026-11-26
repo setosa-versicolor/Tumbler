@@ -6,6 +6,7 @@ import type { Renderer } from "../../render/renderer";
 import { RAPIER } from "../../physics/world";
 import { G_PROP, PROP_GROUPS, groups } from "../../physics/groups";
 import type { Vec } from "../../sim/math";
+import { drawCoworkerHead } from "../../render/characters";
 
 // CEO Life: golf. Three holes on the company course. Pick up the club, swing
 // it with your arms (point and sweep: a big, fast swing hits it far), and get
@@ -184,13 +185,47 @@ export const golf: Level = {
       return d <= -2 ? "EAGLE!" : d === -1 ? "Birdie!" : d === 0 ? "Par." : d === 1 ? "Bogey." : d === 2 ? "Double bogey." : `+${d}. It's a lovely day, though.`;
     };
 
-    const inst: LevelInstance & { club: Prop; ball: Prop; hole: () => number; strokes: () => number } = {
+    /**
+     * The 18th (well, the 3rd): lining up the last putt, the caddie arrives. At speed. The brakes, he says
+     * later, are more of a suggestion. x: the cart's middle; null till it comes.
+     */
+    let cart: { x: number; hit: boolean } | null = null;
+    let now: Game | null = null;
+    const CART_SPEED = 12;
+
+    const inst: LevelInstance & { club: Prop; ball: Prop; hole: () => number; strokes: () => number; cart: () => { x: number; hit: boolean } | null } = {
       club,
       ball,
       hole: () => hole,
       strokes: () => strokes,
+      cart: () => cart,
       update(game, dt): GameEvent[] {
         const ev: GameEvent[] = [];
+        now = game;
+        const pel = game.stanley.rig.pelvis.translation();
+        if (cart) {
+          cart.x += CART_SPEED * dt;
+          // It doesn't stop for him.
+          if (!cart.hit && cart.x + 0.95 > pel.x - 0.25) {
+            cart.hit = true;
+            const st = game.stanley;
+            for (const b of game.held.has(club.body) ? [club.body] : []) st.letGo(b);
+            st.balance.knockDown(3);
+            for (const body of st.rig.bodies) body.setLinvel({ x: CART_SPEED * 0.6 + (body === st.rig.head ? 2 : 0), y: 7 }, true);
+            st.rig.pelvis.setAngvel(-9, true);
+            ev.push({ type: "ouch", text: "CADDIE!!", pos: { x: pel.x, y: pel.y + 1.4 } });
+            ev.push({ type: "sfx", name: "crack" });
+            ev.push({ type: "shake", mag: 26 });
+            ev.push({
+              type: "disaster",
+              title: "Hit and Run",
+              text: "One putt from the best round of your life. The caddie says the brakes are 'more of a suggestion', and the ball is still on the lip. It's a lovely day, though.",
+            });
+          }
+          // (It misses the ball, somehow. The ball stays exactly where it was: one putt from the cup.)
+          ball.body.setLinvel({ x: 0, y: ball.body.linvel().y }, true);
+          return ev;
+        }
         const held = game.held.has(club.body);
         // A swung club hits the ball; put down, it lies on the grass like anything else.
         const want = held ? CLUB_SWING : PROP_GROUPS;
@@ -267,6 +302,14 @@ export const golf: Level = {
             }
           }
         }
+        // The last hole, the ball on the green and Stanley over it (or it's dropped already): here comes the cart.
+        const last = hole === HOLES.length - 1;
+        const lining = restTime > 0.6 && p.x > h.green[0] && p.x < h.green[1] && Math.abs(pel.x - p.x) < 3;
+        if (last && !cart && (lining || sunk >= 0)) {
+          cart = { x: pel.x - 15, hit: false };
+          ev.push({ type: "score", text: "BEEP BEEEEEP!", pos: { x: pel.x - 4, y: groundY(pel.x) + 2.2 } });
+          ev.push({ type: "sfx", name: "alarm" });
+        }
         // Out of bounds (off either end, or lost): a drop where it last lay, and a stroke.
         if (p.x < 0.3 || p.x > W - 0.3 || p.y < -1) {
           strokes++;
@@ -289,7 +332,7 @@ export const golf: Level = {
         return { done: false, label: `Hole ${h.n} · par ${h.par} · ${strokes} stroke${strokes === 1 ? "" : "s"}` };
       },
       // While the ball's flying, the camera goes with it.
-      follow: () => (Math.hypot(ball.body.linvel().x, ball.body.linvel().y) > 2 ? ball.body.translation() : null),
+      follow: () => (!cart && Math.hypot(ball.body.linvel().x, ball.body.linvel().y) > 2 ? ball.body.translation() : null),
       drawBack(r) {
         drawScenery(r);
       },
@@ -297,6 +340,7 @@ export const golf: Level = {
         drawCourse(r);
         drawFlags(r, game, hole);
         drawBag(r, bagX);
+        if (cart) drawCart(r, cart.x, now);
         // The ball's small: a marker bobs over it while it's sitting still.
         const bp = ball.body.translation();
         const bv = ball.body.linvel();
@@ -369,4 +413,27 @@ function drawBag(r: Renderer, x: number) {
   r.rect(x - BAG.hw - 0.03, y + BAG.h - 0.08, x + BAG.hw + 0.03, y + BAG.h, "#f08a3c");
   r.rect(x - BAG.hw - 0.03, y + 0.12, x + BAG.hw + 0.03, y + 0.16, "#f4f1e8");
   r.text("OJ", { x, y: y + 0.3 }, 0.07, "#fff");
+}
+
+/** The caddie's cart: white, a striped roof, the caddie at the wheel (eyes wide), going flat out. */
+function drawCart(r: Renderer, x: number, game: Game | null) {
+  const y = groundY(x);
+  const wob = Math.sin((game?.time ?? 0) * 40) * 0.015;
+  for (const dx of [-0.6, 0.6]) {
+    r.circle({ x: x + dx, y: groundY(x + dx) + 0.17 }, 0.17, "#1d1d22");
+    r.circle({ x: x + dx, y: groundY(x + dx) + 0.17 }, 0.08, "#c9ccd1");
+  }
+  r.roundRect(x - 0.95, y + 0.25 + wob, x + 0.95, y + 0.62 + wob, 0.08, "#f4f1e8");
+  r.rect(x + 0.5, y + 0.6 + wob, x + 0.56, y + 1.55 + wob, "#c9ccd1");
+  r.rect(x - 0.85, y + 0.6 + wob, x - 0.79, y + 1.55 + wob, "#c9ccd1");
+  r.roundRect(x - 1.0, y + 1.52 + wob, x + 0.65, y + 1.64 + wob, 0.04, "#2f7a4a");
+  for (let i = 0; i < 6; i++) r.rect(x - 1.0 + i * 0.275, y + 1.52 + wob, x - 0.86 + i * 0.275, y + 1.64 + wob, "#f4f1e8");
+  r.roundRect(x - 0.5, y + 0.6 + wob, x - 0.1, y + 1.0 + wob, 0.05, "#2f7a4a");
+  // The caddie, hands on the wheel, mouth an O.
+  r.roundRect(x - 0.35, y + 0.62 + wob, x - 0.05, y + 1.05 + wob, 0.08, "#e85d4f");
+  drawCoworkerHead(r, x - 0.2, y + 1.22 + wob, "#f2c79b", "#6b4a35", { x: x + 5, y: y + 1.2 }, 2);
+  r.line({ x: x + 0.05, y: y + 0.85 + wob }, { x: x + 0.35, y: y + 0.95 + wob }, 0.03, "#2a2230");
+  r.circle({ x: x - 0.12, y: y + 1.13 + wob }, 0.03, "#2a2230");
+  // Speed lines behind it.
+  for (let i = 0; i < 3; i++) r.line({ x: x - 1.2 - i * 0.15, y: y + 0.4 + i * 0.3 }, { x: x - 1.9 - i * 0.2, y: y + 0.4 + i * 0.3 }, 0.025, "rgba(255,255,255,0.7)");
 }

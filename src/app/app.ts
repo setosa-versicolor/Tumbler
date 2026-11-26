@@ -15,7 +15,7 @@ import { CHAPTERS, allFiveStars, chapterOf, MEMOS, OVERTIME_MEMOS, overtimeBonus
 import { LEVEL_TWISTS, twistFor } from "../levels/twists";
 import { CEO_LIFE } from "../levels/ceo";
 import { clearSave, emptySave, loadSave, recordJob, recordOvertime, writeSave, type SaveData } from "./save";
-import { h, titleCard, boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, partyEndCard, quantumCard, resultsCard } from "../ui/screens";
+import { h, titleCard, boardCard, callbackCard, chapterCard, endCard, giftEndCard, golfCard, introCard, labCallCard, pressCard, partyEndCard, quantumCard, resultsCard, disasterCard } from "../ui/screens";
 import { theGift } from "../levels/secret/theGift";
 import { officeParty } from "../levels/secret/officeParty";
 import { yeOldeJob } from "../levels/secret/yeOldeJob";
@@ -657,6 +657,37 @@ export class App {
     then();
   }
 
+  /** A CEO Life activity's disaster: let it play out a moment, then the card (over the wreckage). */
+  private disaster(title: string, text: string) {
+    const g = this.game;
+    const level = g.level;
+    const i = CEO_LIFE.indexOf(level);
+    const next = i >= 0 ? CEO_LIFE[i + 1] : undefined;
+    setTimeout(() => {
+      if (this.game !== g || this.mode.kind !== "sandbox") return;
+      this.input.release();
+      this.dom.overlay.replaceChildren(
+        disasterCard({
+          title,
+          text,
+          nextLabel: next ? `${next.icon} ${next.title} ▸` : "Job Board",
+          onAgain: () => {
+            this.dom.overlay.replaceChildren();
+            this.startLevel(level);
+          },
+          onNext: () => {
+            this.dom.overlay.replaceChildren();
+            if (next) this.startLevel(next);
+            else {
+              this.boardCeo = true;
+              this.showBoard();
+            }
+          },
+        }),
+      );
+    }, 2600);
+  }
+
   // ------------------------------------------------------------ board ---
 
   toggleBoard() {
@@ -917,6 +948,9 @@ export class App {
           break;
         case "shake":
           r.camera.shake(ev.mag);
+          break;
+        case "disaster":
+          this.disaster(ev.title, ev.text);
           break;
         case "score":
           r.popup(ev.text, ev.pos, "#37a59c");

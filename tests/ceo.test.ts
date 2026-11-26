@@ -24,10 +24,11 @@ const run = (g: Game, secs: number, intent: Step = {}) => {
 };
 const texts = (ev: GameEvent[]) => ev.flatMap((e) => ("text" in e ? [e.text] : []));
 const both = { L: true, R: true };
+const disasters = (ev: GameEvent[]) => ev.flatMap((e) => (e.type === "disaster" ? [e.title] : []));
 
 describe("CEO Life", () => {
-  it("has the dirt bike, golf, the jet and the yacht, findable by id, with no ratings", () => {
-    expect(CEO_LIFE.map((l) => l.id)).toEqual(["ceo-dirt-bike", "ceo-golf", "ceo-jet", "ceo-yacht"]);
+  it("has the dirt bike, the jet, the yacht and (last) golf, findable by id, with no ratings", () => {
+    expect(CEO_LIFE.map((l) => l.id)).toEqual(["ceo-dirt-bike", "ceo-jet", "ceo-yacht", "ceo-golf"]);
     for (const l of CEO_LIFE) {
       expect(levelById(l.id)).toBe(l);
       expect(l.sandbox && l.ceo).toBe(true);
@@ -83,7 +84,7 @@ describe("Dirt bike", () => {
     expect(ev.some((e) => e.type === "ouch")).toBe(true);
   });
 
-  it("round the course, over the mountain and the mega kicker (massive air), it's a lap", () => {
+  it("over the mountain and off the mega kicker (massive air): and the front wheel comes off. Disaster.", () => {
     const { g, bike, bars } = mount();
     let top = 0;
     const ev = run(g, 18, () => {
@@ -93,8 +94,13 @@ describe("Dirt bike", () => {
     });
     expect(texts(ev).some((t) => t.startsWith("MASSIVE AIR!"))).toBe(true);
     expect(top).toBeGreaterThan(4.5);
-    expect(texts(ev)).toContain("LAP!");
-    expect(bike.chassis.translation().x).toBeLessThan(80);
+    expect(texts(ev)).toContain("THE FRONT WHEEL!");
+    expect(disasters(ev)).toEqual(["Over the Bars"]);
+    expect(bike.wrecked).toBe(true);
+    expect(g.stanley.seated).toBe(false);
+    // No getting back on.
+    run(g, 2, () => ({ reach: bars(), grip: both }));
+    expect(g.stanley.seated).toBe(false);
   });
 });
 
@@ -145,6 +151,36 @@ describe("Golf", () => {
     const ev = run(g, 3);
     expect(texts(ev)).toContain("Caddie!");
     expect(Math.abs(g.stanley.rig.pelvis.translation().x - 19)).toBeLessThan(1.5);
+  });
+
+  it("lining up the last putt of the round, the caddie's cart runs him over. Disaster.", () => {
+    const { g, inst, ball } = start();
+    run(g, 0.5);
+    for (const k of [0, 1]) {
+      ball.setTranslation({ x: HOLES[k].cup - 0.4, y: 0.3 }, true);
+      ball.setLinvel({ x: 1.2, y: 0 }, true);
+      run(g, 3);
+    }
+    expect(inst.hole()).toBe(2);
+    const h = HOLES[2];
+    ball.setTranslation({ x: h.cup - 2.5, y: 0.3 }, true);
+    ball.setLinvel({ x: 0, y: 0 }, true);
+    g.stanley.teleport({ x: h.cup - 3.3, y: 0.25 });
+    const ev = run(g, 3);
+    expect(texts(ev)).toContain("BEEP BEEEEEP!");
+    expect(texts(ev)).toContain("CADDIE!!");
+    expect(disasters(ev)).toEqual(["Hit and Run"]);
+    expect(g.stanley.rig.pelvis.translation().x).toBeGreaterThan(h.cup - 1);
+  });
+
+  it("not on the first two holes, though", () => {
+    const { g, inst, ball } = start();
+    run(g, 0.5);
+    ball.setTranslation({ x: HOLES[0].cup - 2.5, y: 0.3 }, true);
+    g.stanley.teleport({ x: HOLES[0].cup - 3.3, y: 0.25 });
+    const ev = run(g, 3);
+    expect(disasters(ev)).toEqual([]);
+    expect((inst as unknown as { cart: () => unknown }).cart()).toBeNull();
   });
 
   it("off the end of the course: out of bounds, a drop and a stroke", () => {
@@ -266,6 +302,21 @@ describe("Jet", () => {
     expect(ev.some((e) => e.type === "shake" && e.mag > 30)).toBe(true);
   });
 
+  it("four poured, the last one nearly full: the air pocket. Every glass hits the ceiling. Disaster.", () => {
+    const { g, inst } = start();
+    run(g, 0.5);
+    for (const gl of inst.glasses.slice(0, 4)) gl.fill = GLASS_FULL;
+    run(g, 0.3);
+    expect(inst.phase()).not.toBe("finale");
+    const last = inst.glasses[4].prop.body.translation();
+    for (let i = 0; i < 14; i++) inst.fizz.add(last.x, last.y + 0.2 + i * 0.015, 0, -0.3);
+    const ev = run(g, 2);
+    expect(texts(ev)).toContain("AIR POCKET!");
+    expect(ev.filter((e) => e.type === "break")).toHaveLength(5);
+    expect(disasters(ev)).toEqual(["Air Pocket"]);
+    for (const gl of inst.glasses) expect(g.props).not.toContain(gl.prop);
+  });
+
   it("dropped on the floor, the steward puts the bottle back on ice", () => {
     const { g, bottle } = start();
     run(g, 0.5);
@@ -322,6 +373,26 @@ describe("Yacht", () => {
     });
     expect(texts(ev)).toContain("SNAP!");
     expect(inst.state()).toBe("gone");
+  });
+
+  it("the second bite is a shark: the reel jams, it hauls him over the stern, and that's that. Disaster.", () => {
+    const { g, inst, rod } = start();
+    run(g, 9, fight(g, inst));
+    expect(inst.state()).toBe("fight");
+    run(g, 0.5);
+    expect(inst.state()).toBe("gone");
+    run(g, 3.5, { move: -0.3 });
+    for (let i = 0; i < 400 && g.stanley.position.x < 6.6; i++) run(g, DT, { move: 0.5 });
+    run(g, 0.5);
+    run(g, 1.2, () => ({ reach: { x: rod.translation().x, y: rod.translation().y - 0.5 }, grip: both }));
+    expect(g.held.has(rod)).toBe(true);
+    const ev = run(g, 20, fight(g, inst));
+    expect(texts(ev)).toContain("SHARK!!");
+    expect(texts(ev)).toContain("CHOMP.");
+    expect(disasters(ev)).toEqual(["Hooked"]);
+    expect(inst.state()).toBe("eaten");
+    // He isn't fished out and put back on deck.
+    expect(g.stanley.rig.pelvis.translation().x).toBeGreaterThan(DECK.stern);
   });
 
   it("dragged over the stern: man overboard, and the fish gets away", () => {

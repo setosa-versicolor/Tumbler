@@ -28,6 +28,8 @@ export type GameEvent =
   | { type: "warp"; to: string }
   /** Shake the camera (turbulence), this hard. */
   | { type: "shake"; mag: number }
+  /** A CEO Life activity ends the way they all do: badly. A card follows, once the dust settles. */
+  | { type: "disaster"; title: string; text: string }
   /** Turn the graphics up (the button in Coffee Run). */
   | { type: "graphics"; to: "hd" }
   | { type: "complete" };
@@ -301,7 +303,7 @@ export class Game {
     const pel = st.rig.pelvis.translation();
     const w = inWater(pel.x);
     this.underwater = w && pel.y < w.y + 0.2 ? this.underwater + DT : 0;
-    if (w && this.underwater > 0.35) {
+    if (w && this.underwater > 0.35 && !this.inst.keepUnder?.(this)) {
       this.underwater = 0;
       // (The respawn knocks Stanley down, which counts as the fall.)
       events.push({ type: "splash", pos: { x: pel.x, y: w.y }, big: true });

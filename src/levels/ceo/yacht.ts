@@ -46,8 +46,10 @@ export const CATCHES: Catch[] = [
   { name: "Golf ball", hw: 0.05, hh: 0.05, mass: 1, pull: 0, color: "#ffffff", says: "A golf ball, monogrammed \"G.T.\" How does he keep losing these?" },
 ];
 const ODDS = [0.42, 0.28, 0.1, 0.1, 0.1];
+/** The second bite, always. The reel jams, the line won't part, and it's round his wrist. */
+export const SHARK: Catch = { name: "Shark", hw: 1.0, hh: 0.24, mass: 90, pull: 2600, color: "#7d8a96", says: "" };
 
-type State = "waiting" | "fight" | "landed" | "gone";
+type State = "waiting" | "fight" | "landed" | "gone" | "eaten";
 
 export const yacht: Level = {
   id: "ceo-yacht",
@@ -97,6 +99,10 @@ export const yacht: Level = {
       return { x: p.x - Math.sin(a) * rod.hh, y: p.y + Math.cos(a) * rod.hh };
     };
 
+    let bites = 0;
+    /** Seconds into the fight (the shark shows itself after a moment). */
+    let fightT = 0;
+    let revealed = false;
     const hook = (game: Game) => {
       const r = game.rand();
       let acc = 0;
@@ -108,6 +114,10 @@ export const yacht: Level = {
           break;
         }
       }
+      if (bites > 0) kind = SHARK;
+      bites++;
+      fightT = 0;
+      revealed = false;
       const body = game.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(lure.x, SEA - 0.05).setCcdEnabled(true).setAngularDamping(2));
       game.world.createCollider(
         RAPIER.ColliderDesc.cuboid(kind.hw, kind.hh).setMass(kind.mass).setFriction(0.3).setCollisionGroups(PROP_GROUPS),
@@ -155,6 +165,16 @@ export const yacht: Level = {
             ev.push({ type: "sfx", name: "winch" });
           }
         } else if (state === "fight" && fish) {
+          const shark = kind === SHARK;
+          fightT += dt;
+          if (shark && !revealed && fightT > 1.4) {
+            revealed = true;
+            const fp = fish.body.translation();
+            ev.push({ type: "score", text: "…that's not a tuna.", pos: { x: game.stanley.position.x, y: DECK.top + 2.4 } });
+            ev.push({ type: "ouch", text: "SHARK!!", pos: { x: fp.x, y: SEA + 1.5 } });
+            ev.push({ type: "shake", mag: 12 });
+            ev.push({ type: "sfx", name: "alarm" });
+          }
           const b = fish.body;
           const p = b.translation();
           const dx = p.x - tp.x;
@@ -166,21 +186,33 @@ export const yacht: Level = {
           // Stretched, the line pulls the fish towards the rod's tip, and the rod (and Stanley) towards the fish.
           tension = Math.max(0, (dist - line) * LINE_K);
           // When it's pulling harder than the drag, the reel gives line (a run).
-          if (tension > DRAG) line += Math.min(4, (tension - DRAG) / LINE_K / dt) * dt;
+          // (Not the shark: the reel's jammed solid.)
+          if (tension > DRAG && !shark) line += Math.min(4, (tension - DRAG) / LINE_K / dt) * dt;
           if (tension > 0) {
             const ux = dx / dist;
             const uy = dy / dist;
             const j = Math.min(tension, SNAP) * dt;
             b.applyImpulse({ x: -ux * j, y: -uy * j }, true);
             if (held) rod.body.applyImpulseAtPoint({ x: ux * j * HAUL, y: uy * j * HAUL }, tp, true);
+            // The shark: the line's round his wrist, rod or no rod. It hauls him to the back of the boat, and over.
+            if (shark && revealed) {
+              // Steady, and more than he can pull against (backing away just slows it down).
+              const k = 1800 * Math.min(1, (fightT - 1.4) / 1.5) * dt;
+              for (const body of [game.stanley.rig.chest, game.stanley.rig.pelvis]) body.applyImpulse({ x: ux * k * 0.5, y: k * 0.06 }, true);
+            }
           }
           // Too much strain for too long (yanking against a run) and it parts.
-          strain = tension > SNAP * 0.7 ? strain + dt : Math.max(0, strain - dt * 0.5);
+          strain = !shark && tension > SNAP * 0.7 ? strain + dt : Math.max(0, strain - dt * 0.5);
           if (strain > 0.5) {
             ev.push({ type: "ouch", text: "SNAP!", pos: { x: tp.x, y: tp.y + 0.6 } });
             lose(game);
           } else {
             // The fish: runs away from the boat now and then, rests in between. It swims along the surface.
+            if (shark) {
+              running = 1;
+              // It stays out there, a few boat-lengths off, pulling.
+              if (p.x > DECK.stern + 9) b.setLinvel({ x: Math.min(0, b.linvel().x), y: b.linvel().y }, true);
+            }
             if (running > 0) {
               running -= dt;
               stamina = Math.max(0.35, stamina - 0.035 * dt);
@@ -192,7 +224,7 @@ export const yacht: Level = {
               b.applyImpulse({ x: kind.pull * 0.12 * dt, y: 0 }, true);
             }
             // Brought in to the stern: landed (it flops aboard).
-            if (p.x < LAND_AT && p.y > SEA - 0.4) {
+            if (!shark && p.x < LAND_AT && p.y > SEA - 0.4) {
               state = "landed";
               t = 0;
               caught++;
@@ -204,7 +236,7 @@ export const yacht: Level = {
               ev.push({ type: "surprise", id: `catch-${caught}`, text: kind.says, pos: { x: DECK.stern - 2.6, y: DECK.top + 1.4 } });
             }
             // Let go of the rod (or dropped it), and it's off.
-            if (!held) {
+            if (!held && !shark) {
               ev.push({ type: "score", text: "It got away.", pos: { x: p.x, y: SEA + 1.2 } });
               lose(game);
             }
@@ -217,6 +249,21 @@ export const yacht: Level = {
             state = "waiting";
             biteIn = 3 + game.rand() * 5;
           }
+        } else if (state === "eaten" && fish) {
+          // The shark has him: it rolls, and heads out to sea with the CEO.
+          tension = 0;
+          const b = fish.body;
+          const sp = b.translation();
+          if (t > 0.7) {
+            b.setLinvel({ x: 2.2, y: (SEA - 0.55 - sp.y) * 3 }, true);
+            b.setAngvel(-b.rotation() * 3, true);
+          }
+          for (const body of game.stanley.rig.bodies) {
+            const q = body.translation();
+            const m = body.mass();
+            const v = body.linvel();
+            body.applyImpulse({ x: ((sp.x + 0.2 - q.x) * 30 - v.x * 4 + (t > 0.7 ? 6 : 0)) * m * dt, y: ((sp.y + 0.1 - q.y) * 30 - v.y * 4) * m * dt }, true);
+          }
         } else if (state === "gone") {
           tension = 0;
           if (t > 2) {
@@ -225,7 +272,23 @@ export const yacht: Level = {
           }
         }
         // Into the sea himself (the game fishes him out): whatever was on gets away.
-        if (game.stanley.rig.pelvis.translation().x > DECK.stern + 0.3 && game.stanley.rig.pelvis.translation().y < DECK.top && state === "fight") {
+        const pel = game.stanley.rig.pelvis.translation();
+        if (pel.x > DECK.stern + 0.3 && pel.y < DECK.top && state === "fight" && kind === SHARK && fish) {
+          // Over the stern: and up it comes to meet him.
+          state = "eaten";
+          t = 0;
+          fish.body.setTranslation({ x: pel.x + 0.5, y: SEA - 0.9 }, true);
+          fish.body.setRotation(1.1, true);
+          fish.body.setLinvel({ x: -0.6, y: 6.5 }, true);
+          fish.body.setAngvel(0, true);
+          ev.push({ type: "ouch", text: "CHOMP.", pos: { x: pel.x, y: DECK.top + 1.6 } });
+          ev.push({ type: "shake", mag: 20 });
+          ev.push({
+            type: "disaster",
+            title: "Hooked",
+            text: "You caught the shark. Then the shark caught you. The board have asked whether the yacht counts as a company asset, and whether you do.",
+          });
+        } else if (pel.x > DECK.stern + 0.3 && pel.y < DECK.top && state === "fight") {
           ev.push({ type: "score", text: "Man overboard! It got away.", pos: { x: DECK.stern + 1, y: 2.4 } });
           lose(game);
         }
@@ -243,6 +306,8 @@ export const yacht: Level = {
       },
       progress: (game) => {
         const tally = caught ? ` · ${caught} caught${best ? `, best: ${best}` : ""}` : "";
+        if (state === "eaten") return { done: false, label: "🦈" };
+        if (state === "fight" && kind === SHARK && revealed) return { done: false, label: "SHARK! The reel's jammed! The line's round your wrist!" };
         if (state === "fight") {
           const bars = Math.round(Math.min(1, tension / SNAP) * 5);
           return { done: false, label: `FISH ON! Line ${line.toFixed(0)} m · strain ${"▮".repeat(bars)}${"▯".repeat(5 - bars)}${tally}` };
@@ -252,11 +317,12 @@ export const yacht: Level = {
       },
       // While fighting, the camera keeps both Stanley and the fish in view.
       follow: (game) => {
-        if (state !== "fight" || !fish) return null;
+        if ((state !== "fight" && state !== "eaten") || !fish) return null;
         const p = fish.body.translation();
         const s = game.stanley.position;
         return { x: (p.x + s.x) / 2, y: s.y };
       },
+      keepUnder: () => state === "eaten",
       drawBack(r) {
         drawSea(r);
         drawYacht(r);
@@ -264,7 +330,7 @@ export const yacht: Level = {
       drawMid(r) {
         // The line: from the rod's tip, sagging when slack, taut when it's pulling.
         const tp = tip();
-        const end = state === "fight" && fish ? fish.body.translation() : lure;
+        const end = (state === "fight" || state === "eaten") && fish ? fish.body.translation() : lure;
         const slack = state === "fight" ? Math.max(0, line - Math.hypot(end.x - tp.x, end.y - tp.y)) : 1.2;
         const mid = { x: (tp.x + end.x) / 2, y: (tp.y + end.y) / 2 - Math.min(1.5, slack * 0.8 + 0.1) };
         const ctx = r.ctx;
@@ -375,6 +441,56 @@ function drawCatch(r: Renderer, fish: Prop, kind: Catch, game: Game | null) {
     ctx.fillStyle = "#1a1a22";
     ctx.beginPath();
     ctx.arc(w * 0.75, -h * 0.25, Math.max(1, h * 0.09), 0, Math.PI * 2);
+    ctx.fill();
+  } else if (kind.name === "Shark") {
+    // Grey, a white belly, the fin, the tail; the jaw open (and the teeth) when it comes up out of the water.
+    const open = Math.abs(b.linvel().y) > 2 || Math.abs(a) > 0.5;
+    ctx.fillStyle = kind.color;
+    ctx.beginPath();
+    ctx.moveTo(w * 1.05, 0);
+    ctx.quadraticCurveTo(w * 0.6, -h * 1.25, -w * 0.3, -h * 1.0);
+    ctx.quadraticCurveTo(-w * 0.85, -h * 0.6, -w, 0);
+    ctx.quadraticCurveTo(-w * 0.8, h * 0.7, 0, h);
+    ctx.quadraticCurveTo(w * 0.7, h * 0.95, w * 1.05, 0);
+    ctx.fill();
+    ctx.fillStyle = "#e9eef2";
+    ctx.beginPath();
+    ctx.ellipse(w * 0.1, h * 0.45, w * 0.75, h * 0.5, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = kind.color;
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.15, -h * 0.95);
+    ctx.lineTo(w * 0.05, -h * 2.6);
+    ctx.lineTo(w * 0.3, -h * 0.9);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.92, 0);
+    ctx.lineTo(-w * 1.35, -h * (1.6 + wag));
+    ctx.lineTo(-w * 1.15, 0);
+    ctx.lineTo(-w * 1.3, h * (1.2 - wag));
+    ctx.closePath();
+    ctx.fill();
+    if (open) {
+      ctx.fillStyle = "#5a1f2a";
+      ctx.beginPath();
+      ctx.moveTo(w * 1.08, -h * 0.05);
+      ctx.lineTo(w * 0.55, h * 0.15);
+      ctx.lineTo(w * 1.0, h * 0.75);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      for (let i = 0; i < 4; i++) {
+        const tx = w * (0.62 + i * 0.11);
+        ctx.beginPath();
+        ctx.moveTo(tx, h * 0.12 - i * h * 0.04);
+        ctx.lineTo(tx + w * 0.05, h * 0.3);
+        ctx.lineTo(tx + w * 0.1, h * 0.1 - i * h * 0.04);
+        ctx.fill();
+      }
+    }
+    ctx.fillStyle = "#1a1a22";
+    ctx.beginPath();
+    ctx.arc(w * 0.7, -h * 0.35, Math.max(1.5, h * 0.12), 0, Math.PI * 2);
     ctx.fill();
   } else if (kind.name === "Old boot") {
     ctx.fillStyle = kind.color;

@@ -31,6 +31,8 @@ const AIR_TORQUE = 650;
 /** Ride past here and you're carried back round to the start, for another lap. */
 const LAP_AT = 156;
 const LAP_TO = 6;
+/** The mega kicker's lip (x): the last jump. */
+const MEGA_LIP = 110;
 /** The seat holds Stanley like a soft spring; thrown further than this from it, he's off. */
 const SEAT_BREAK = 0.62;
 
@@ -138,6 +140,10 @@ export interface Bike {
   front: RigidBody;
   bars: RigidBody;
   motor: RevoluteImpulseJoint;
+  /** The front wheel's axle (it comes off). */
+  axle: RevoluteImpulseJoint | null;
+  /** The front wheel's off: the forks are in the dirt. */
+  wrecked: boolean;
 }
 
 function buildBike(kit: Kit, x: number): Bike {
@@ -164,7 +170,7 @@ function buildBike(kit: Kit, x: number): Bike {
   world.createCollider(RAPIER.ColliderDesc.cuboid(0.05, 0.05).setDensity(20).setCollisionGroups(BIKE_GROUPS), bars);
   const fj = world.createImpulseJoint(RAPIER.JointData.fixed(BARS, 0, { x: 0, y: 0 }, 0), chassis, bars, true);
   fj.setContactsEnabled(false);
-  return { chassis, rear: rear.w, front: front.w, bars, motor: rear.j };
+  return { chassis, rear: rear.w, front: front.w, bars, motor: rear.j, axle: front.j, wrecked: false };
 }
 
 /** A point in the bike's frame, in the world. */
@@ -207,6 +213,8 @@ export const dirtBike: Level = {
     let flip = 0;
     let air = 0;
     let wasAir = false;
+    /** Where the bike last left the ground (the mega kicker's lip is the last jump: nobody lands that one). */
+    let takeoff = 0;
     let best = 0;
     let crashCooldown = 0;
     /** Seconds the bike's been upside down. */
@@ -214,6 +222,37 @@ export const dirtBike: Level = {
     /** In the air, A/D lean the bike, but not a key that was already held at take-off (holding the gas off a jump shouldn't nose-dive you): let go and press again. */
     let leanArmed = true;
     let laps = 0;
+    const wreck = (game: Game): GameEvent[] => {
+      const st = game.stanley;
+      const ch = bike.chassis;
+      bike.wrecked = true;
+      if (bike.axle) game.world.removeImpulseJoint(bike.axle, true);
+      bike.axle = null;
+      const v = ch.linvel();
+      // The wheel bounds off ahead; the forks dig in and the bike goes over its nose; and so does he.
+      bike.front.setLinvel({ x: v.x * 1.15 + 1, y: 3.5 }, true);
+      ch.setLinvel({ x: v.x * 0.45, y: v.y + 2 }, true);
+      ch.setAngvel(-7, true);
+      if (st.seated) {
+        st.seated = false;
+        crashCooldown = 99;
+        st.balance.knockDown(2.5);
+        for (const b of st.rig.bodies) b.applyImpulse({ x: b.mass() * 2.5, y: b.mass() * 5 }, true);
+        st.rig.head.applyImpulse({ x: st.rig.head.mass() * 3, y: 0 }, true);
+      }
+      crashCooldown = 99;
+      const p = ch.translation();
+      return [
+        { type: "ouch", text: "THE FRONT WHEEL!", pos: { x: p.x, y: p.y + 1.8 } },
+        { type: "sfx", name: "crack" },
+        { type: "shake", mag: 22 },
+        {
+          type: "disaster",
+          title: "Over the Bars",
+          text: "The biggest jump on the trail, landed perfectly. The front wheel kept going. So did you. The bike's on the company; so is the hospital.",
+        },
+      ];
+    };
     /** How high the bike is over the dirt below it (m). */
     const height = (game: Game) => (game.stanley.seated ? Math.max(0, bike.chassis.translation().y - WHEEL_R - 0.25 - trackY(bike.chassis.translation().x)) : 0);
     /** Speed carried from the last descent (m/s). */
@@ -237,7 +276,7 @@ export const dirtBike: Level = {
         crashCooldown = Math.max(0, crashCooldown - dt);
 
         // On: hands on the bars and close enough, he's pulled onto the seat.
-        if (!st.seated && holding && dist < 0.9 && crashCooldown === 0 && st.balance.posture === "up") st.seated = true;
+        if (!st.seated && !bike.wrecked && holding && dist < 0.9 && crashCooldown === 0 && st.balance.posture === "up") st.seated = true;
         // Off: thrown clear of the seat, or a head-first landing (hard, or with the bike well over).
         const hv = st.rig.head.linvel();
         const cvel = ch.linvel();
@@ -296,7 +335,10 @@ export const dirtBike: Level = {
           ev.push({ type: "ouch", text: "WIPEOUT!", pos: { x: p.x, y: p.y + 1.2 } });
         }
         if (airborne) {
-          if (!wasAir) leanArmed = Math.abs(move) < 0.1;
+          if (!wasAir) {
+            leanArmed = Math.abs(move) < 0.1;
+            takeoff = ch.translation().x;
+          }
           if (Math.abs(move) < 0.1) leanArmed = true;
           air += dt;
           flip += ch.angvel() * dt;
@@ -319,6 +361,8 @@ export const dirtBike: Level = {
             ev.push({ type: "score", text: `${air > 1.4 ? "MASSIVE AIR!" : "BIG AIR!"} ${air.toFixed(1)}s`, pos: at });
           }
           if (air > best && st.seated) best = air;
+          // The last jump. However well you land it, the front wheel doesn't: it carries on without you.
+          if (!bike.wrecked && takeoff > MEGA_LIP - 6 && takeoff < MEGA_LIP + 1 && air > 0.5) ev.push(...wreck(game));
           flip = 0;
           air = 0;
         }
@@ -326,7 +370,7 @@ export const dirtBike: Level = {
         wasAir = airborne;
 
         // Past the finish: round again. Bike and rider are carried back to the start, still going.
-        if (ch.translation().x > LAP_AT) {
+        if (ch.translation().x > LAP_AT && !bike.wrecked) {
           laps++;
           const dx = LAP_TO - ch.translation().x;
           const bodies = [bike.chassis, bike.rear, bike.front, bike.bars, ...(st.seated ? st.rig.bodies : [])];
@@ -420,7 +464,7 @@ function drawBike(r: Renderer, bike: Bike, game: Game) {
   }
   // Swingarm and fork.
   r.line(at({ x: -0.05, y: -0.05 }), bike.rear.translation(), 0.07, "#4a4f58");
-  r.line(at({ x: 0.34, y: 0.42 }), bike.front.translation(), 0.06, "#c9ccd1");
+  r.line(at({ x: 0.34, y: 0.42 }), bike.wrecked ? at({ x: FRONT.x + 0.05, y: FRONT.y - 0.15 }) : bike.front.translation(), 0.06, "#c9ccd1");
   // Engine, frame, exhaust.
   r.poly([at({ x: -0.25, y: -0.14 }), at({ x: 0.22, y: -0.14 }), at({ x: 0.3, y: 0.12 }), at({ x: -0.3, y: 0.12 })], "#3a3d44");
   r.line(at({ x: -0.5, y: 0.2 }), at({ x: 0.36, y: 0.38 }), 0.05, "#2a2d33");

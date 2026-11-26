@@ -45,6 +45,8 @@ export interface LevelInstance {
   follow?(game: Game): Vec | null;
   /** A taller frame for now (metres of view: big air on the dirt bike, say), or null for the level's own. */
   view?(game: Game): number | null;
+  /** In the water, Stanley isn't fished out and put back at the start (he's been taken by a shark, say). */
+  keepUnder?(game: Game): boolean;
   /** Where the level's characters' heads are, for speech in a scene. */
   speakers?: Record<string, () => Vec>;
   /** HD renderer: things close to the camera, out of focus (drawn on their own layer, then blurred). */
